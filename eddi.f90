@@ -58,25 +58,31 @@ module eddi
          INTEGER :: cnt, iterrad, iterang
          REAL(KIND=dp) :: tradw, tangw, tsin, tcos, targ
          REAL(KIND=dp) :: alpha
-         REAL(KIND=dp), DIMENSION(1:nshell) :: rrange
 
          if (.not. allocated(thegrid)) then
             print *, 'Allocating the grid in build_grid.' !CP
             allocate(thegrid(lebedev_grid(ileb)%n * nshell))
          end if
 
-         alpha = pi/REAL(nshell, dp)
-         rrange = range(nshell, -0.99_dp, +0.99_dp)
+         alpha = pi/REAL(nshell+1, dp)
          cnt = 0
          do iterang=1, lebedev_grid(ileb)%n
             tangw = lebedev_grid(ileb)%w(iterang)
             do iterrad=1, nshell
                cnt = cnt+1
-               targ = alpha*(2.0_dp*iterrad-1)/2.0_dp ! pi*(2i-1)/2n
-               tsin = sin(targ)
+               ! targ = alpha*(2.0_dp*iterrad+1)/2.0_dp
+               ! tsin = sin(targ)
+               ! tcos = cos(targ)
 
-               thegrid(cnt)%r = radial_mapping(rrange(iterrad))*lebedev_grid(ileb)%r(:, iterang)
-               thegrid(cnt)%weight = lebedev_grid(ileb)%w(iterang) * tsin
+               ! tradw = 1 / sqrt(1-tcos**2)
+               targ = REAL(iterrad, dp)*alpha
+               tcos = cos(targ)
+               tsin = alpha*sin(targ)**2
+               tradw = tsin/sqrt(1.0_dp-tcos**2)
+               tradw = 2.0_dp*tradw*radial_mapping(tcos)**2/(1.0_dp-tcos)**2
+
+               thegrid(cnt)%r = radial_mapping(tcos)*lebedev_grid(ileb)%r(:, iterang)
+               thegrid(cnt)%weight = tangw * tradw
             enddo !iterrad
          enddo !iterang
          
@@ -120,15 +126,15 @@ module eddi
 
       ! Take input N and return an array of N values evenly spaced
       ! between [-lower, upper]
-      function range(N, lower, upper) result(r)
-         implicit none
-         INTEGER :: N, iter
-         REAL(KIND=dp), DIMENSION(N) :: r
-         REAL(KIND=dp)               :: spacing, lower, upper
-         spacing = (upper-lower)/(N-1)
-         do iter=0,N-1
-            r(iter+1) = lower + spacing * iter
-         enddo
-      end function range
+      ! function range(N, lower, upper) result(r)
+      !    implicit none
+      !    INTEGER :: N, iter
+      !    REAL(KIND=dp), DIMENSION(N) :: r
+      !    REAL(KIND=dp)               :: spacing, lower, upper
+      !    spacing = (upper-lower)/(N-1)
+      !    do iter=0,N-1
+      !       r(iter+1) = lower + spacing * iter
+      !    enddo
+      ! end function range
 
 end module eddi
