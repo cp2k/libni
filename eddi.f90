@@ -15,6 +15,7 @@ module eddi
          INTEGER :: ileb
          INTEGER :: ngrid = 0   ! number of points making up the grid
          TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
+         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: thefgrid
 
          ileb = get_number_of_lebedev_grid(nleb)
          ngrid = lebedev_grid(ileb)%n * nshell
@@ -25,11 +26,30 @@ module eddi
          print *, '! Total grid points:   ', ngrid
          print *, '!' // REPEAT('-', 79)
          allocate(thegrid(ngrid))
+         allocate(thefgrid(ngrid))
+
          call build_grid(ileb, nshell, thegrid)
-         call print_grid(thegrid)
+         call evaluate_atgrid(thegrid, thefgrid)
+         ! call print_grid(thegrid, thefgrid)
+         print *, sum(thefgrid)
+
          deallocate(thegrid)
+         deallocate(thefgrid)
 
       end subroutine integration_oneatom
+
+      subroutine evaluate_atgrid(thegrid, thefgrid)
+         implicit none
+         TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
+         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: thefgrid
+         REAL(KIND=dp) :: norm
+         INTEGER :: i
+
+         do i=1,size(thefgrid)
+            norm = sqrt(sum((thegrid(i)%r)**2))
+            thefgrid(i) = thegrid(i)%weight * gaussian(norm)
+         enddo 
+      end subroutine evaluate_atgrid
 
       subroutine build_grid(ileb, nshell, thegrid)
          implicit none
@@ -39,13 +59,14 @@ module eddi
          REAL(KIND=dp) :: tradw, tangw, tsin, tcos, targ
          REAL(KIND=dp) :: alpha
          REAL(KIND=dp), DIMENSION(1:nshell) :: rrange
+
          if (.not. allocated(thegrid)) then
             print *, 'Allocating the grid in build_grid.' !CP
             allocate(thegrid(lebedev_grid(ileb)%n * nshell))
          end if
 
          alpha = pi/REAL(nshell, dp)
-         rrange = range(nshell, -0.9_dp, +0.9_dp)
+         rrange = range(nshell, -0.99_dp, +0.99_dp)
          cnt = 0
          do iterang=1, lebedev_grid(ileb)%n
             tangw = lebedev_grid(ileb)%w(iterang)
@@ -61,14 +82,14 @@ module eddi
          
       end subroutine build_grid
 
-      subroutine print_grid(thegrid)
+      subroutine print_grid(thegrid, thefgrid)
          implicit none
          TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
+         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: thefgrid
          INTEGER :: i
          do i=1,size(thegrid)
-            print *, thegrid(i)%r, thegrid(i)%weight
+            print *, thegrid(i)%r, thegrid(i)%weight, thefgrid(i)
          enddo 
-
       end subroutine print_grid
 
       ! take values x in [-1, 1) and map them to (0, +infty)
