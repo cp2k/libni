@@ -16,7 +16,6 @@ module eddi
          INTEGER, DIMENSION(2) :: ileb
          INTEGER :: ngrid
          TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: thefgrid
          REAL(KIND=dp) :: integral
 
          ileb(1) = get_number_of_lebedev_grid(nleb(1))
@@ -31,16 +30,14 @@ module eddi
          print *, '! Radial grid2 points: ', nshell(2)
          print *, '! Total grid points:   ', ngrid
          print *, '!' // REPEAT('-', 78) // '!'
+
          allocate(thegrid(ngrid))
-         allocate(thefgrid(ngrid))
 
          call build_grid(ileb, nshell, displacement, thegrid)
-         ! call print_grid(thegrid, thefgrid)
-         call evaluate_atgrid(thegrid, thefgrid)
-         integral = 4.0_dp*pi*sum(thefgrid)
+         call evaluate_atgrid(thegrid, integral)
+         integral = 4.0_dp*pi*integral
 
          deallocate(thegrid)
-         deallocate(thefgrid)
 
       end subroutine integration_twoatom
 
@@ -96,29 +93,28 @@ module eddi
          
       end subroutine build_grid
 
-      subroutine evaluate_atgrid(thegrid, thefgrid)
+      subroutine evaluate_atgrid(thegrid, integral)
          implicit none
          TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: thefgrid
-         REAL(KIND=dp) :: norm, f1, f2, partition
+         REAL(KIND=dp) :: norm, f1, f2, partition, integral
          INTEGER :: i
 
          partition = 0.5_dp
-         do i=1,size(thefgrid)
+         integral = 0
+         do i=1,size(thegrid)
             norm = sqrt(sum((thegrid(i)%r)**2))
             f1 = gaussian(norm)
             f2 = 1.0_dp
-            thefgrid(i) = thegrid(i)%weight * partition * f1 * f2
+            integral = integral + thegrid(i)%weight * partition * f1 * f2
          enddo
       end subroutine evaluate_atgrid
 
-      subroutine print_grid(thegrid, thefgrid)
+      subroutine print_grid(thegrid)
          implicit none
          TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: thefgrid
          INTEGER :: i
          do i=1,size(thegrid)
-            print *, thegrid(i)%r, thegrid(i)%weight, thefgrid(i)
+            print *, thegrid(i)%r, thegrid(i)%weight
          enddo 
       end subroutine print_grid
 
@@ -134,6 +130,8 @@ module eddi
          r = (1+x)/(1-x)
           
       end function radial_mapping
+
+      ! 
 
       ! Evaluate a gaussian e^(-a.x^2)
       function gaussian(x, a) result(g)
