@@ -11,10 +11,10 @@ module eddi
       INTEGER :: z = 1
    end type type_atom
 
-   public :: integration_twoatom
+   public :: integration_twocenter
 
    contains
-      subroutine integration_twoatom(nleb, nshell, displacement, integral)
+      subroutine integration_twocenter(nleb, nshell, displacement, integral)
          implicit none
          INTEGER, DIMENSION(2), intent(in) :: nleb, nshell
          REAL(KIND=dp), DIMENSION(3), intent(in) :: displacement
@@ -42,7 +42,7 @@ module eddi
 
          deallocate(thegrid)
 
-      end subroutine integration_twoatom
+      end subroutine integration_twocenter
 
       subroutine integrate(ileb, nshell, displacement, thegrid, integral)
          implicit none
@@ -51,10 +51,10 @@ module eddi
          REAL(KIND=dp), DIMENSION(3), intent(in) :: displacement
          INTEGER :: cnt, iterrad, iterang, i
          REAL(KIND=dp) :: tradw, tangw, tsin, tcos, targ, tr
-         REAL(KIND=dp) :: alpha
-         REAL(KIND=dp) :: norm, f1, f2, partition, integral
+         REAL(KIND=dp) :: norm, f1, f2, f3, integral, distance, alpha
 
          cnt = 0
+         distance = sqrt(sum(displacement**2))
 
          alpha = pi/REAL(nshell(1)+1, dp)
          do iterang=1, lebedev_grid(ileb(1))%n
@@ -83,7 +83,7 @@ module eddi
                tr = radial_mapping(tcos)
                tsin = alpha*sin(targ)**2
                tradw = tsin/sqrt(1.0_dp-tcos**2)
-               tradw = 2.0_dp*tradw*tr**2/(1.0_dp-tcos)**2
+               tradw = tr**2 * tradw * 2.0_dp/(1.0_dp-tcos)**2
 
                thegrid(cnt)%r = tr*lebedev_grid(ileb(2))%r(:, iterang) +&
                                  displacement
@@ -91,15 +91,16 @@ module eddi
             enddo !iterrad
          enddo !iterang
 
-         partition = 0.5_dp
          integral = 0
          do i=1,size(thegrid)
             norm = sqrt(sum((thegrid(i)%r)**2))
             f1 = gaussian(norm)
-            f2 = 1.0_dp
-            integral = integral + thegrid(i)%weight * partition * f1 * f2
+            norm = sqrt(sum((thegrid(i)%r+displacement)**2))
+            f2 = gaussian(norm)
+            f3 = 1.0_dp
+            integral = integral + thegrid(i)%weight * f1 * f3 * f2
          enddo
-         integral = 4.0_dp*pi*integral
+         integral = 4.0_dp*pi*integral* 0.5_dp
 
       end subroutine integrate
 
@@ -110,7 +111,10 @@ module eddi
          !nshell = ceiling(24.0_dp+2.0_dp*atoms/5)
 
          SELECT CASE (atom)
-         CASE (:2)
+         CASE (0)
+            nshell = 5
+            nleb = 10
+         CASE (1:2)
             nshell = 35
             nleb = 302
          CASE (3:10)
@@ -160,7 +164,23 @@ module eddi
          else
             g = exp(-x**2)
          endif
-
       end function gaussian
+
+      ! partition_0
+      function p0(x) result(p)
+         implicit none
+         REAL(KIND=dp) :: x, p
+         p = 2.0_dp*x**3 - 3.0_dp*x**2 + 1.0_dp
+      end function p0
+
+      function partition(x) result(p)
+         implicit none
+         REAL(KIND=dp) :: x, p
+         if (x .gt. 1) then
+            p = 0.0_dp
+         else
+            p = p0(p0(p0(x)))
+         endif
+      end function partition
 
 end module eddi
