@@ -6,6 +6,11 @@ module eddi
    implicit none
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 
+   type :: type_atom
+      REAL(KIND=dp), DIMENSION(3) :: r = 0.0_dp
+      INTEGER :: z = 1
+   end type type_atom
+
    public :: integration_twoatom
 
    contains
@@ -18,8 +23,8 @@ module eddi
          TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
          REAL(KIND=dp) :: integral
 
-         ileb(1) = get_number_of_lebedev_grid(nleb(1))
-         ileb(2) = get_number_of_lebedev_grid(nleb(2))
+         ileb(1) = get_number_of_lebedev_grid(n=nleb(1))
+         ileb(2) = get_number_of_lebedev_grid(n=nleb(2))
          ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
                  lebedev_grid(ileb(2))%n * nshell(2)
 
@@ -33,26 +38,21 @@ module eddi
 
          allocate(thegrid(ngrid))
 
-         call build_grid(ileb, nshell, displacement, thegrid)
-         call evaluate_atgrid(thegrid, integral)
-         integral = 4.0_dp*pi*integral
+         call integrate(ileb, nshell, displacement, thegrid, integral)
 
          deallocate(thegrid)
 
       end subroutine integration_twoatom
 
-      subroutine build_grid(ileb, nshell, displacement, thegrid)
+      subroutine integrate(ileb, nshell, displacement, thegrid, integral)
          implicit none
          TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
          INTEGER, DIMENSION(2), intent(in) :: ileb, nshell
          REAL(KIND=dp), DIMENSION(3), intent(in) :: displacement
-         INTEGER :: cnt, iterrad, iterang
+         INTEGER :: cnt, iterrad, iterang, i
          REAL(KIND=dp) :: tradw, tangw, tsin, tcos, targ, tr
          REAL(KIND=dp) :: alpha
-
-         if (.not. allocated(thegrid)) then
-            print *, 'The grid has not been allocated!' !CP
-         end if
+         REAL(KIND=dp) :: norm, f1, f2, partition, integral
 
          cnt = 0
 
@@ -90,14 +90,6 @@ module eddi
                thegrid(cnt)%weight = tangw * tradw
             enddo !iterrad
          enddo !iterang
-         
-      end subroutine build_grid
-
-      subroutine evaluate_atgrid(thegrid, integral)
-         implicit none
-         TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-         REAL(KIND=dp) :: norm, f1, f2, partition, integral
-         INTEGER :: i
 
          partition = 0.5_dp
          integral = 0
@@ -107,7 +99,34 @@ module eddi
             f2 = 1.0_dp
             integral = integral + thegrid(i)%weight * partition * f1 * f2
          enddo
-      end subroutine evaluate_atgrid
+         integral = 4.0_dp*pi*integral
+
+      end subroutine integrate
+
+      subroutine grid_parameters(atom, nleb, nshell)
+         implicit none
+         INTEGER :: atom, nleb, nshell
+
+         !nshell = ceiling(24.0_dp+2.0_dp*atoms/5)
+
+         SELECT CASE (atom)
+         CASE (:2)
+            nshell = 35
+            nleb = 302
+         CASE (3:10)
+            nshell = 40
+            nleb = 590
+         CASE (11:18)
+            nshell = 45
+            nleb = 590
+         CASE (19:)
+            nshell = 50
+            nleb = 590
+         CASE DEFAULT
+            nshell = 10
+            nleb = 302
+         END SELECT
+      end subroutine grid_parameters
 
       subroutine print_grid(thegrid)
          implicit none
@@ -131,8 +150,6 @@ module eddi
           
       end function radial_mapping
 
-      ! 
-
       ! Evaluate a gaussian e^(-a.x^2)
       function gaussian(x, a) result(g)
          implicit none
@@ -145,50 +162,5 @@ module eddi
          endif
 
       end function gaussian
-
-!! SUBROUTINE GRAVEYARD
-
-      ! Take input N and return an array of N values evenly spaced
-      ! between [-lower, upper]
-      ! function range(N, lower, upper) result(r)
-      !    implicit none
-      !    INTEGER :: N, iter
-      !    REAL(KIND=dp), DIMENSION(N) :: r
-      !    REAL(KIND=dp)               :: spacing, lower, upper
-      !    spacing = (upper-lower)/(N-1)
-      !    do iter=0,N-1
-      !       r(iter+1) = lower + spacing * iter
-      !    enddo
-      ! end function range
-
-      ! subroutine integration_oneatom(nleb, nshell, integral)
-      !    implicit none
-      !    INTEGER, intent(in) :: nleb, nshell
-      !    INTEGER :: ileb
-      !    INTEGER :: ngrid = 0   ! number of points making up the grid
-      !    TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-      !    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: thefgrid
-      !    REAL(KIND=dp) :: integral
-
-      !    ileb = get_number_of_lebedev_grid(nleb)
-      !    ngrid = lebedev_grid(ileb)%n * nshell
-
-      !    print *, '!' // REPEAT('-', 78) // '!'
-      !    print *, '! Angular grid points: ', lebedev_grid(ileb)%n
-      !    print *, '! Radial grid points: ', nshell
-      !    print *, '! Total grid points:   ', ngrid
-      !    print *, '!' // REPEAT('-', 78) // '!'
-      !    allocate(thegrid(ngrid))
-      !    allocate(thefgrid(ngrid))
-
-      !    call build_grid(ileb, nshell, thegrid)
-      !    call evaluate_atgrid(thegrid, thefgrid)
-      !    integral = 4.0_dp*pi*sum(thefgrid)
-
-      !    deallocate(thegrid)
-      !    deallocate(thefgrid)
-
-      ! end subroutine integration_oneatom
-
 
 end module eddi
