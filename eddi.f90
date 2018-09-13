@@ -14,10 +14,13 @@ module eddi
    public :: integration_twocenter
 
    contains
-      subroutine integration_twocenter(nleb, nshell, displacement, integral)
+      subroutine integration_twocenter(nleb, nshell, displacement, &
+                                       gr1, gy1, gr2, gy2, integral)
          implicit none
          INTEGER, DIMENSION(2), intent(in) :: nleb, nshell
          REAL(KIND=dp), DIMENSION(3), intent(in) :: displacement
+         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr1, gy1, &
+                                                                 gr2, gy2
          INTEGER, DIMENSION(2) :: ileb
          INTEGER :: ngrid
          TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
@@ -38,17 +41,24 @@ module eddi
 
          allocate(thegrid(ngrid))
 
-         call integrate(ileb, nshell, displacement, thegrid, integral)
+         call integrate(ileb, nshell, displacement, thegrid,  &
+                        gr1, gy1, gr2, gy2, integral)
 
          deallocate(thegrid)
 
       end subroutine integration_twocenter
 
-      subroutine integrate(ileb, nshell, displacement, thegrid, integral)
+      ! thegrid: the integration grid
+      ! gr1, gy1: the grid `f1` is given on
+      ! gr2, gy2: the grid `f2` is given on
+      subroutine integrate(ileb, nshell, displacement, thegrid, &
+                           gr1, gy1, gr2, gy2, integral)
          implicit none
-         TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
          INTEGER, DIMENSION(2), intent(in) :: ileb, nshell
          REAL(KIND=dp), DIMENSION(3), intent(in) :: displacement
+         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr1, gy1, &
+                                                                 gr2, gy2
+         TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
          INTEGER :: cnt, iterrad, iterang, i
          REAL(KIND=dp) :: tradw, tangw, tsin, tcos, targ, tr
          REAL(KIND=dp) :: norm, f1, f2, f3, integral, distance, alpha
@@ -94,13 +104,15 @@ module eddi
          integral = 0
          do i=1,size(thegrid)
             norm = sqrt(sum((thegrid(i)%r)**2))
-            f1 = gaussian(norm)
+            !f1 = gaussian(norm)
+            call interpolation(gr1, gy1, norm, f1)
             norm = sqrt(sum((thegrid(i)%r+displacement)**2))
-            f2 = gaussian(norm)
+            ! f2 = gaussian(norm, 0.5_dp)
+            call interpolation(gr2, gy2, norm, f2)
             f3 = 1.0_dp
             integral = integral + thegrid(i)%weight * f1 * f3 * f2
          enddo
-         integral = 4.0_dp*pi*integral* 0.5_dp
+         integral = 4.0_dp*pi*integral * 0.5_dp
 
       end subroutine integrate
 
@@ -140,6 +152,46 @@ module eddi
             print *, thegrid(i)%r, thegrid(i)%weight
          enddo 
       end subroutine print_grid
+
+      subroutine read_nfun(fn, gridax, gridf)
+         CHARACTER(len=*) :: fn
+         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gridax, gridf
+         INTEGER :: dim, i
+
+         open(unit=100, file=fn)
+         read(100, *) dim
+         allocate(gridax(dim))
+         allocate(gridf(dim))
+         do i=1, dim
+            read(100, *) gridax(i), gridf(i)
+         enddo
+         close(100)
+      end subroutine read_nfun
+
+      ! Given a function `gridy` on a grid `gridr` and a requested
+      ! function value y(r) interpolates the function value `y`
+      subroutine interpolation(gridr, gridy, r, y)
+         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gridr, gridy
+         REAL(KIND=dp), intent(in) :: r
+         REAL(KIND=dp) :: y
+
+         INTEGER :: low, high, mid
+         REAL(KIND=dp) :: A, B
+         ! find the closest grid point by bisection
+         low = 0
+         high = size(gridr)
+         do while (high-low .gt. 1)
+            mid = NINT((low+high)/2.0_dp)
+            if (gridr(mid) .gt. r) then
+               high = mid
+            else
+               low = mid
+            endif
+         enddo
+         A = (gridr(high)-r)/(gridr(high)-gridr(low))
+         y = A*gridy(low) + (1.0_dp-A)*gridy(high)
+
+      end subroutine interpolation
 
       ! take values x in [-1, 1) and map them to (0, +infty)
       function radial_mapping(x) result(r)
