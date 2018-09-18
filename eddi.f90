@@ -15,15 +15,18 @@ module eddi
 
    contains
       subroutine integration_twocenter(nleb, nshell, displacement, &
-                                       gr1, gy1, gr2, gy2, integral)
+                                       gr1, gy1, gr2, gy2,&
+                                       spline1, spline2, integral)
          implicit none
          INTEGER, DIMENSION(2), intent(in) :: nleb, nshell
          REAL(KIND=dp), DIMENSION(3), intent(in) :: displacement
          REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr1, gy1, &
-                                                                 gr2, gy2
+                                                                 gr2, gy2, &
+                                                                 spline1, spline2
          INTEGER, DIMENSION(2) :: ileb
-         INTEGER :: ngrid
+         INTEGER :: ngrid, i
          TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
+         REAL(KIND=dp) :: norm, f1, f2
          REAL(KIND=dp) :: integral
 
          ileb(1) = get_number_of_lebedev_grid(n=nleb(1))
@@ -40,9 +43,21 @@ module eddi
          print *, '!' // REPEAT('-', 78) // '!'
 
          allocate(thegrid(ngrid))
+         call build_twocenter_grid(ileb, nshell, displacement, thegrid, &
+                                   gr1, gy1, gr2, gy2)
 
-         call integrate(ileb, nshell, displacement, thegrid,  &
-                        gr1, gy1, gr2, gy2, integral)
+         integral = 0
+         do i=1,size(thegrid)
+            norm = sqrt(sum((thegrid(i)%r)**2))
+            call interpolation(gr1, gy1, spline1, norm, f1)
+
+            norm = sqrt(sum((thegrid(i)%r+displacement)**2))
+            call interpolation(gr2, gy2, spline2, norm, f2)
+
+            integral = integral + thegrid(i)%weight * f1 * f2
+         enddo
+         ! lebedev integration: 4pi * sum_leb
+         integral = 4.0_dp*pi*integral
 
          deallocate(thegrid)
 
@@ -51,35 +66,51 @@ module eddi
       ! thegrid: the integration grid
       ! gr1, gy1: the grid `f1` is given on
       ! gr2, gy2: the grid `f2` is given on
-      subroutine integrate(ileb, nshell, displacement, thegrid, &
-                           gr1, gy1, gr2, gy2, integral)
+      ! gr3, gy3: the grid `f3` is given on
+      subroutine build_twocenter_grid(ileb, nshell, displacement, thegrid, &
+                                      gr1, gy1, gr2, gy2)
          implicit none
          INTEGER, DIMENSION(2), intent(in) :: ileb, nshell
          REAL(KIND=dp), DIMENSION(3), intent(in) :: displacement
          REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr1, gy1, &
                                                                  gr2, gy2
          TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-         INTEGER :: cnt, iterrad, iterang, i
+         INTEGER :: cnt, iterrad, iterang, i, iterileb
          REAL(KIND=dp) :: tradw, tangw, tsin, tcos, targ, tr
-         REAL(KIND=dp) :: norm, f1, f2, f3, integral, distance, alpha
+         REAL(KIND=dp) :: alpha, mu, s1, s2, p, ri, rj, R
 
          cnt = 0
-         distance = sqrt(sum(displacement**2))
+         iterileb = 1
+         R = sqrt(sum(displacement**2))
 
          alpha = pi/REAL(nshell(1)+1, dp)
          do iterang=1, lebedev_grid(ileb(1))%n
             tangw = lebedev_grid(ileb(1))%w(iterang)
             do iterrad=1, nshell(1)
                cnt = cnt+1
+               ! COORDINATE
                targ = REAL(iterrad, dp)*alpha
                tcos = cos(targ)
                tr = radial_mapping(tcos)
+
+               thegrid(cnt)%r = tr*lebedev_grid(ileb(1))%r(:, iterang)
+
+               ! WEIGHTS
+               ! nuclear partition
+               ri = sqrt(sum((thegrid(cnt)%r**2)))
+               rj = sqrt(sum(((thegrid(cnt)%r-displacement)**2)))
+
+               mu = (ri-rj)/R
+               s1 = s3(mu)
+               s2 = s3(-mu)
+               p = s1/(s1+s2)
+
+               ! radial
                tsin = alpha*sin(targ)**2
                tradw = tsin/sqrt(1.0_dp-tcos**2)
                tradw = 2.0_dp*tradw*tr**2/(1.0_dp-tcos)**2
-
-               thegrid(cnt)%r = tr*lebedev_grid(ileb(1))%r(:, iterang)
-               thegrid(cnt)%weight = tangw * tradw
+   
+               thegrid(cnt)%weight = tangw * tradw * p
             enddo !iterrad
          enddo !iterang
 
@@ -88,39 +119,48 @@ module eddi
             tangw = lebedev_grid(ileb(2))%w(iterang)
             do iterrad=1, nshell(2)
                cnt = cnt+1
+               ! COORDINATE
                targ = REAL(iterrad, dp)*alpha
                tcos = cos(targ)
                tr = radial_mapping(tcos)
+
+               thegrid(cnt)%r = tr*lebedev_grid(ileb(2))%r(:, iterang)
+
+               ! WEIGHTS
+               ! nuclear partition
+               ri = sqrt(sum((thegrid(cnt)%r**2)))
+               rj = sqrt(sum(((thegrid(cnt)%r-displacement)**2)))
+
+               mu = (ri-rj)/R
+               s1 = s3(mu)
+               s2 = s3(-mu)
+               p = s2/(s1+s2)
+
+               ! radial
                tsin = alpha*sin(targ)**2
                tradw = tsin/sqrt(1.0_dp-tcos**2)
-               tradw = tr**2 * tradw * 2.0_dp/(1.0_dp-tcos)**2
-
-               thegrid(cnt)%r = tr*lebedev_grid(ileb(2))%r(:, iterang) +&
-                                 displacement
-               thegrid(cnt)%weight = tangw * tradw
+               tradw = 2.0_dp*tradw*tr**2/(1.0_dp-tcos)**2
+   
+               thegrid(cnt)%weight = tangw * tradw * p
             enddo !iterrad
          enddo !iterang
+      end subroutine build_twocenter_grid
 
-         integral = 0
-         do i=1,size(thegrid)
-            norm = sqrt(sum((thegrid(i)%r)**2))
-            !f1 = gaussian(norm)
-            call interpolation(gr1, gy1, norm, f1)
-            norm = sqrt(sum((thegrid(i)%r+displacement)**2))
-            ! f2 = gaussian(norm, 0.5_dp)
-            call interpolation(gr2, gy2, norm, f2)
-            f3 = 1.0_dp
-            integral = integral + thegrid(i)%weight * f1 * f3 * f2
-         enddo
-         integral = 4.0_dp*pi*integral * 0.5_dp
+      function h(mu)
+         implicit none
+         REAL(KIND=dp) :: mu, h
+         h = 1.5_dp*mu-0.5_dp*mu**3
+      end function h
 
-      end subroutine integrate
+      function s3(mu)
+         implicit none
+         REAL(KIND=dp) :: mu, s3
+         s3 = 0.5_dp*(1-h(h(h(mu))))
+      end function s3
 
       subroutine grid_parameters(atom, nleb, nshell)
          implicit none
          INTEGER :: atom, nleb, nshell
-
-         !nshell = ceiling(24.0_dp+2.0_dp*atoms/5)
 
          SELECT CASE (atom)
          CASE (0)
@@ -168,29 +208,88 @@ module eddi
          close(100)
       end subroutine read_nfun
 
+      subroutine spline(r, y, n, bound1, boundn, yspline)
+         implicit none
+         INTEGER, INTENT(in) :: n
+         REAL(KIND=dp), DIMENSION(1:n), INTENT(in) :: r, y
+         REAL(KIND=dp), INTENT(in) :: bound1, boundn
+         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: yspline, u
+
+         INTEGER :: i
+         REAL(KIND=dp) :: sig, p, un, qn
+         
+         allocate(yspline(n))
+         allocate(u(n))
+
+         ! ignore bound for now and just make it natural
+         yspline(1) = 0
+         u(1) = 0
+         !
+
+         do i=2,n-1
+            sig = (r(i)-r(i-1))/(r(i+1)-r(i-1))
+            p = sig*yspline(i-1)+2.0_dp
+            yspline(i) = (sig-1.0_dp)/p
+
+            u(i) = (6.0_dp * ( (y(i+1)-y(i))/(r(i+1)-r(i)) -&
+                               (y(i)-y(i-1))/(r(i)-r(i-1)) )/&
+                     (r(i+1)-r(i-1)) - sig*u(i-1)) / p
+         enddo
+
+         ! ignore bound for now and just make it natural
+         qn = 0
+         un = 0
+         !
+
+         yspline(n) = 0
+         do i=n-1,1,-1
+            yspline(i) = yspline(i)*yspline(i+1)+u(i)
+         enddo
+      end subroutine spline
+
       ! Given a function `gridy` on a grid `gridr` and a requested
       ! function value y(r) interpolates the function value `y`
-      subroutine interpolation(gridr, gridy, r, y)
-         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gridr, gridy
+      subroutine interpolation(gr, gy, spline, r, y)
+         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr, gy
+         REAL(KIND=dp), DIMENSION(1:size(gr)) :: spline
          REAL(KIND=dp), intent(in) :: r
          REAL(KIND=dp) :: y
 
-         INTEGER :: low, high, mid
-         REAL(KIND=dp) :: A, B
+         INTEGER :: low, upper, mid
+         REAL(KIND=dp) :: A, B, h
          ! find the closest grid point by bisection
          low = 0
-         high = size(gridr)
-         do while (high-low .gt. 1)
-            mid = NINT((low+high)/2.0_dp)
-            if (gridr(mid) .gt. r) then
-               high = mid
+         upper = size(gr)
+         do while (upper-low .gt. 1)
+            mid = NINT((low+upper)/2.0_dp)
+            if (gr(mid) .gt. r) then
+               upper = mid
             else
                low = mid
             endif
          enddo
-         A = (gridr(high)-r)/(gridr(high)-gridr(low))
-         y = A*gridy(low) + (1.0_dp-A)*gridy(high)
-
+         if (gr(upper) .eq. r) then
+            y = gy(upper)
+         else if (gr(low) .eq. r) then
+            y = gy(low)
+         else if ((gr(upper) .gt. r) .and. (gr(low) .lt. r)) then
+            ! LINEAR INTERPOLATION
+            ! A = (gr(upper)-r)/(gr(upper)-gr(low))
+            ! y = A*gy(low) + (1.0_dp-A)*gy(upper)
+            ! SPLINE INTERPOLATION
+            h = gr(upper)-gr(low)
+            A = (gr(upper)-r)/h
+            B = (r-gr(low))/h
+            y = A*gy(low) + B*gy(upper) + &
+                  ((A**3-A)*spline(low)+(B**3-B)*spline(upper)) * (h**2)/6.0_dp
+         else if (gr(upper) .lt. r) then
+            y = gy(upper)
+            ! print *, 'Extrapolation!'
+            ! print *, upper, gr(upper), r, y
+         else if (gr(low) .gt. r) then
+            y = gy(low)
+            ! print *, 'Extrapolation!'
+         endif
       end subroutine interpolation
 
       ! take values x in [-1, 1) and map them to (0, +infty)
