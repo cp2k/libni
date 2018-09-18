@@ -6,8 +6,8 @@ program hallo
    implicit none
 
    TYPE(type_atom), DIMENSION(3) :: atoms
-   INTEGER, DIMENSION(2) :: nleb, nshell
-   REAL(KIND=dp), DIMENSION(3) :: d
+   INTEGER, DIMENSION(:), ALLOCATABLE :: nleb, nshell
+   REAL(KIND=dp), DIMENSION(3) :: d12, d13
    REAL(KIND=dp) :: integral
    REAL(KIND=dp) :: start, finish, del
    INTEGER :: i
@@ -37,27 +37,41 @@ program hallo
    call read_nfun(fn2, gr3, gy3)
    call spline(gr3, gy3, size(gr3), 0.0_dp, 0.0_dp, spline3)
 
-   call grid_parameters(atoms(1)%z, nleb(1), nshell(1))
-   call grid_parameters(atoms(2)%z, nleb(2), nshell(2))
-   call grid_parameters(atoms(3)%z, nleb(3), nshell(3))
-
    call cpu_time(finish)
    print *, 'took', finish-start
    ! 2 center
+   print *, '!' // REPEAT('-', 78) // '!'
+   print *, '! TWO CENTER !'
+   print *, '!' // REPEAT('-', 78) // '!'
    call cpu_time(start)
+   allocate(nleb(2))
+   allocate(nshell(2))
+   call grid_parameters(atoms(1)%z, nleb(1), nshell(1))
+   call grid_parameters(atoms(2)%z, nleb(2), nshell(2))
    call integration_twocenter(nleb, nshell, d12, &
                               gr1, gy1, gr2, gy2, spline1, spline2, integral)
    print *, integral!, ',', pi**1.5_dp-integral
-   print *, integral-1.1150476803117528!, ',', pi**1.5_dp-integral
+   deallocate(nleb)
+   deallocate(nshell)
    call cpu_time(finish)
    print *, 'took', finish-start
 
    ! 3 center
+   print *, '!' // REPEAT('-', 78) // '!'
+   print *, '! THREE CENTER !'
+   print *, '!' // REPEAT('-', 78) // '!'
    call cpu_time(start)
+   allocate(nleb(3))
+   allocate(nshell(3))
+   call grid_parameters(atoms(1)%z, nleb(1), nshell(1))
+   call grid_parameters(atoms(2)%z, nleb(2), nshell(2))
+   call grid_parameters(atoms(3)%z, nleb(3), nshell(3))
    call integration_threecenter(nleb, nshell, d12, d13,&
                                 gr1, gy1, gr2, gy2, gr3, gy3,&
                                 spline1, spline2, spline3, integral)
    print *, integral
+   deallocate(nleb)
+   deallocate(nshell)
    call cpu_time(finish)
    print *, 'took', finish-start
 

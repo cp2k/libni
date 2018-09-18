@@ -14,12 +14,12 @@ module eddi
    public :: integration_twocenter
 
    contains
-      subroutine integration_twocenter(nleb, nshell, displacement, &
+      subroutine integration_twocenter(nleb, nshell, d12,&
                                        gr1, gy1, gr2, gy2,&
                                        spline1, spline2, integral)
          implicit none
          INTEGER, DIMENSION(2), intent(in) :: nleb, nshell
-         REAL(KIND=dp), DIMENSION(3), intent(in) :: displacement
+         REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
          REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr1, gy1, &
                                                                  gr2, gy2, &
                                                                  spline1, spline2
@@ -39,11 +39,12 @@ module eddi
          print *, '! Radial grid1 points: ', nshell(1)
          print *, '! Angular grid2 points: ', lebedev_grid(ileb(2))%n
          print *, '! Radial grid2 points: ', nshell(2)
+         print *, '!' // REPEAT('-', 78) // '!'
          print *, '! Total grid points:   ', ngrid
          print *, '!' // REPEAT('-', 78) // '!'
 
          allocate(thegrid(ngrid))
-         call build_twocenter_grid(ileb, nshell, displacement, thegrid, &
+         call build_twocenter_grid(ileb, nshell, d12, thegrid, &
                                    gr1, gy1, gr2, gy2)
 
          integral = 0
@@ -51,7 +52,7 @@ module eddi
             norm = sqrt(sum((thegrid(i)%r)**2))
             call interpolation(gr1, gy1, spline1, norm, f1)
 
-            norm = sqrt(sum((thegrid(i)%r+displacement)**2))
+            norm = sqrt(sum((thegrid(i)%r+d12)**2))
             call interpolation(gr2, gy2, spline2, norm, f2)
 
             integral = integral + thegrid(i)%weight * f1 * f2
@@ -66,7 +67,6 @@ module eddi
       ! thegrid: the integration grid
       ! gr1, gy1: the grid `f1` is given on
       ! gr2, gy2: the grid `f2` is given on
-      ! gr3, gy3: the grid `f3` is given on
       subroutine build_twocenter_grid(ileb, nshell, displacement, thegrid, &
                                       gr1, gy1, gr2, gy2)
          implicit none
@@ -145,6 +145,230 @@ module eddi
             enddo !iterrad
          enddo !iterang
       end subroutine build_twocenter_grid
+
+      subroutine integration_threecenter(nleb, nshell, d12, d13, &
+                                         gr1, gy1, gr2, gy2, gr3, gy3,&
+                                         spline1, spline2, spline3, integral)
+         implicit none
+         INTEGER, DIMENSION(3), intent(in) :: nleb, nshell
+         REAL(KIND=dp), DIMENSION(3), intent(in) :: d12, d13
+         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr1, gy1, &
+                         gr2, gy2, gr3, gy3, spline1, spline2, spline3
+         INTEGER, DIMENSION(3) :: ileb
+         INTEGER :: ngrid, i
+         TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
+         REAL(KIND=dp) :: norm, f1, f2, f3
+         REAL(KIND=dp) :: integral
+
+         ileb(1) = get_number_of_lebedev_grid(n=nleb(1))
+         ileb(2) = get_number_of_lebedev_grid(n=nleb(2))
+         ileb(3) = get_number_of_lebedev_grid(n=nleb(3))
+         ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
+                 lebedev_grid(ileb(2))%n * nshell(2) + &
+                 lebedev_grid(ileb(3))%n * nshell(3)
+
+         print *, '!' // REPEAT('-', 78) // '!'
+         print *, '! Angular grid1 points: ', lebedev_grid(ileb(1))%n
+         print *, '! Radial grid1 points: ', nshell(1)
+         print *, '! Angular grid2 points: ', lebedev_grid(ileb(2))%n
+         print *, '! Radial grid2 points: ', nshell(2)
+         print *, '! Angular grid3 points: ', lebedev_grid(ileb(3))%n
+         print *, '! Radial grid3 points: ', nshell(3)
+         print *, '!' // REPEAT('-', 78) // '!'
+         print *, '! Total grid points:   ', ngrid
+         print *, '!' // REPEAT('-', 78) // '!'
+
+         allocate(thegrid(ngrid))
+         call build_threecenter_grid(ileb, nshell, d12, d13, thegrid, &
+                                     gr1, gy1, gr2, gy2, gr3, gy3)
+
+         integral = 0
+         do i=1,size(thegrid)
+            norm = sqrt(sum((thegrid(i)%r)**2))
+            call interpolation(gr1, gy1, spline1, norm, f1)
+
+            norm = sqrt(sum((thegrid(i)%r+d12)**2))
+            call interpolation(gr2, gy2, spline2, norm, f2)
+
+            norm = sqrt(sum((thegrid(i)%r+d13)**2))
+            call interpolation(gr3, gy3, spline3, norm, f3)
+
+            integral = integral + thegrid(i)%weight * f1 * f2 * f3
+         enddo
+         ! lebedev integration: 4pi * sum_leb
+         integral = 4.0_dp*pi*integral
+
+         deallocate(thegrid)
+
+      end subroutine integration_threecenter
+
+      ! thegrid: the integration grid
+      subroutine build_threecenter_grid(ileb, nshell, d12, d13, thegrid, &
+                                        gr1, gy1, gr2, gy2, gr3, gy3)
+         implicit none
+         INTEGER, DIMENSION(3), intent(in) :: ileb, nshell
+         REAL(KIND=dp), DIMENSION(3), intent(in) :: d12, d13
+         REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr1, gy1, &
+                                                                 gr2, gy2, &
+                                                                 gr3, gy3
+         TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
+         INTEGER :: cnt, iterrad, iterang, i, iterileb
+         REAL(KIND=dp) :: tradw, tangw, tsin, tcos, targ, tr
+         REAL(KIND=dp) :: alpha, tP1, tP2, tP3, sP, p1, p2, p3
+         REAL(KIND=dp) :: mu12, mu13, mu23, s12, s13, s23, s21, s31, s32
+         REAL(KIND=dp) :: r1, r2, r3, R12, R13, R23
+
+         cnt = 0
+         iterileb = 1
+         R12 = sqrt(sum(d12**2))
+         R13 = sqrt(sum(d13**2))
+         R23 = sqrt(sum((d13-d12)**2))
+
+         alpha = pi/REAL(nshell(1)+1, dp)
+         do iterang=1, lebedev_grid(ileb(1))%n
+            tangw = lebedev_grid(ileb(1))%w(iterang)
+            do iterrad=1, nshell(1)
+               cnt = cnt+1
+               ! COORDINATE
+               targ = REAL(iterrad, dp)*alpha
+               tcos = cos(targ)
+               tr = radial_mapping(tcos)
+
+               thegrid(cnt)%r = tr*lebedev_grid(ileb(1))%r(:, iterang)
+
+               ! WEIGHTS
+               ! nuclear partition
+               r1 = sqrt(sum((thegrid(cnt)%r**2)))
+               r2 = sqrt(sum(((thegrid(cnt)%r-d12)**2)))
+               r3 = sqrt(sum(((thegrid(cnt)%r-d13)**2)))
+
+               mu12 = (r1-r2)/R12
+               mu13 = (r1-r3)/R13
+               mu23 = (r2-r3)/R23
+
+               s12 = s3(mu12)
+               s21 = s3(-mu12)
+               s13 = s3(mu13)
+               s31 = s3(-mu13)
+               s32 = s3(-mu23)
+               s23 = s3(mu23)
+
+               tP1 = s12*s13
+               tP2 = s21*s23
+               tP3 = s31*s32
+
+               sP = tP1+tP2+tP3
+
+               p1 = tP1/sP
+               p2 = tP2/sP
+               p3 = tP3/sP
+
+               ! radial
+               tsin = alpha*sin(targ)**2
+               tradw = tsin/sqrt(1.0_dp-tcos**2)
+               tradw = 2.0_dp*tradw*tr**2/(1.0_dp-tcos)**2
+   
+               thegrid(cnt)%weight = tangw * tradw * p1
+            enddo !iterrad
+         enddo !iterang
+
+         alpha = pi/REAL(nshell(2)+1, dp)
+         do iterang=1, lebedev_grid(ileb(2))%n
+            tangw = lebedev_grid(ileb(2))%w(iterang)
+            do iterrad=1, nshell(2)
+               cnt = cnt+1
+               ! COORDINATE
+               targ = REAL(iterrad, dp)*alpha
+               tcos = cos(targ)
+               tr = radial_mapping(tcos)
+
+               thegrid(cnt)%r = tr*lebedev_grid(ileb(2))%r(:, iterang)
+
+               ! WEIGHTS
+               ! nuclear partition
+               r1 = sqrt(sum((thegrid(cnt)%r**2)))
+               r2 = sqrt(sum(((thegrid(cnt)%r-d12)**2)))
+               r3 = sqrt(sum(((thegrid(cnt)%r-d13)**2)))
+
+               mu12 = (r1-r2)/R12
+               mu13 = (r1-r3)/R13
+               mu23 = (r2-r3)/R23
+
+               s12 = s3(mu12)
+               s21 = s3(-mu12)
+               s13 = s3(mu13)
+               s31 = s3(-mu13)
+               s32 = s3(-mu23)
+               s23 = s3(mu23)
+
+               tP1 = s12*s13
+               tP2 = s21*s23
+               tP3 = s31*s32
+
+               sP = tP1+tP2+tP3
+
+               p1 = tP1/sP
+               p2 = tP2/sP
+               p3 = tP3/sP
+
+               ! radial
+               tsin = alpha*sin(targ)**2
+               tradw = tsin/sqrt(1.0_dp-tcos**2)
+               tradw = 2.0_dp*tradw*tr**2/(1.0_dp-tcos)**2
+   
+               thegrid(cnt)%weight = tangw * tradw * p2
+            enddo !iterrad
+         enddo !iterang
+
+         alpha = pi/REAL(nshell(3)+1, dp)
+         do iterang=1, lebedev_grid(ileb(3))%n
+            tangw = lebedev_grid(ileb(3))%w(iterang)
+            do iterrad=1, nshell(3)
+               cnt = cnt+1
+               ! COORDINATE
+               targ = REAL(iterrad, dp)*alpha
+               tcos = cos(targ)
+               tr = radial_mapping(tcos)
+
+               thegrid(cnt)%r = tr*lebedev_grid(ileb(3))%r(:, iterang)
+
+               ! WEIGHTS
+               ! nuclear partition
+               r1 = sqrt(sum((thegrid(cnt)%r**2)))
+               r2 = sqrt(sum(((thegrid(cnt)%r-d12)**2)))
+               r3 = sqrt(sum(((thegrid(cnt)%r-d13)**2)))
+
+               mu12 = (r1-r2)/R12
+               mu13 = (r1-r3)/R13
+               mu23 = (r2-r3)/R23
+
+               s12 = s3(mu12)
+               s21 = s3(-mu12)
+               s13 = s3(mu13)
+               s31 = s3(-mu13)
+               s32 = s3(-mu23)
+               s23 = s3(mu23)
+
+               tP1 = s12*s13
+               tP2 = s21*s23
+               tP3 = s31*s32
+
+               sP = tP1+tP2+tP3
+
+               p1 = tP1/sP
+               p2 = tP2/sP
+               p3 = tP3/sP
+
+               ! radial
+               tsin = alpha*sin(targ)**2
+               tradw = tsin/sqrt(1.0_dp-tcos**2)
+               tradw = 2.0_dp*tradw*tr**2/(1.0_dp-tcos)**2
+   
+               thegrid(cnt)%weight = tangw * tradw * p3
+            enddo !iterrad
+         enddo !iterang
+      end subroutine build_threecenter_grid
+
 
       function h(mu)
          implicit none
