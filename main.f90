@@ -1,8 +1,9 @@
 program hallo 
    USE lebedev, ONLY: dp
-   USE eddi, ONLY: type_atom, integration_twocenter, grid_parameters, &
+   USE eddi, ONLY: type_atom, integration_twocenter, &
                    read_nfun, pi, interpolation, spline, &
                    integration_threecenter
+   USE grid, ONLY: grid_parameters
    implicit none
 
    TYPE(type_atom), DIMENSION(3) :: atoms
