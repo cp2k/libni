@@ -34,14 +34,14 @@ module eddi
          ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
                  lebedev_grid(ileb(2))%n * nshell(2)
 
-         print *, '!' // REPEAT('-', 78) // '!'
-         print *, '! Angular grid1 points: ', lebedev_grid(ileb(1))%n
-         print *, '! Radial grid1 points: ', nshell(1)
-         print *, '! Angular grid2 points: ', lebedev_grid(ileb(2))%n
-         print *, '! Radial grid2 points: ', nshell(2)
-         print *, '!' // REPEAT('-', 78) // '!'
-         print *, '! Total grid points:   ', ngrid
-         print *, '!' // REPEAT('-', 78) // '!'
+         ! print *, '!' // REPEAT('-', 78) // '!'
+         ! print *, '! Angular grid1 points: ', lebedev_grid(ileb(1))%n
+         ! print *, '! Radial grid1 points: ', nshell(1)
+         ! print *, '! Angular grid2 points: ', lebedev_grid(ileb(2))%n
+         ! print *, '! Radial grid2 points: ', nshell(2)
+         ! print *, '!' // REPEAT('-', 78) // '!'
+         ! print *, '! Total grid points:   ', ngrid
+         ! print *, '!' // REPEAT('-', 78) // '!'
 
          allocate(thegrid(ngrid))
          call build_twocenter_grid(ileb, nshell, d12, thegrid, &
@@ -85,16 +85,16 @@ module eddi
                  lebedev_grid(ileb(2))%n * nshell(2) + &
                  lebedev_grid(ileb(3))%n * nshell(3)
 
-         print *, '!' // REPEAT('-', 78) // '!'
-         print *, '! Angular grid1 points: ', lebedev_grid(ileb(1))%n
-         print *, '! Radial grid1 points: ', nshell(1)
-         print *, '! Angular grid2 points: ', lebedev_grid(ileb(2))%n
-         print *, '! Radial grid2 points: ', nshell(2)
-         print *, '! Angular grid3 points: ', lebedev_grid(ileb(3))%n
-         print *, '! Radial grid3 points: ', nshell(3)
-         print *, '!' // REPEAT('-', 78) // '!'
-         print *, '! Total grid points:   ', ngrid
-         print *, '!' // REPEAT('-', 78) // '!'
+         ! print *, '!' // REPEAT('-', 78) // '!'
+         ! print *, '! Angular grid1 points: ', lebedev_grid(ileb(1))%n
+         ! print *, '! Radial grid1 points: ', nshell(1)
+         ! print *, '! Angular grid2 points: ', lebedev_grid(ileb(2))%n
+         ! print *, '! Radial grid2 points: ', nshell(2)
+         ! print *, '! Angular grid3 points: ', lebedev_grid(ileb(3))%n
+         ! print *, '! Radial grid3 points: ', nshell(3)
+         ! print *, '!' // REPEAT('-', 78) // '!'
+         ! print *, '! Total grid points:   ', ngrid
+         ! print *, '!' // REPEAT('-', 78) // '!'
 
          allocate(thegrid(ngrid))
          call build_threecenter_grid(ileb, nshell, d12, d13, thegrid, &
@@ -145,8 +145,12 @@ module eddi
          INTEGER :: i
          REAL(KIND=dp) :: sig, p, un, qn
          
-         allocate(yspline(n))
-         allocate(u(n))
+         if (.not. allocated(yspline)) then
+            allocate(yspline(n))
+         endif
+         if (.not. allocated(u)) then
+            allocate(u(n))
+         endif
 
          ! ignore bound for now and just make it natural
          yspline(1) = 0

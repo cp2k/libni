@@ -53,9 +53,7 @@ module grid
             p = s1/(s1+s2)
 
             ! radial
-            tsin = alpha*sin(targ)**2
-            tradw = tsin/sqrt(1.0_dp-tcos**2)
-            tradw = 2.0_dp*tradw*tr**2/(1.0_dp-tcos)**2
+            tradw = 2.0_dp*alpha*sin(targ)*tr**2/(1.0_dp-tcos)**2
 
             thegrid(cnt)%weight = tangw * tradw * p
          enddo !iterrad
@@ -84,9 +82,7 @@ module grid
             p = s2/(s1+s2)
 
             ! radial
-            tsin = alpha*sin(targ)**2
-            tradw = tsin/sqrt(1.0_dp-tcos**2)
-            tradw = 2.0_dp*tradw*tr**2/(1.0_dp-tcos)**2
+            tradw = 2.0_dp*alpha*sin(targ)*tr**2/(1.0_dp-tcos)**2
 
             thegrid(cnt)%weight = tangw * tradw * p
          enddo !iterrad
@@ -155,9 +151,7 @@ module grid
             p3 = tP3/sP
 
             ! radial
-            tsin = alpha*sin(targ)**2
-            tradw = tsin/sqrt(1.0_dp-tcos**2)
-            tradw = 2.0_dp*tradw*tr**2/(1.0_dp-tcos)**2
+            tradw = 2.0_dp*alpha*sin(targ)*tr**2/(1.0_dp-tcos)**2
 
             thegrid(cnt)%weight = tangw * tradw * p1
          enddo !iterrad
@@ -203,9 +197,7 @@ module grid
             p3 = tP3/sP
 
             ! radial
-            tsin = alpha*sin(targ)**2
-            tradw = tsin/sqrt(1.0_dp-tcos**2)
-            tradw = 2.0_dp*tradw*tr**2/(1.0_dp-tcos)**2
+            tradw = 2.0_dp*alpha*sin(targ)*tr**2/(1.0_dp-tcos)**2
 
             thegrid(cnt)%weight = tangw * tradw * p2
          enddo !iterrad
@@ -251,9 +243,7 @@ module grid
             p3 = tP3/sP
 
             ! radial
-            tsin = alpha*sin(targ)**2
-            tradw = tsin/sqrt(1.0_dp-tcos**2)
-            tradw = 2.0_dp*tradw*tr**2/(1.0_dp-tcos)**2
+            tradw = 2.0_dp*alpha*sin(targ)*tr**2/(1.0_dp-tcos)**2
 
             thegrid(cnt)%weight = tangw * tradw * p3
          enddo !iterrad
