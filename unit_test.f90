@@ -1,9 +1,63 @@
 module nao_unit
-USE eddi, ONLY: integration_twocenter, integration_threecenter, spline
+USE eddi, ONLY: integration_onecenter, integration_twocenter, integration_threecenter, kinetic_energy, spline
 USE lebedev, ONLY: dp
 implicit none
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 contains
+subroutine test_onecenter(ntests)
+   implicit none
+   REAL(KIND=dp) :: dr, integral, ri, mean_rel_error, err
+   REAL(KIND=dp) :: rand
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gr, gy, spline1
+   INTEGER :: i, j, ntests
+
+   print *, REPEAT('-', 80)
+   print *, REPEAT('-', 30) // ' Testing One-Center ' // REPEAT('-', 30)
+   print *, REPEAT('-', 80)
+   print *, ''
+
+   allocate(gr(200))
+   allocate(gy(200))
+
+   mean_rel_error = 0
+   do j=1,ntests
+      ! Gaussian exponents
+      CALL RANDOM_NUMBER(rand)
+      rand = rand * 5.0_dp + 0.05_dp
+
+      ! Prepare grids
+      dr = 0.1_dp
+      do i=1,200
+         gr(i) = i*dr
+         gy(i) = exp(-rand * gr(i)**2 )
+      enddo
+      call spline(gr, gy, size(gr), 0.0_dp, 0.0_dp, spline1)
+
+      call integration_onecenter(nleb=590, nshell=100, gr=gr, gy=gy,&
+                                 spline=spline1, integral=integral)
+
+      ri = 4*pi*sqrt(pi)/(4.0_dp*rand**(1.5_dp))
+
+      err = abs(1.0_dp-integral/ri)
+      mean_rel_error = mean_rel_error+err
+      print *, 'Is: ', integral
+      print *, 'Should:', ri
+      print *, ''
+      print *, 'Absolute Difference: ', abs(integral-ri)
+      print *, 'Exponents: ', rand
+      print *, 'Relative Error: ', err
+      print *, ''
+   enddo
+
+   mean_rel_error = mean_rel_error/REAL(ntests, dp)
+   print *, 'Mean error in %: ', mean_rel_error*100.0_dp
+
+   print *, REPEAT('-', 80)
+   print *, REPEAT('-', 28) // ' End Testing One-Center ' // REPEAT('-', 28)
+   print *, REPEAT('-', 80)
+   print *, ''
+end subroutine test_onecenter
+
 subroutine test_twocenter(ntests)
    implicit none
    REAL(KIND=dp) :: dr, integral, ri, mean_rel_error, err
@@ -66,7 +120,6 @@ subroutine test_twocenter(ntests)
    print *, REPEAT('-', 28) // ' End Testing Two-Center ' // REPEAT('-', 28)
    print *, REPEAT('-', 80)
    print *, ''
-    
 end subroutine test_twocenter
 
 subroutine test_threecenter(ntests)
@@ -148,7 +201,79 @@ subroutine test_threecenter(ntests)
    print *, REPEAT('-', 28) // ' End Testing Two-Center ' // REPEAT('-', 28)
    print *, REPEAT('-', 80)
    print *, ''
-    
 end subroutine test_threecenter
+
+subroutine test_kinetic(ntests)
+   implicit none
+   REAL(KIND=dp) :: dr, integral, ri, mean_rel_error, err
+   REAL(KIND=dp), DIMENSION(2) :: rand2
+   REAL(KIND=dp), DIMENSION(3) :: rand_pos
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gr1, gy1, gy2, spline1, spline2
+   INTEGER :: i, j, ntests
+
+   print *, REPEAT('-', 80)
+   print *, REPEAT('-', 30) // ' Testing Kinetic energy ' // REPEAT('-', 30)
+   print *, REPEAT('-', 80)
+   print *, ''
+
+   allocate(gr1(200))
+   allocate(gy1(200))
+   allocate(gy2(200))
+
+   mean_rel_error = 0
+   do j=1,ntests
+      ! Gaussian exponents
+      CALL RANDOM_NUMBER(rand2)
+      rand2 = (/ 1.0_dp, 1.0_dp /)!rand2 * 5.0_dp
+
+      ! Prepare grids
+      dr = 0.1_dp
+      do i=1,200
+         gr1(i) = i*dr
+         gy1(i) = exp( -rand2(1) * gr1(i)**2 )
+         gy2(i) = exp( -rand2(2) * gr1(i)**2 )
+      enddo
+      call spline(gr1, gy1, size(gr1), 0.0_dp, 0.0_dp, spline1)
+      call spline(gr1, gy2, size(gr1), -0.2_dp, 0.0_dp, spline2)
+
+      ! The result we get from subroutine kinetic_energy
+      call kinetic_energy(nleb=590, nshell=100,&
+                          gr1=gr1, gy1=gy1, gr2=gr1, gy2=gy2,&
+                          spline1=spline1, spline2=spline2, integral=integral)
+
+      ! The result we want to have
+      ri = 3.0_dp*rand2(2)*(pi/(sum(rand2)))**1.5_dp - 3.0_dp*rand2(2)**2*sqrt(pi**3/(sum(rand2)**5))
+      print *, ri
+
+      ! The result we want to have by one-center integration
+      do i=1,200
+         gy1(i) = exp(-sum(rand2)*gr1(i)**2)
+         gy1(i) = gy1(i)* (3.0_dp*rand2(2) - 2.0_dp*rand2(2)**2*gr1(i)**2)
+      enddo
+      call integration_onecenter(nleb=590, nshell=100, gr=gr1, gy=gy1,&
+                                 spline=spline1, integral=ri)
+      print *, ri
+
+      err = abs(1.0_dp-integral/ri)
+      mean_rel_error = mean_rel_error+err
+      print *, 'Is: ', integral
+      print *, 'Should:', ri
+      print *, 'Absolute Difference: ', abs(integral-ri)
+      print *, ''
+      print *, 'Exponents: ', rand2
+      print *, 'Displacement: ', rand_pos
+      print *, 'Relative Error: ', err
+      print *, ''
+   enddo
+
+   mean_rel_error = mean_rel_error/REAL(ntests, dp)
+   print *, 'Mean error in %: ', mean_rel_error*100.0_dp
+
+   print *, REPEAT('-', 80)
+   print *, REPEAT('-', 28) // ' End Testing Kinetic energy ' // REPEAT('-', 28)
+   print *, REPEAT('-', 80)
+   print *, ''
+
+end subroutine test_kinetic
 
 end module nao_unit

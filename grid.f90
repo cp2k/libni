@@ -7,9 +7,40 @@ module grid
    end type type_grid_point
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 
-   public :: type_grid_point, build_twocenter_grid, build_threecenter_grid
+   public :: type_grid_point, build_onecenter_grid, build_twocenter_grid, build_threecenter_grid
     
    contains
+
+   subroutine build_onecenter_grid(ileb, nshell, thegrid)
+      implicit none
+      INTEGER, intent(in) :: ileb, nshell
+      TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
+      INTEGER :: cnt, iterrad, iterang, i, iterileb
+      REAL(KIND=dp) :: tradw, tangw, tsin, tcos, targ, tr
+      REAL(KIND=dp) :: alpha
+
+      cnt = 0
+
+      alpha = pi/REAL(nshell+1, dp)
+      do iterang=1, lebedev_grid(ileb)%n
+         tangw = lebedev_grid(ileb)%w(iterang)
+         do iterrad=1, nshell
+            cnt = cnt+1
+            ! COORDINATE
+            targ = REAL(iterrad, dp)*alpha
+            tcos = cos(targ)
+            tr = (1+tcos)/(1-tcos)
+
+            thegrid(cnt)%r = tr*lebedev_grid(ileb)%r(:, iterang)
+
+            ! WEIGHTS
+            ! radial
+            tradw = 2.0_dp*alpha*sin(targ)*tr**2/(1.0_dp-tcos)**2
+
+            thegrid(cnt)%weight = tangw * tradw
+         enddo !iterrad
+      enddo !iterang
+   end subroutine build_onecenter_grid
 
    ! thegrid: the integration grid
    ! gr1, gy1: the grid `f1` is given on
@@ -44,18 +75,25 @@ module grid
 
             ! WEIGHTS
             ! nuclear partition
-            ri = sqrt(sum((thegrid(cnt)%r**2)))
-            rj = sqrt(sum(((thegrid(cnt)%r-displacement)**2)))
+            if (R /= 0.0_dp) then         	
+	            ri = sqrt(sum((thegrid(cnt)%r**2)))
+	            rj = sqrt(sum(((thegrid(cnt)%r-displacement)**2)))
 
-            mu = (ri-rj)/R
-            s1 = s3(mu)
-            s2 = s3(-mu)
-            p = s1/(s1+s2)
-
+	            mu = (ri-rj)/R
+	            s1 = s3(mu)
+	            s2 = s3(-mu)
+	            p = s1/(s1+s2)
+            else
+            	p = 0.5_dp
+            endif
             ! radial
             tradw = 2.0_dp*alpha*sin(targ)*tr**2/(1.0_dp-tcos)**2
 
             thegrid(cnt)%weight = tangw * tradw * p
+         	if (isnan(thegrid(cnt)%weight)) then
+            	print *, p, ri, rj
+         		stop '"x" is a NaN'
+      		endif
          enddo !iterrad
       enddo !iterang
 
@@ -73,13 +111,17 @@ module grid
 
             ! WEIGHTS
             ! nuclear partition
-            ri = sqrt(sum((thegrid(cnt)%r**2)))
-            rj = sqrt(sum(((thegrid(cnt)%r-displacement)**2)))
+            if (R /= 0.0_dp) then   
+	            ri = sqrt(sum((thegrid(cnt)%r**2)))
+	            rj = sqrt(sum(((thegrid(cnt)%r-displacement)**2)))
 
-            mu = (ri-rj)/R
-            s1 = s3(mu)
-            s2 = s3(-mu)
-            p = s2/(s1+s2)
+	            mu = (ri-rj)/R
+	            s1 = s3(mu)
+	            s2 = s3(-mu)
+	            p = s2/(s1+s2)
+            else
+            	p = 0.5_dp
+	         endif
 
             ! radial
             tradw = 2.0_dp*alpha*sin(targ)*tr**2/(1.0_dp-tcos)**2
