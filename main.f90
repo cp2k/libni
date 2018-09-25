@@ -29,8 +29,8 @@ program hallo
    ! Mean error in %:    9.8195364655696019E-002
    ! call test_threecenter(ntests = 1000)
    ! Mean error in %:    12.367951376499027E-002
-
-   call test_kinetic(ntests=1)
+   ! call test_kinetic(ntests=100)
+   ! Mean error in %:   0.41358588140703562
    return
 
    ! ! Build parameters

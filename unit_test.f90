@@ -225,7 +225,7 @@ subroutine test_kinetic(ntests)
    do j=1,ntests
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand2)
-      rand2 = (/ 1.0_dp, 1.0_dp /)!rand2 * 5.0_dp
+      rand2 = rand2 * 5.0_dp
 
       ! Prepare grids
       dr = 0.05_dp
