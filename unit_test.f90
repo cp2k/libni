@@ -208,7 +208,7 @@ subroutine test_kinetic(ntests)
    REAL(KIND=dp) :: dr, integral, ri, mean_rel_error, err
    REAL(KIND=dp), DIMENSION(2) :: rand2
    REAL(KIND=dp), DIMENSION(3) :: rand_pos
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gr1, gy1, gy2, spline1, spline2
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gr1, gy1, gy2, spline1, spline2, d2f2
    INTEGER :: i, j, ntests
 
    print *, REPEAT('-', 80)
@@ -216,9 +216,10 @@ subroutine test_kinetic(ntests)
    print *, REPEAT('-', 80)
    print *, ''
 
-   allocate(gr1(200))
-   allocate(gy1(200))
-   allocate(gy2(200))
+   allocate(gr1(400))
+   allocate(gy1(400))
+   allocate(gy2(400))
+   allocate(d2f2(400))
 
    mean_rel_error = 0
    do j=1,ntests
@@ -227,13 +228,13 @@ subroutine test_kinetic(ntests)
       rand2 = (/ 1.0_dp, 1.0_dp /)!rand2 * 5.0_dp
 
       ! Prepare grids
-      dr = 0.1_dp
-      do i=1,200
-         gr1(i) = i*dr
+      dr = 0.05_dp
+      do i=1,400
+         gr1(i) = 0.0_dp+(i-1)*dr
          gy1(i) = exp( -rand2(1) * gr1(i)**2 )
          gy2(i) = exp( -rand2(2) * gr1(i)**2 )
       enddo
-      call spline(gr1, gy1, size(gr1), 0.0_dp, 0.0_dp, spline1)
+      call spline(gr1, gy1, size(gr1), -0.2_dp, 0.0_dp, spline1)
       call spline(gr1, gy2, size(gr1), -0.2_dp, 0.0_dp, spline2)
 
       ! The result we get from subroutine kinetic_energy
@@ -243,16 +244,16 @@ subroutine test_kinetic(ntests)
 
       ! The result we want to have
       ri = 3.0_dp*rand2(2)*(pi/(sum(rand2)))**1.5_dp - 3.0_dp*rand2(2)**2*sqrt(pi**3/(sum(rand2)**5))
-      print *, ri
+      ! 2.9530518648229536
 
-      ! The result we want to have by one-center integration
-      do i=1,200
+      ! The result we want to have by one-center integration, analytically
+      do i=1,400
          gy1(i) = exp(-sum(rand2)*gr1(i)**2)
          gy1(i) = gy1(i)* (3.0_dp*rand2(2) - 2.0_dp*rand2(2)**2*gr1(i)**2)
       enddo
       call integration_onecenter(nleb=590, nshell=100, gr=gr1, gy=gy1,&
                                  spline=spline1, integral=ri)
-      print *, ri
+      ! 2.9644830114845719
 
       err = abs(1.0_dp-integral/ri)
       mean_rel_error = mean_rel_error+err
@@ -261,10 +262,19 @@ subroutine test_kinetic(ntests)
       print *, 'Absolute Difference: ', abs(integral-ri)
       print *, ''
       print *, 'Exponents: ', rand2
-      print *, 'Displacement: ', rand_pos
       print *, 'Relative Error: ', err
       print *, ''
    enddo
+
+   ! call spline(gr1, gy1, size(gr1), 0.0_dp, 0.0_dp, d2f2)
+
+   ! print *, ''
+   ! print *, ''
+   ! print *, gy1
+   ! print *, ''
+   ! print *, ''
+   ! print *, spline2
+   ! print *, ''
 
    mean_rel_error = mean_rel_error/REAL(ntests, dp)
    print *, 'Mean error in %: ', mean_rel_error*100.0_dp

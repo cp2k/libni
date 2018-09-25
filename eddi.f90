@@ -164,7 +164,7 @@ contains
       REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr1, gy1, &
                                                               gr2, gy2, &
                                                               spline1, spline2
-      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: d2f2
+      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: rf2, d2rf2, d2rf2_spline
       INTEGER :: ileb
       INTEGER :: ngrid, i
       TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
@@ -176,24 +176,43 @@ contains
 
       allocate(thegrid(ngrid))
       call build_onecenter_grid(ileb, nshell, thegrid)
-      ! Get the spline of the second derivative of f2 -> d2f2
+      ! Get the spline of the second derivative of r*f2 -> d2f2
       ! < f1 | -0.5*laplace | f2 >
-      call spline(gr2, gy2, size(gr2), 0.0_dp, 0.0_dp, d2f2)
+
+      ! Compute (r*f2)
+      rf2 = -0.5_dp*gr2*gy2
+      ! Get the 2nd derivative d_r^2(r*f2)
+      call spline(gr2, rf2, size(gr2), 0.0_dp, 0.0_dp, d2rf2)
+      call spline(gr2, d2rf2, size(gr2), 0.0_dp, 0.0_dp, d2rf2_spline)
+
+      ! Divide by r
+      do i=1,size(gr2)
+         if(gr2(i) .gt. 0.0_dp) then
+            d2rf2(i) = d2rf2(i)/gr2(i)
+         else
+            d2rf2(i) = d2rf2(i)!0.0_dp
+         endif
+      enddo
+      ! Laplace = 1/r * d_r^2(r*f2) ✓
+
+      open(unit=100, file='ipynb/kin_r_y1_y2')
+      do i=1, size(gr1)
+         write(100, *) gr1(i), gy1(i), d2rf2(i)
+      enddo
+      close(100)
 
       integral = 0
-      !!  Given a function `gy` on a grid `gr` and a requested
-      !!  function value y(r) interpolates the function value `y`
-      ! subroutine interpolation(gr, gy, spline, r, y)
       do i=1,size(thegrid)
          norm = sqrt(sum((thegrid(i)%r)**2))
          call interpolation(gr1, gy1, spline1, norm, f1)
-         call interpolation(gr2, spline2, d2f2, norm, f2)
+         call interpolation(gr2, d2rf2, d2rf2_spline, norm, f2)
 
          integral = integral + thegrid(i)%weight * f1 * f2
       enddo
+
       ! laplace = -0.5*🔺
       ! lebedev integration: 4pi * sum_leb
-      integral = -0.5_dp * 4.0_dp*pi*integral
+      integral = 4.0_dp*pi*integral
 
       deallocate(thegrid)
    end subroutine kinetic_energy
@@ -230,7 +249,7 @@ contains
          allocate(u(n))
       endif
 
-      if (bound1 .gt. 1e10) then
+      if (.TRUE. .or. bound1 .gt. 1e10) then
          yspline(1) = 0
          u(1) = 0
       else
