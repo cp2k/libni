@@ -67,6 +67,7 @@ contains
 
       ileb(1) = get_number_of_lebedev_grid(n=nleb(1))
       ileb(2) = get_number_of_lebedev_grid(n=nleb(2))
+
       ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
               lebedev_grid(ileb(2))%n * nshell(2)
 
@@ -195,12 +196,6 @@ contains
       enddo
       ! Laplace = 1/r * d_r^2(r*f2) ✓
 
-      open(unit=100, file='ipynb/kin_r_y1_y2')
-      do i=1, size(gr1)
-         write(100, *) gr1(i), gy1(i), d2rf2(i)
-      enddo
-      close(100)
-
       integral = 0
       do i=1,size(thegrid)
          norm = sqrt(sum((thegrid(i)%r)**2))
@@ -217,6 +212,60 @@ contains
       deallocate(thegrid)
    end subroutine kinetic_energy
 
+   subroutine coulomb_integral(nleb, nshell, r1, y1, r2, y2, s1, s2, d12,&
+                               integral)
+      implicit none
+      INTEGER, DIMENSION(2), intent(in) :: nleb, nshell
+      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, &
+                                                              r2, y2, s1, s2
+      REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
+      INTEGER, DIMENSION(2) :: ileb
+      INTEGER :: ngrid, i, j
+      TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
+      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: pot
+      REAL(KIND=dp) :: norm, f1, f2, integral, potential, r12, rnu1, rnu2
+
+      ileb(1) = get_number_of_lebedev_grid(n=nleb(1))
+
+      ngrid = lebedev_grid(ileb(1))%n * nshell(1)
+
+      allocate(thegrid(ngrid))
+      call build_onecenter_grid(ileb(1), nshell(1), thegrid)
+
+      integral = 0
+      do i=1,size(thegrid) ! r2
+         potential = 0
+         do j=1,size(thegrid) ! r1
+            rnu1 = sqrt(sum(thegrid(i)%r**2))
+            rnu2 = sqrt(sum(thegrid(j)%r**2))
+            if (rnu1 .gt. rnu2) then
+               r12 = rnu1
+            else
+               r12 = rnu2
+            endif
+            norm = sqrt(sum((thegrid(j)%r+d12)**2))
+            call interpolation(r1, y1, s1, norm, f1)
+            f1 = f1/r12
+
+            potential = potential + thegrid(j)%weight * f1
+         enddo
+
+         norm = sqrt(sum((thegrid(j)%r)**2))
+         call interpolation(r2, y2, s2, norm, f2)
+         integral = integral + thegrid(i)%weight * potential * f2
+         if (mod(i, 1000) == 0) then
+            print *, integral
+            print *, i, '/', size(thegrid)            
+         endif
+      enddo
+      ! lebedev integration: 4pi * sum_leb
+      integral = 4.0_dp*pi*integral
+
+      deallocate(thegrid)
+
+       
+   end subroutine coulomb_integral
+
    subroutine read_nfun(fn, gridax, gridf)
       CHARACTER(len=*) :: fn
       REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gridax, gridf
@@ -224,8 +273,12 @@ contains
 
       open(unit=100, file=fn)
       read(100, *) dim
-      allocate(gridax(dim))
-      allocate(gridf(dim))
+      if (.not. allocated(gridax)) then
+         allocate(gridax(dim))
+      endif
+      if (.not. allocated(gridf)) then
+         allocate(gridf(dim))
+      endif
       do i=1, dim
          read(100, *) gridax(i), gridf(i)
       enddo

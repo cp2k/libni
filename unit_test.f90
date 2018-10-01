@@ -19,6 +19,7 @@ subroutine test_onecenter(ntests)
    allocate(gr(200))
    allocate(gy(200))
 
+   print *, 'Random gaussians'
    mean_rel_error = 0
    do j=1,ntests
       ! Gaussian exponents
@@ -40,13 +41,13 @@ subroutine test_onecenter(ntests)
 
       err = abs(1.0_dp-integral/ri)
       mean_rel_error = mean_rel_error+err
-      print *, 'Is: ', integral
-      print *, 'Should:', ri
-      print *, ''
-      print *, 'Absolute Difference: ', abs(integral-ri)
-      print *, 'Exponents: ', rand
-      print *, 'Relative Error: ', err
-      print *, ''
+      ! print *, 'Is: ', integral
+      ! print *, 'Should:', ri
+      ! print *, ''
+      ! print *, 'Absolute Difference: ', abs(integral-ri)
+      ! print *, 'Exponents: ', rand
+      ! print *, 'Relative Error: ', err
+      ! print *, ''
    enddo
 
    mean_rel_error = mean_rel_error/REAL(ntests, dp)
@@ -75,6 +76,7 @@ subroutine test_twocenter(ntests)
    allocate(gy1(200))
    allocate(gy2(200))
 
+   print *, 'Random gaussians'
    mean_rel_error = 0
    do j=1,ntests
       ! Gaussian exponents
@@ -107,10 +109,10 @@ subroutine test_twocenter(ntests)
       ! print *, 'Should:', ri
       ! print *, ''
       ! print *, 'Absolute Difference: ', abs(integral-ri)
-      print *, 'Exponents: ', rand2
-      print *, 'Displacement: ', rand_pos
-      print *, 'Relative Error: ', err
-      print *, ''
+      ! print *, 'Exponents: ', rand2
+      ! print *, 'Displacement: ', rand_pos
+      ! print *, 'Relative Error: ', err
+      ! print *, ''
    enddo
 
    mean_rel_error = mean_rel_error/REAL(ntests, dp)
