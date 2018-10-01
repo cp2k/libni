@@ -81,8 +81,7 @@ contains
       ! print *, '!' // REPEAT('-', 78) // '!'
 
       allocate(thegrid(ngrid))
-      call build_twocenter_grid(ileb, nshell, d12, thegrid, &
-                                gr1, gy1, gr2, gy2)
+      call build_twocenter_grid(ileb, nshell, d12, thegrid)
 
       integral = 0
       do i=1,size(thegrid)
@@ -223,47 +222,88 @@ contains
       INTEGER :: ngrid, i, j
       TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
       REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: pot
-      REAL(KIND=dp) :: norm, f1, f2, integral, potential, r12, rnu1, rnu2
+      REAL(KIND=dp) :: norm, f1, f2, integral, r12, rnu1, rnu2, potential
 
       ileb(1) = get_number_of_lebedev_grid(n=nleb(1))
+      ileb(2) = get_number_of_lebedev_grid(n=nleb(2))
 
-      ngrid = lebedev_grid(ileb(1))%n * nshell(1)
+      ngrid = lebedev_grid(ileb(1))%n * nshell(1) &
+              + lebedev_grid(ileb(2))%n * nshell(2)
 
       allocate(thegrid(ngrid))
-      call build_onecenter_grid(ileb(1), nshell(1), thegrid)
+      allocate(pot(ngrid))
+      pot = 0.0_dp
+      call build_twocenter_grid(ileb, nshell, d12, thegrid)
 
-      integral = 0
-      do i=1,size(thegrid) ! r2
-         potential = 0
-         do j=1,size(thegrid) ! r1
-            rnu1 = sqrt(sum(thegrid(i)%r**2))
-            rnu2 = sqrt(sum(thegrid(j)%r**2))
-            if (rnu1 .gt. rnu2) then
-               r12 = rnu1
-            else
-               r12 = rnu2
-            endif
-            norm = sqrt(sum((thegrid(j)%r+d12)**2))
-            call interpolation(r1, y1, s1, norm, f1)
-            f1 = f1/r12
+      ! First evaluate the potential at all points of the grid
+      print *, 'Evaluating V(r)'
+      do j=1,size(pot)
+         potential = 0.0_dp
+         do i=1,size(thegrid)
+            r12 = sqrt(sum( (thegrid(i)%r-thegrid(j)%r)**2 ))
+            if (r12 == 0.0_dp) CYCLE
 
-            potential = potential + thegrid(j)%weight * f1
+            norm = sqrt(sum((thegrid(i)%r+d12)**2))
+            call interpolation(r2, y2, s2, norm, f2)
+
+            potential = potential + thegrid(i)%weight * f2/r12
          enddo
-
-         norm = sqrt(sum((thegrid(j)%r)**2))
-         call interpolation(r2, y2, s2, norm, f2)
-         integral = integral + thegrid(i)%weight * potential * f2
-         if (mod(i, 1000) == 0) then
-            print *, integral
-            print *, i, '/', size(thegrid)            
+         pot(j) = 4.0_dp*pi*potential
+         if (mod(j, 1000) == 0) then
+            print *, j, '/', size(thegrid)
          endif
       enddo
-      ! lebedev integration: 4pi * sum_leb
-      integral = 4.0_dp*pi*integral
 
-      deallocate(thegrid)
+      print *, 'Writing V(r)'
+      open(unit=100, file='coulomb_potential.grid')
+      do i=1,size(thegrid)
+         write(100, *) thegrid(i)%r, pot(i)
+      enddo
+      close(100)
 
-       
+      print *, 'Evaluating CI'
+      integral = 0.0_dp
+      do i=1,size(thegrid)
+         norm = sqrt(sum((thegrid(i)%r)**2))
+         call interpolation(r1, y1, s1, norm, f1)
+
+         integral = integral + thegrid(i)%weight * f1 * potential
+         if (mod(i, 1000) == 0) then
+            print *, i, '/', size(thegrid)
+         endif
+      enddo
+
+      ! integral = 0
+      ! do i=1,size(thegrid) ! r2
+      !    potential = 0
+      !    do j=1,size(thegrid) ! r1
+      !       rnu1 = sqrt(sum(thegrid(i)%r**2))
+      !       rnu2 = sqrt(sum(thegrid(j)%r**2))
+      !       if (rnu1 .gt. rnu2) then
+      !          r12 = rnu1
+      !       else
+      !          r12 = rnu2
+      !       endif
+      !       norm = sqrt(sum((thegrid(j)%r+d12)**2))
+      !       call interpolation(r1, y1, s1, norm, f1)
+      !       f1 = f1/r12
+
+      !       potential = potential + thegrid(j)%weight * f1
+      !    enddo
+
+      !    norm = sqrt(sum((thegrid(j)%r)**2))
+      !    call interpolation(r2, y2, s2, norm, f2)
+      !    integral = integral + thegrid(i)%weight * potential * f2
+      !    if (mod(i, 1000) == 0) then
+      !       print *, integral
+      !       print *, i, '/', size(thegrid)            
+      !    endif
+      ! enddo
+      ! ! lebedev integration: 4pi * sum_leb
+      ! integral = 4.0_dp*pi*integral
+
+      deallocate(pot)
+      deallocate(thegrid) 
    end subroutine coulomb_integral
 
    subroutine read_nfun(fn, gridax, gridf)

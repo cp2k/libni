@@ -43,15 +43,10 @@ module grid
    end subroutine build_onecenter_grid
 
    ! thegrid: the integration grid
-   ! gr1, gy1: the grid `f1` is given on
-   ! gr2, gy2: the grid `f2` is given on
-   subroutine build_twocenter_grid(ileb, nshell, displacement, thegrid, &
-                                   gr1, gy1, gr2, gy2)
+   subroutine build_twocenter_grid(ileb, nshell, displacement, thegrid)
       implicit none
       INTEGER, DIMENSION(2), intent(in) :: ileb, nshell
       REAL(KIND=dp), DIMENSION(3), intent(in) :: displacement
-      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr1, gy1, &
-                                                              gr2, gy2
       TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
       INTEGER :: cnt, iterrad, iterang, i, iterileb
       REAL(KIND=dp) :: tradw, tangw, tsin, tcos, targ, tr

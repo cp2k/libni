@@ -35,7 +35,7 @@ program hallo
    ! Build parameters
    atoms(1)%r = (/ 0.0_dp, 0.0_dp, 0.0_dp /)
    atoms(1)%z = 1
-   atoms(2)%r = (/ 1.0_dp, 1.0_dp, 1.0_dp /)
+   atoms(2)%r = (/ 0.0_dp, 0.0_dp, 1.0_dp /)
    atoms(2)%z = 1
    atoms(3)%r = (/ 0.0_dp, 2.0_dp, 0.0_dp /)
    atoms(3)%z = 1
