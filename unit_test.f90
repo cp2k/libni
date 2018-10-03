@@ -14,44 +14,42 @@ subroutine test_onecenter(ntests)
    print *, REPEAT('-', 80)
    print *, REPEAT('-', 30) // ' Testing One-Center ' // REPEAT('-', 30)
    print *, REPEAT('-', 80)
-   print *, ''
 
-   allocate(gr(200))
-   allocate(gy(200))
+   allocate(gr(2000))
+   allocate(gy(2000))
 
-   print *, 'Random gaussians'
    mean_rel_error = 0
    do j=1,ntests
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand)
-      rand = rand * 5.0_dp + 0.05_dp
+      rand = rand * 10.0_dp
 
       ! Prepare grids
-      dr = 0.1_dp
-      do i=1,200
-         gr(i) = i*dr
+      dr = 0.025_dp
+      do i=1,2000
+         gr(i) = REAL(i, dp)*dr
          gy(i) = exp(-rand * gr(i)**2 )
       enddo
       call spline(gr, gy, size(gr), 0.0_dp, 0.0_dp, spline1)
 
-      call integration_onecenter(nleb=590, nshell=100, gr=gr, gy=gy,&
+      call integration_onecenter(nleb=590, nshell=30, gr=gr, gy=gy,&
                                  spline=spline1, integral=integral)
 
-      ri = 4*pi*sqrt(pi)/(4.0_dp*rand**(1.5_dp))
+      ri = 4.0_dp*pi*sqrt(pi)/(4.0_dp*rand**(1.5_dp))
 
       err = abs(1.0_dp-integral/ri)
       mean_rel_error = mean_rel_error+err
-      ! print *, 'Is: ', integral
-      ! print *, 'Should:', ri
-      ! print *, ''
-      ! print *, 'Absolute Difference: ', abs(integral-ri)
-      ! print *, 'Exponents: ', rand
-      ! print *, 'Relative Error: ', err
-      ! print *, ''
+      print *, 'Is: ', integral
+      print *, 'Should:', ri
+      print *, ''
+      print *, 'Absolute Difference: ', abs(integral-ri)
+      print *, 'Exponents: ', rand
+      print *, 'Relative Error: ', err
+      print *, ''
    enddo
 
    mean_rel_error = mean_rel_error/REAL(ntests, dp)
-   print *, 'Mean error in %: ', mean_rel_error*100.0_dp
+   print *, 'Mean error: ', mean_rel_error
 
    print *, REPEAT('-', 80)
    print *, REPEAT('-', 28) // ' End Testing One-Center ' // REPEAT('-', 28)
@@ -70,25 +68,23 @@ subroutine test_twocenter(ntests)
    print *, REPEAT('-', 80)
    print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
    print *, REPEAT('-', 80)
-   print *, ''
 
-   allocate(gr1(200))
-   allocate(gy1(200))
-   allocate(gy2(200))
+   allocate(gr1(2000))
+   allocate(gy1(2000))
+   allocate(gy2(2000))
 
-   print *, 'Random gaussians'
    mean_rel_error = 0
    do j=1,ntests
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand2)
-      rand2 = rand2 * 5.0_dp
+      rand2 = rand2 * 10.0_dp
       ! Displacement
       CALL RANDOM_NUMBER(rand_pos)
-      rand_pos = rand_pos * sqrt(3.0_dp)
+      rand_pos = rand_pos * sqrt(10.0_dp)
 
       ! Prepare grids
-      dr = 0.1_dp
-      do i=1,200
+      dr = 0.025_dp
+      do i=1,2000
          gr1(i) = i*dr
          gy1(i) = exp(-rand2(1) * gr1(i)**2 )
          gy2(i) = exp(-rand2(2) * gr1(i)**2 )
@@ -116,7 +112,7 @@ subroutine test_twocenter(ntests)
    enddo
 
    mean_rel_error = mean_rel_error/REAL(ntests, dp)
-   print *, 'Mean error in %: ', mean_rel_error*100.0_dp
+   print *, 'Mean error: ', mean_rel_error
 
    print *, REPEAT('-', 80)
    print *, REPEAT('-', 28) // ' End Testing Two-Center ' // REPEAT('-', 28)
@@ -189,18 +185,18 @@ subroutine test_threecenter(ntests)
       ! print *, 'Should:', ri
       ! print *, ''
       ! print *, 'Absolute Difference: ', abs(integral-ri)
-      print *, 'Exponents: ', rand3
-      print *, 'Displacement: ', rand_pos1
-      print *, 'Displacement: ', rand_pos2
-      print *, 'Relative Error: ', err
-      print *, ''
+      ! print *, 'Exponents: ', rand3
+      ! print *, 'Displacement: ', rand_pos1
+      ! print *, 'Displacement: ', rand_pos2
+      ! print *, 'Relative Error: ', err
+      ! print *, ''
    enddo
 
    mean_rel_error = mean_rel_error/REAL(ntests, dp)
    print *, 'Mean error in %: ', mean_rel_error*100.0_dp
 
    print *, REPEAT('-', 80)
-   print *, REPEAT('-', 28) // ' End Testing Two-Center ' // REPEAT('-', 28)
+   print *, REPEAT('-', 28) // ' End Testing Three-Center ' // REPEAT('-', 28)
    print *, REPEAT('-', 80)
    print *, ''
 end subroutine test_threecenter
@@ -259,13 +255,13 @@ subroutine test_kinetic(ntests)
 
       err = abs(1.0_dp-integral/ri)
       mean_rel_error = mean_rel_error+err
-      print *, 'Is: ', integral
-      print *, 'Should:', ri
-      print *, 'Absolute Difference: ', abs(integral-ri)
-      print *, ''
-      print *, 'Exponents: ', rand2
-      print *, 'Relative Error: ', err
-      print *, ''
+      ! print *, 'Is: ', integral
+      ! print *, 'Should:', ri
+      ! print *, 'Absolute Difference: ', abs(integral-ri)
+      ! print *, ''
+      ! print *, 'Exponents: ', rand2
+      ! print *, 'Relative Error: ', err
+      ! print *, ''
    enddo
 
    ! call spline(gr1, gy1, size(gr1), 0.0_dp, 0.0_dp, d2f2)

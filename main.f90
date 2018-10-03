@@ -21,21 +21,20 @@ program hallo
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gr1, gr2, gy1, gy2, gr3, gy3,&
                                                spline1, spline2, spline3
 
-   ! call test_onecenter(ntests=100)
-   ! Mean error in %:    8.9160890227643952E-002
-   ! call test_twocenter(ntests = 1000)
-   ! Mean error in %:    9.0282054664961628E-002
+
+   call test_onecenter(ntests=3)
+   ! call test_twocenter(ntests=100)
+   return
    ! call test_threecenter(ntests = 100)
-   ! Mean error in %:    9.8195364655696019E-002
-   ! call test_threecenter(ntests = 1000)
-   ! Mean error in %:    12.367951376499027E-002
+   ! ! Mean error in %:    9.8195364655696019E-002
    ! call test_kinetic(ntests=100)
-   ! Mean error in %:   0.41358588140703562
+   ! ! Mean error in %:   0.41358588140703562
+   ! return
 
    ! Build parameters
    atoms(1)%r = (/ 0.0_dp, 0.0_dp, 0.0_dp /)
    atoms(1)%z = 1
-   atoms(2)%r = (/ 0.0_dp, 0.0_dp, 1.0_dp /)
+   atoms(2)%r = (/ 100.0_dp, 0.0_dp, 0.0_dp /)
    atoms(2)%z = 1
    atoms(3)%r = (/ 0.0_dp, 2.0_dp, 0.0_dp /)
    atoms(3)%z = 1
@@ -108,9 +107,9 @@ program hallo
    ! !                              gr1, gy1, gr2, gy2, gr3, gy3,&
    ! !                              spline1, spline2, spline3, integral)
    ! ! print *, integral
-   ! ! deallocate(nleb)
-   ! ! deallocate(nshell)
    ! ! call cpu_time(finish)
    ! ! print *, 'took', finish-start
+   deallocate(nleb)
+   deallocate(nshell)
 
 end program hallo

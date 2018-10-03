@@ -37,7 +37,7 @@ contains
       allocate(thegrid(ngrid))
       call build_onecenter_grid(ileb, nshell, thegrid)
 
-      integral = 0
+      integral = 0.0_dp
       do i=1,size(thegrid)
          norm = sqrt(sum((thegrid(i)%r)**2))
          call interpolation(gr, gy, spline, norm, f)
@@ -233,7 +233,15 @@ contains
       allocate(thegrid(ngrid))
       allocate(pot(ngrid))
       pot = 0.0_dp
+      print *, d12
       call build_twocenter_grid(ileb, nshell, d12, thegrid)
+
+      print *, 'Writing Grid'
+      open(unit=100, file='twocenter.grid')
+      do i=1,size(thegrid)
+         write(100, *) thegrid(i)%r, thegrid(i)%weight
+      enddo
+      close(100)
 
       ! First evaluate the potential at all points of the grid
       print *, 'Evaluating V(r)'
@@ -241,9 +249,14 @@ contains
          potential = 0.0_dp
          do i=1,size(thegrid)
             r12 = sqrt(sum( (thegrid(i)%r-thegrid(j)%r)**2 ))
-            if (r12 == 0.0_dp) CYCLE
+            if (r12 == 0.0_dp) then
+               if (i /= j) then
+                  print *, i, j
+               endif
+               CYCLE
+            endif
 
-            norm = sqrt(sum((thegrid(i)%r+d12)**2))
+            norm = sqrt(sum((thegrid(i)%r-d12)**2))
             call interpolation(r2, y2, s2, norm, f2)
 
             potential = potential + thegrid(i)%weight * f2/r12
@@ -267,7 +280,7 @@ contains
          norm = sqrt(sum((thegrid(i)%r)**2))
          call interpolation(r1, y1, s1, norm, f1)
 
-         integral = integral + thegrid(i)%weight * f1 * potential
+         integral = integral + thegrid(i)%weight * f1 * pot(i)
          if (mod(i, 1000) == 0) then
             print *, i, '/', size(thegrid)
          endif
@@ -342,9 +355,9 @@ contains
          allocate(u(n))
       endif
 
-      if (.TRUE. .or. bound1 .gt. 1e10) then
-         yspline(1) = 0
-         u(1) = 0
+      if (bound1 .gt. 1e10) then
+         yspline(1) = 0.0_dp
+         u(1) = 0.0_dp
       else
          yspline(1) = -0.5_dp
          u(1) = (3.0_dp/(r(2)-r(1)))*((y(2)-y(1))/(r(2)-r(1))-bound1)
@@ -362,8 +375,8 @@ contains
 
       ! addendum: zero second derivative at r->infinity seems reasonable
       !! ignore bound for now and just make it natural
-      qn = 0
-      un = 0
+      qn = 0.0_dp
+      un = 0.0_dp
       !
 
       yspline(n) = 0
@@ -406,7 +419,7 @@ contains
          A = (gr(upper)-r)/h
          B = (r-gr(low))/h
          y = A*gy(low) + B*gy(upper) + &
-               ((A**3-A)*spline(low)+(B**3-B)*spline(upper)) * (h**2)/6.0_dp
+               ((A**3.0_dp-A)*spline(low)+(B**3.0_dp-B)*spline(upper)) * (h**2.0_dp)/6.0_dp
       else if (gr(upper) .lt. r) then
          y = gy(upper)
          ! print *, 'Extrapolation!'
