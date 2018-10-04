@@ -3,7 +3,8 @@ program hallo
    USE eddi, ONLY: type_atom, integration_twocenter, &
                    read_nfun, pi, interpolation, spline, &
                    integration_threecenter, kinetic_energy, &
-                   integration_onecenter, coulomb_integral
+                   integration_onecenter, coulomb_integral, &
+                   radial_integration
    USE grid, ONLY: grid_parameters
    USE nao_unit, ONLY: test_onecenter, test_twocenter, test_threecenter, test_kinetic
    implicit none
@@ -11,7 +12,7 @@ program hallo
    TYPE(type_atom), DIMENSION(3) :: atoms
    INTEGER, DIMENSION(:), ALLOCATABLE :: nleb, nshell
    REAL(KIND=dp), DIMENSION(3) :: d12, d13
-   REAL(KIND=dp) :: integral
+   REAL(KIND=dp) :: integral, integral_low
    REAL(KIND=dp) :: start, finish, del, eps
    INTEGER :: i
    REAL(KIND=dp) :: y
@@ -22,9 +23,27 @@ program hallo
                                                spline1, spline2, spline3
 
 
-   call test_onecenter(ntests=3)
+! Get the gaussian on a useful grid
+allocate(gy1(5000))
+allocate(gr1(5000))
+
+del = 0.001_dp
+integral_low = 0.0_dp
+do i=1,size(gy1)
+   gr1(i) = REAL(i-1, dp)*del
+   gy1(i) = exp(-gr1(i)**2)
+   integral_low = integral_low + del*gy1(i)
+enddo
+call radial_integration(f=gy1, r=gr1, n=50, integral=integral)
+print *, integral, integral_low/2.0_dp
+print *, abs(1-integral/(sqrt(pi)/4))
+
+deallocate(gy1)
+deallocate(gr1)
+return
+
+   ! call test_onecenter(ntests=3)
    ! call test_twocenter(ntests=100)
-   return
    ! call test_threecenter(ntests = 100)
    ! ! Mean error in %:    9.8195364655696019E-002
    ! call test_kinetic(ntests=100)
@@ -53,7 +72,6 @@ program hallo
    allocate(nshell(2))
    call grid_parameters(atoms(1)%z, nleb(1), nshell(1))
    call grid_parameters(atoms(2)%z, nleb(2), nshell(2))
-
 
    ! Coulomb integral
    print *, '!' // REPEAT('-', 78) // '!'

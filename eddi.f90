@@ -1,8 +1,9 @@
 module eddi
 USE lebedev, ONLY: lebedev_grid,&
-                     get_number_of_lebedev_grid,&
-                     dp
-USE grid, ONLY: type_grid_point, build_onecenter_grid, build_twocenter_grid, build_threecenter_grid
+                   get_number_of_lebedev_grid,&
+                   dp
+USE grid, ONLY: build_onecenter_grid, build_twocenter_grid, build_threecenter_grid, &
+                type_grid_point, radial_grid
 implicit none
 REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 
@@ -11,9 +12,51 @@ type :: type_atom
    INTEGER :: z = 1
 end type type_atom
 
-public :: integration_twocenter, integration_onecenter, integration_threecenter
+public :: integration_twocenter, integration_onecenter, integration_threecenter,&
+           radial_integration
 
 contains
+! **************************************************************************************************
+!> \brief Computes the radial integral of f(r)
+!> \param f(n): The tabulated function at n grid points
+!> \param r(n): The tabulated grid points
+!> \param n: The number of radial grid points
+!> \param integral: The integral's value
+!> \author 
+! **************************************************************************************************
+
+subroutine radial_integration(f, r, n, integral)
+   implicit none
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: f, r
+   INTEGER, intent(in)                                  :: n
+   REAL(KIND=dp) :: integral
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: rad, wr, d2f, fun
+   INTEGER :: i, j, ileb
+
+   allocate(rad(n))
+   allocate(wr(n))
+   allocate(d2f(n))
+   allocate(fun(n))
+
+   integral = 0.0_dp
+   
+   ! Put the radial grid points into `rad` and their weights into `wr`
+   call radial_grid(r=rad, wr=wr, n=n, addr2=.TRUE.)
+
+   ! Create the spline
+   call spline(r=r, y=f, n=size(r), bound1=0.0_dp, boundn=0.0_dp, yspline=d2f)
+   
+   ! Sum over all radial grid points
+   do i=1,n
+      call interpolation(gr=r, gy=f, spline=d2f, r=rad(i), y=fun(i))
+   enddo
+   integral = sum( wr * fun )
+   deallocate(rad)
+   deallocate(wr)
+   deallocate(d2f)
+   deallocate(fun)
+end subroutine radial_integration
+
    subroutine integration_onecenter(nleb, nshell, gr, gy, spline, integral)
       implicit none
       INTEGER, intent(in) :: nleb, nshell

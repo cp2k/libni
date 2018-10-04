@@ -15,8 +15,8 @@ subroutine test_onecenter(ntests)
    print *, REPEAT('-', 30) // ' Testing One-Center ' // REPEAT('-', 30)
    print *, REPEAT('-', 80)
 
-   allocate(gr(2000))
-   allocate(gy(2000))
+   allocate(gr(10000))
+   allocate(gy(10000))
 
    mean_rel_error = 0
    do j=1,ntests
@@ -25,8 +25,8 @@ subroutine test_onecenter(ntests)
       rand = rand * 10.0_dp
 
       ! Prepare grids
-      dr = 0.025_dp
-      do i=1,2000
+      dr = 0.005_dp
+      do i=1,10000
          gr(i) = REAL(i, dp)*dr
          gy(i) = exp(-rand * gr(i)**2 )
       enddo

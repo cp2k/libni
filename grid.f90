@@ -5,15 +5,34 @@ module grid
       REAL(KIND=dp), DIMENSION(3) :: r = 0.0_dp
       REAL(KIND=dp) :: weight = 0.0_dp
    end type type_grid_point
-   type :: type_radial_grid
-       REAL(KIND=dp), DIMENSION(:) :: r
-       REAL(KIND=dp), DIMENSION(:) :: w
-   end type type_radial_grid
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 
-   public :: type_grid_point, build_onecenter_grid, build_twocenter_grid, build_threecenter_grid
+   public :: type_grid_point, build_onecenter_grid, build_twocenter_grid, &
+   		    build_threecenter_grid, radial_grid
     
    contains
+
+   subroutine radial_grid(r, wr, n, addr2)
+      implicit none
+      INTEGER, intent(in) :: n
+      LOGICAL, OPTIONAL, intent(in) :: addr2
+      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, wr
+      INTEGER :: i
+      REAL(KIND=dp) :: alpha, t, x
+
+      alpha = pi/REAL(n+1, dp)
+      do i=1,n
+      	! COORDINATE
+			t = REAL(i, dp)*alpha
+			x = COS(t)
+			r(i) = (1.0_dp+x)/(1.0_dp-x)
+			wr(i) = alpha*2.0_dp*SIN(t)/(1.0_dp-x)**2
+      enddo
+      if (present(addr2)) then
+	      ! dxdydz = dr r^2 dcos(theta) dphi
+	      wr = wr * r**2
+      endif
+   end subroutine radial_grid
 
    subroutine build_onecenter_grid(ileb, nshell, thegrid)
       implicit none
@@ -40,7 +59,7 @@ module grid
 
             ! WEIGHTS
             ! radial
-            tradw = 2.0_dp*alpha*sin(targ)**2.0_dp*tr**2.0_dp/(1.0_dp-tcos)**2.0_dp/sqrt(1.0_dp-tcos**2.0_dp)
+            tradw = 2.0_dp*alpha*sin(targ)/(1.0_dp-tcos)**2.0_dp * tr**2.0_dp
 
             thegrid(cnt)%weight = tangw * tradw
          enddo !iterrad
