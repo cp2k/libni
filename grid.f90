@@ -10,61 +10,56 @@ module grid
    public :: type_grid_point, build_onecenter_grid, build_twocenter_grid, &
    		    build_threecenter_grid, radial_grid
     
-   contains
+contains
 
-   subroutine radial_grid(r, wr, n, addr2)
-      implicit none
-      INTEGER, intent(in) :: n
-      LOGICAL, OPTIONAL, intent(in) :: addr2
-      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, wr
-      INTEGER :: i
-      REAL(KIND=dp) :: alpha, t, x
+subroutine radial_grid(r, wr, n, addr2)
+   implicit none
+   INTEGER, intent(in) :: n
+   LOGICAL, OPTIONAL, intent(in) :: addr2
+   REAL(KIND=dp), DIMENSION(:) :: r, wr
+   INTEGER :: i
+   REAL(KIND=dp) :: alpha, t, x
 
-      alpha = pi/REAL(n+1, dp)
-      do i=1,n
-      	! COORDINATE
-			t = REAL(i, dp)*alpha
-			x = COS(t)
-			r(i) = (1.0_dp+x)/(1.0_dp-x)
-			wr(i) = alpha*2.0_dp*SIN(t)/(1.0_dp-x)**2
+   alpha = pi/REAL(n+1, dp)
+   do i=1,n
+   	! COORDINATE
+		t = REAL(i, dp)*alpha
+		x = COS(t)
+		r(i) = (1.0_dp+x)/(1.0_dp-x)
+		wr(i) = alpha*2.0_dp*SIN(t)/(1.0_dp-x)**2
+   enddo
+   if (present(addr2)) then
+      ! dxdydz = dr r^2 dcos(theta) dphi
+      wr = wr * r**2
+   endif
+end subroutine radial_grid
+
+subroutine build_onecenter_grid(ileb, nshell, addr2, grid_r, grid_w)
+   implicit none
+   ! Input
+   INTEGER, intent(in) :: ileb, nshell
+   LOGICAL, OPTIONAL, intent(in) :: addr2
+   ! Output
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
+   ! Local variables
+   INTEGER :: i, j, lower, upper
+   REAL(KIND=dp), DIMENSION(nshell) :: radii, radii_w
+
+   call radial_grid(r=radii, &
+                    wr=radii_w, &
+                    n=nshell, addr2=.TRUE.)
+
+   do i=1, lebedev_grid(ileb)%n
+      lower = 1+(i-1)*nshell
+      upper = i*nshell
+
+      do j=1,nshell
+      	grid_r(lower+j-1,:) = radii(j) * lebedev_grid(ileb)%r(:, i)
       enddo
-      if (present(addr2)) then
-	      ! dxdydz = dr r^2 dcos(theta) dphi
-	      wr = wr * r**2
-      endif
-   end subroutine radial_grid
-
-   subroutine build_onecenter_grid(ileb, nshell, thegrid)
-      implicit none
-      INTEGER, intent(in) :: ileb, nshell
-      TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-      INTEGER :: cnt, iterrad, iterang, i, iterileb
-      REAL(KIND=dp) :: tradw, tangw, tsin, tcos, targ, tr
-      REAL(KIND=dp) :: alpha
-
-      cnt = 0
-
-      alpha = pi/REAL(nshell+1, dp)
-      do iterang=1, lebedev_grid(ileb)%n
-         tangw = lebedev_grid(ileb)%w(iterang)
-         do iterrad=1, nshell
-            cnt = cnt+1
-
-            ! COORDINATE
-            targ = REAL(iterrad, dp)*alpha
-            tcos = cos(targ)
-            tr = (1.0_dp+tcos)/(1.0_dp-tcos)
-
-            thegrid(cnt)%r = tr*lebedev_grid(ileb)%r(:, iterang)
-
-            ! WEIGHTS
-            ! radial
-            tradw = 2.0_dp*alpha*sin(targ)/(1.0_dp-tcos)**2.0_dp * tr**2.0_dp
-
-            thegrid(cnt)%weight = tangw * tradw
-         enddo !iterrad
-      enddo !iterang
-   end subroutine build_onecenter_grid
+      grid_w(lower:upper) = 4.0_dp*pi * radii_w * lebedev_grid(ileb)%w(i)
+   enddo
+end subroutine build_onecenter_grid
 
    ! thegrid: the integration grid
    subroutine build_twocenter_grid(ileb, nshell, displacement, thegrid)

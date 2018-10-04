@@ -4,57 +4,64 @@ USE lebedev, ONLY: dp
 implicit none
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 contains
-subroutine test_onecenter(ntests)
+
+! Compute the integrals r^2 * exp(-a r^2)
+subroutine test_onecenter(ntests, loud)
    implicit none
-   REAL(KIND=dp) :: dr, integral, ri, mean_rel_error, err
+   LOGICAL :: loud
+   REAL(KIND=dp), DIMENSION(ntests) :: errors
+   REAL(KIND=dp) :: dr, integral, ri, err
    REAL(KIND=dp) :: rand
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gr, gy, spline1
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, y, spline1
    INTEGER :: i, j, ntests
 
-   print *, REPEAT('-', 80)
    print *, REPEAT('-', 30) // ' Testing One-Center ' // REPEAT('-', 30)
-   print *, REPEAT('-', 80)
 
-   allocate(gr(10000))
-   allocate(gy(10000))
+   ! Prepare the grid
+   allocate(r(30000))
+   allocate(y(30000))
 
-   mean_rel_error = 0
+   dr = 0.001_dp
+   do i=1,size(r)
+      r(i) = REAL(i, dp)*dr
+   enddo
+
+   ! Perform the tests
    do j=1,ntests
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand)
-      rand = rand * 10.0_dp
+      rand = rand * 10.0_dp + 0.1_dp
+      rand = 1.0_dp
 
       ! Prepare grids
-      dr = 0.005_dp
-      do i=1,10000
-         gr(i) = REAL(i, dp)*dr
-         gy(i) = exp(-rand * gr(i)**2 )
-      enddo
-      call spline(gr, gy, size(gr), 0.0_dp, 0.0_dp, spline1)
+      y = exp(-rand * r**2 )
+      call spline(r, y, size(r), 0.0_dp, 0.0_dp, spline1)
 
-      call integration_onecenter(nleb=590, nshell=30, gr=gr, gy=gy,&
+      call integration_onecenter(nang=50, nshell=500, r=r, y=y,&
                                  spline=spline1, integral=integral)
 
-      ri = 4.0_dp*pi*sqrt(pi)/(4.0_dp*rand**(1.5_dp))
+      ri = 4.0_dp*pi**1.5_dp/(4.0_dp*rand**(1.5_dp))
 
-      err = abs(1.0_dp-integral/ri)
-      mean_rel_error = mean_rel_error+err
-      print *, 'Is: ', integral
-      print *, 'Should:', ri
-      print *, ''
-      print *, 'Absolute Difference: ', abs(integral-ri)
-      print *, 'Exponents: ', rand
-      print *, 'Relative Error: ', err
-      print *, ''
+      errors(j) = abs(1.0_dp-integral/ri)
+      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.00001_dp)) then
+         print *, 'Exponents: ', rand
+         print *, 'Is: ', integral
+         print *, 'Should:', ri
+         print *, ''
+         print *, 'Absolute Difference: ', abs(integral-ri)
+         print *, 'Relative Error: ', errors(j)
+         print *, ''
+      endif
    enddo
 
-   mean_rel_error = mean_rel_error/REAL(ntests, dp)
-   print *, 'Mean error: ', mean_rel_error
-
+   err = sum(errors)/REAL(ntests, dp)
    print *, REPEAT('-', 80)
+   print *, 'Mean error: ', err
    print *, REPEAT('-', 28) // ' End Testing One-Center ' // REPEAT('-', 28)
-   print *, REPEAT('-', 80)
    print *, ''
+
+   deallocate(r)
+   deallocate(y)
 end subroutine test_onecenter
 
 subroutine test_twocenter(ntests)
@@ -249,7 +256,7 @@ subroutine test_kinetic(ntests)
          gy1(i) = exp(-sum(rand2)*gr1(i)**2)
          gy1(i) = gy1(i)* (3.0_dp*rand2(2) - 2.0_dp*rand2(2)**2*gr1(i)**2)
       enddo
-      call integration_onecenter(nleb=590, nshell=100, gr=gr1, gy=gy1,&
+      call integration_onecenter(nang=590, nshell=100, r=gr1, y=gy1,&
                                  spline=spline1, integral=ri)
       ! 2.9644830114845719
 

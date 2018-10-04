@@ -23,23 +23,26 @@ program hallo
                                                spline1, spline2, spline3
 
 
-! Get the gaussian on a useful grid
-allocate(gy1(5000))
-allocate(gr1(5000))
+! ! Get the gaussian on a useful grid
+! allocate(gy1(5000))
+! allocate(gr1(5000))
 
-del = 0.001_dp
-integral_low = 0.0_dp
-do i=1,size(gy1)
-   gr1(i) = REAL(i-1, dp)*del
-   gy1(i) = exp(-gr1(i)**2)
-   integral_low = integral_low + del*gy1(i)
-enddo
-call radial_integration(f=gy1, r=gr1, n=50, integral=integral)
-print *, integral, integral_low/2.0_dp
-print *, abs(1-integral/(sqrt(pi)/4))
+! del = 0.001_dp
+! integral_low = 0.0_dp
+! do i=1,size(gy1)
+!    gr1(i) = REAL(i-1, dp)*del
+!    gy1(i) = exp(-gr1(i)**2)
+!    integral_low = integral_low + del*gy1(i)
+! enddo
+! call radial_integration(f=gy1, r=gr1, n=50, integral=integral)
+! print *, integral, integral_low/2.0_dp
+! print *, abs(1-integral/(sqrt(pi)/4))
 
-deallocate(gy1)
-deallocate(gr1)
+! deallocate(gy1)
+! deallocate(gr1)
+! return
+
+call test_onecenter(ntests=100, loud=.FALSE.)
 return
 
    ! call test_onecenter(ntests=3)

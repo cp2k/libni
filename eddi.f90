@@ -16,15 +16,14 @@ public :: integration_twocenter, integration_onecenter, integration_threecenter,
            radial_integration
 
 contains
-! **************************************************************************************************
+! **********************************************
 !> \brief Computes the radial integral of f(r)
 !> \param f(n): The tabulated function at n grid points
 !> \param r(n): The tabulated grid points
 !> \param n: The number of radial grid points
 !> \param integral: The integral's value
 !> \author 
-! **************************************************************************************************
-
+! **********************************************
 subroutine radial_integration(f, r, n, integral)
    implicit none
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: f, r
@@ -51,48 +50,52 @@ subroutine radial_integration(f, r, n, integral)
       call interpolation(gr=r, gy=f, spline=d2f, r=rad(i), y=fun(i))
    enddo
    integral = sum( wr * fun )
+
    deallocate(rad)
    deallocate(wr)
    deallocate(d2f)
    deallocate(fun)
 end subroutine radial_integration
 
-   subroutine integration_onecenter(nleb, nshell, gr, gy, spline, integral)
-      implicit none
-      INTEGER, intent(in) :: nleb, nshell
-      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr, gy, spline
-      INTEGER :: ileb
-      INTEGER :: ngrid, i
-      TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-      REAL(KIND=dp) :: norm, f
-      REAL(KIND=dp) :: integral
+subroutine integration_onecenter(nang, nshell, r, y, spline, integral)
+   implicit none
+   ! Inputs
+   INTEGER, intent(in) :: nang, nshell
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r, y, spline
+   ! Output
+   REAL(KIND=dp) :: integral
+   ! Local variables
+   INTEGER :: ileb, ngrid, i
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: int_i
+   REAL(KIND=dp) :: norm
+   ! End header
 
-      ileb = get_number_of_lebedev_grid(n=nleb)
-      ngrid = lebedev_grid(ileb)%n * nshell
+   ileb = get_number_of_lebedev_grid(n=nang)
+   ngrid = lebedev_grid(ileb)%n * nshell
+   allocate(grid_r(ngrid, 3))
+   allocate(grid_w(ngrid))
+   allocate(int_i(ngrid))
+   int_i = 0.0_dp
 
-      ! print *, '!' // REPEAT('-', 78) // '!'
-      ! print *, '! Angular grid points: ', lebedev_grid(ileb%n
-      ! print *, '! Radial grid points: ', nshell
-      ! print *, '!' // REPEAT('-', 78) // '!'
-      ! print *, '! Total grid points:   ', ngrid
-      ! print *, '!' // REPEAT('-', 78) // '!'
+   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
+                             grid_r=grid_r, grid_w=grid_w)
 
-      allocate(thegrid(ngrid))
-      call build_onecenter_grid(ileb, nshell, thegrid)
+   do i=1,size(grid_w)
+      norm = sqrt(sum( grid_r(i, :)**2 ))
+      call interpolation(r, y, spline, norm, int_i(i))
+   enddo
 
-      integral = 0.0_dp
-      do i=1,size(thegrid)
-         norm = sqrt(sum((thegrid(i)%r)**2))
-         call interpolation(gr, gy, spline, norm, f)
+   ! lebedev integration: 4pi * sum_leb
+   integral = sum(grid_w*int_i)
 
-         integral = integral + thegrid(i)%weight * f
-      enddo
-      ! lebedev integration: 4pi * sum_leb
-      integral = 4.0_dp*pi*integral
+   deallocate(grid_r)
+   deallocate(grid_w)
+   deallocate(int_i)
+end subroutine integration_onecenter
 
-      deallocate(thegrid)
 
-   end subroutine integration_onecenter
    subroutine integration_twocenter(nleb, nshell, d12,&
                                     gr1, gy1, gr2, gy2,&
                                     spline1, spline2, integral)
@@ -217,41 +220,41 @@ end subroutine radial_integration
       ileb = get_number_of_lebedev_grid(n=nleb)
       ngrid = lebedev_grid(ileb)%n * nshell
 
-      allocate(thegrid(ngrid))
-      call build_onecenter_grid(ileb, nshell, thegrid)
-      ! Get the spline of the second derivative of r*f2 -> d2f2
-      ! < f1 | -0.5*laplace | f2 >
+      ! allocate(thegrid(ngrid))
+      ! call build_onecenter_grid(ileb, nshell, thegrid)
+      ! ! Get the spline of the second derivative of r*f2 -> d2f2
+      ! ! < f1 | -0.5*laplace | f2 >
 
-      ! Compute (r*f2)
-      rf2 = -0.5_dp*gr2*gy2
-      ! Get the 2nd derivative d_r^2(r*f2)
-      call spline(gr2, rf2, size(gr2), 0.0_dp, 0.0_dp, d2rf2)
-      call spline(gr2, d2rf2, size(gr2), 0.0_dp, 0.0_dp, d2rf2_spline)
+      ! ! Compute (r*f2)
+      ! rf2 = -0.5_dp*gr2*gy2
+      ! ! Get the 2nd derivative d_r^2(r*f2)
+      ! call spline(gr2, rf2, size(gr2), 0.0_dp, 0.0_dp, d2rf2)
+      ! call spline(gr2, d2rf2, size(gr2), 0.0_dp, 0.0_dp, d2rf2_spline)
 
-      ! Divide by r
-      do i=1,size(gr2)
-         if(gr2(i) .gt. 0.0_dp) then
-            d2rf2(i) = d2rf2(i)/gr2(i)
-         else
-            d2rf2(i) = d2rf2(i)!0.0_dp
-         endif
-      enddo
-      ! Laplace = 1/r * d_r^2(r*f2) ✓
+      ! ! Divide by r
+      ! do i=1,size(gr2)
+      !    if(gr2(i) .gt. 0.0_dp) then
+      !       d2rf2(i) = d2rf2(i)/gr2(i)
+      !    else
+      !       d2rf2(i) = d2rf2(i)!0.0_dp
+      !    endif
+      ! enddo
+      ! ! Laplace = 1/r * d_r^2(r*f2) ✓
 
-      integral = 0
-      do i=1,size(thegrid)
-         norm = sqrt(sum((thegrid(i)%r)**2))
-         call interpolation(gr1, gy1, spline1, norm, f1)
-         call interpolation(gr2, d2rf2, d2rf2_spline, norm, f2)
+      ! integral = 0
+      ! do i=1,size(thegrid)
+      !    norm = sqrt(sum((thegrid(i)%r)**2))
+      !    call interpolation(gr1, gy1, spline1, norm, f1)
+      !    call interpolation(gr2, d2rf2, d2rf2_spline, norm, f2)
 
-         integral = integral + thegrid(i)%weight * f1 * f2
-      enddo
+      !    integral = integral + thegrid(i)%weight * f1 * f2
+      ! enddo
 
-      ! laplace = -0.5*🔺
-      ! lebedev integration: 4pi * sum_leb
-      integral = 4.0_dp*pi*integral
+      ! ! laplace = -0.5*🔺
+      ! ! lebedev integration: 4pi * sum_leb
+      ! integral = 4.0_dp*pi*integral
 
-      deallocate(thegrid)
+      ! deallocate(thegrid)
    end subroutine kinetic_energy
 
    subroutine coulomb_integral(nleb, nshell, r1, y1, r2, y2, s1, s2, d12,&
@@ -434,12 +437,12 @@ end subroutine radial_integration
       REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr, gy
       REAL(KIND=dp), DIMENSION(1:size(gr)) :: spline
       REAL(KIND=dp), intent(in) :: r
-      REAL(KIND=dp) :: y
+      REAL(KIND=dp), intent(out) :: y
 
       INTEGER :: low, upper, mid
       REAL(KIND=dp) :: A, B, h
       ! find the closest grid point by bisection
-      low = 0
+      low = 1
       upper = size(gr)
       do while (upper-low .gt. 1)
          mid = NINT((low+upper)/2.0_dp)
