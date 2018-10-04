@@ -18,10 +18,10 @@ subroutine test_onecenter(ntests, loud)
    print *, REPEAT('-', 30) // ' Testing One-Center ' // REPEAT('-', 30)
 
    ! Prepare the grid
-   allocate(r(30000))
-   allocate(y(30000))
+   allocate(r(300000))
+   allocate(y(300000))
 
-   dr = 0.001_dp
+   dr = 0.0001_dp
    do i=1,size(r)
       r(i) = REAL(i, dp)*dr
    enddo
@@ -36,7 +36,7 @@ subroutine test_onecenter(ntests, loud)
       y = exp(-rand * r**2 )
       call spline(r, y, size(r), 0.0_dp, 0.0_dp, spline1)
 
-      call integration_onecenter(nang=50, nshell=500, r=r, y=y,&
+      call integration_onecenter(nang=50, nshell=50, r=r, y=y,&
                                  spline=spline1, integral=integral)
 
       ri = 4.0_dp*pi**1.5_dp/(4.0_dp*rand**(1.5_dp))
@@ -44,6 +44,69 @@ subroutine test_onecenter(ntests, loud)
       errors(j) = abs(1.0_dp-integral/ri)
       if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.00001_dp)) then
          print *, 'Exponents: ', rand
+         print *, 'Is: ', integral
+         print *, 'Should:', ri
+         print *, ''
+         print *, 'Absolute Difference: ', abs(integral-ri)
+         print *, 'Relative Error: ', errors(j)
+         print *, REPEAT('-', 80)
+      endif
+   enddo
+
+   err = sum(errors)/REAL(ntests, dp)
+   print *, 'Mean error: ', err
+   print *, REPEAT('-', 28) // ' End Testing One-Center ' // REPEAT('-', 28)
+   print *, ''
+
+   deallocate(r)
+   deallocate(y)
+end subroutine test_onecenter
+
+subroutine test_twocenter(ntests, loud)
+   implicit none
+   LOGICAL :: loud
+   REAL(KIND=dp), DIMENSION(ntests) :: errors
+   REAL(KIND=dp) :: dr, integral, ri, err
+   REAL(KIND=dp), DIMENSION(2) :: rand2
+   REAL(KIND=dp), DIMENSION(3) :: rand_pos
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, y1, y2, spline1, spline2
+   INTEGER :: i, j, ntests
+
+   print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
+
+   ! Prepare the grid
+   allocate(r(100000))
+   allocate(y1(100000))
+   allocate(y2(100000))
+   dr = 0.001_dp
+   do i=1,size(r)
+      r(i) = REAL(i, dp)*dr
+   enddo
+
+   do j=1,ntests
+      ! Gaussian exponents
+      CALL RANDOM_NUMBER(rand2)
+      rand2 = rand2 * 5.0_dp + 0.5_dp
+      ! Displacement
+      CALL RANDOM_NUMBER(rand_pos)
+      rand_pos = rand_pos * sqrt(3.0_dp)
+
+      y1 = exp(-rand2(1) * r**2 )
+      y2 = exp(-rand2(2) * r**2 )
+      call spline(r, y1, size(r), 0.0_dp, 0.0_dp, spline1)
+      call spline(r, y2, size(r), 0.0_dp, 0.0_dp, spline2)
+
+      call integration_twocenter(nang=(/590, 590/), nshell=(/50, 50/), d12=rand_pos, &
+                                 r1=r, y1=y1, r2=r, y2=y2,&
+                                 spline1=spline1, spline2=spline2, integral=integral)
+
+      ri = (pi/sum(rand2))**(1.5_dp)
+      ri = ri * exp(-rand2(1)*rand2(2)*sum(rand_pos**2)/sum(rand2))
+
+      errors(j) = abs(1.0_dp-integral/ri)
+      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.00001_dp)) then
+         print *, 'Exponents: ', rand2
+         print *, 'Distance: ', sqrt(sum(rand_pos**2))
          print *, 'Is: ', integral
          print *, 'Should:', ri
          print *, ''
@@ -60,70 +123,8 @@ subroutine test_onecenter(ntests, loud)
    print *, ''
 
    deallocate(r)
-   deallocate(y)
-end subroutine test_onecenter
-
-subroutine test_twocenter(ntests)
-   implicit none
-   REAL(KIND=dp) :: dr, integral, ri, mean_rel_error, err
-   REAL(KIND=dp), DIMENSION(2) :: rand2
-   REAL(KIND=dp), DIMENSION(3) :: rand_pos
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, y1, y2, spline1, spline2
-   INTEGER :: i, j, ntests
-
-   print *, REPEAT('-', 80)
-   print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
-   print *, REPEAT('-', 80)
-
-   ! Prepare the grid
-   allocate(r(10000))
-   allocate(y1(10000))
-   allocate(y2(10000))
-   dr = 0.002_dp
-   do i=1,size(r)
-      r(i) = REAL(i, dp)*dr
-   enddo
-
-   mean_rel_error = 0
-   do j=1,ntests
-      ! Gaussian exponents
-      CALL RANDOM_NUMBER(rand2)
-      rand2 = rand2 * 10.0_dp + 0.1_dp
-      ! Displacement
-      CALL RANDOM_NUMBER(rand_pos)
-      rand_pos = rand_pos * sqrt(3.0_dp)
-
-      y1 = exp(-rand2(1) * r**2 )
-      y2 = exp(-rand2(2) * r**2 )
-      call spline(r, y1, size(r), 0.0_dp, 0.0_dp, spline1)
-      call spline(r, y2, size(r), 0.0_dp, 0.0_dp, spline2)
-
-      call integration_twocenter(nang=(/5, 5/), nshell=(/5, 5/), d12=rand_pos, &
-                                 r1=r, y1=y1, r2=r, y2=y2,&
-                                 spline1=spline1, spline2=spline2, integral=integral)
-
-      ri = (pi/sum(rand2))**(1.5_dp)
-      ri = ri * exp(-rand2(1)*rand2(2)*sum(rand_pos**2)/sum(rand2))
-
-      err = abs(1.0_dp-integral/ri)
-      mean_rel_error = mean_rel_error+err
-      print *, 'Is: ', integral
-      print *, 'Should:', ri
-      print *, ''
-      print *, 'Absolute Difference: ', abs(integral-ri)
-      print *, 'Exponents: ', rand2
-      print *, 'Displacement: ', rand_pos
-      print *, 'Relative Error: ', err
-      print *, ''
-   enddo
-
-   mean_rel_error = mean_rel_error/REAL(ntests, dp)
-   print *, 'Mean error: ', mean_rel_error
-
-   print *, REPEAT('-', 80)
-   print *, REPEAT('-', 28) // ' End Testing Two-Center ' // REPEAT('-', 28)
-   print *, REPEAT('-', 80)
-   print *, ''
+   deallocate(y1)
+   deallocate(y2)
 end subroutine test_twocenter
 
 subroutine test_threecenter(ntests)

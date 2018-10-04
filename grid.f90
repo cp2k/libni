@@ -124,13 +124,11 @@ subroutine build_twocenter_grid(ileb, nshell, displacement, addr2, grid_r, grid_
 	   s1 = s3(mu)
 	   s2 = s3(-mu)
 
-	   if (i .lt. (nshell(1)+1)) then
+	   if (i .lt. (lebedev_grid(ileb(1))%n*nshell(1)+1)) then
 	   	grid_w(i) = grid_w(i) * s1/(s1+s2)
 	   else
 	   	grid_w(i) = grid_w(i) * s2/(s1+s2)
 	   endif
-
-	   print *, grid_r(i, :), grid_w(i)
 	enddo
 
 end subroutine build_twocenter_grid

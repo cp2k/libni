@@ -42,8 +42,8 @@ program hallo
 ! deallocate(gr1)
 ! return
 
-! call test_onecenter(ntests=100, loud=.FALSE.)
-call test_twocenter(ntests=1)
+call test_onecenter(ntests=100, loud=.FALSE.)
+call test_twocenter(ntests=100, loud=.FALSE.)
 return
 
    ! call test_onecenter(ntests=3)

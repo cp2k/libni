@@ -94,7 +94,6 @@ subroutine integration_onecenter(nang, nshell, r, y, spline, integral)
    deallocate(int_i)
 end subroutine integration_onecenter
 
-
 subroutine integration_twocenter(nang, nshell, d12, r1, y1, r2, y2, &
                                  spline1, spline2, integral)
    implicit none
@@ -123,6 +122,7 @@ subroutine integration_twocenter(nang, nshell, d12, r1, y1, r2, y2, &
    allocate(int_i(ngrid))
    allocate(f1(ngrid))
    allocate(f2(ngrid))
+
    int_i = 0.0_dp
 
    call build_twocenter_grid(ileb=ileb, nshell=nshell, displacement=d12, &
