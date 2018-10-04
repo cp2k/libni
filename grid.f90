@@ -61,82 +61,79 @@ subroutine build_onecenter_grid(ileb, nshell, addr2, grid_r, grid_w)
    enddo
 end subroutine build_onecenter_grid
 
-   ! thegrid: the integration grid
-   subroutine build_twocenter_grid(ileb, nshell, displacement, thegrid)
-      implicit none
-      INTEGER, DIMENSION(2), intent(in) :: ileb, nshell
-      REAL(KIND=dp), DIMENSION(3), intent(in) :: displacement
-      TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-      INTEGER :: cnt, iterrad, iterang, i, iterileb
-      REAL(KIND=dp) :: tradw, tangw, tsin, tcos, targ, tr
-      REAL(KIND=dp) :: alpha, mu, s1, s2, p, ri, rj, R
 
-      cnt = 0
-      iterileb = 1
-      R = sqrt(sum(displacement**2))
+subroutine build_twocenter_grid(ileb, nshell, displacement, addr2, grid_r, grid_w)
+   implicit none
+   ! Input
+   INTEGER, DIMENSION(2), intent(in) :: ileb, nshell
+   REAL(KIND=dp), DIMENSION(3), intent(in) :: displacement
+   LOGICAL, OPTIONAL, intent(in) :: addr2
+   ! Output
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
+   ! Local variables
+   REAL(KIND=dp), DIMENSION(nshell(1)) :: radii1, radii_w1
+   REAL(KIND=dp), DIMENSION(nshell(2)) :: radii2, radii_w2
+   INTEGER :: i, j, lower, upper, offset
+   REAL(KIND=dp) :: R, r1, r2, mu, s1, s2
 
-      alpha = pi/REAL(nshell(1)+1, dp)
-      do iterang=1, lebedev_grid(ileb(1))%n
-         tangw = lebedev_grid(ileb(1))%w(iterang)
-         do iterrad=1, nshell(1)
-            cnt = cnt+1
-            ! COORDINATE
-            targ = REAL(iterrad, dp)*alpha
-            tcos = cos(targ)
-            tr = (1+tcos)/(1-tcos)
+   call radial_grid(r=radii1, &
+                    wr=radii_w1, &
+                    n=nshell(1), addr2=.TRUE.)
 
-            thegrid(cnt)%r = tr*lebedev_grid(ileb(1))%r(:, iterang)
+   call radial_grid(r=radii2, &
+                    wr=radii_w2, &
+                    n=nshell(2), addr2=.TRUE.)
 
-            ! WEIGHTS
-            ! nuclear partition  	
-            ri = sqrt(sum((thegrid(cnt)%r**2)))
-            rj = sqrt(sum(((thegrid(cnt)%r-displacement)**2)))
+   R = sqrt(sum(displacement**2))
 
-            mu = (ri-rj)/R
-            s1 = s3(mu)
-            s2 = s3(-mu)
-            p = s1/(s1+s2)
-            ! radial
-            tradw = 2.0_dp*alpha*sin(targ)**2/SQRT(1.0_dp-tcos**2)*tr**2/(1.0_dp-tcos)**2
+   do i=1, lebedev_grid(ileb(1))%n
+   	! lower:upper is the slice belonging to this angular point/ direction
+      lower = 1+(i-1)*nshell(1)
+      upper = i*nshell(1)
 
-            thegrid(cnt)%weight = tangw * tradw * p
-         	if (isnan(thegrid(cnt)%weight)) then
-            	print *, p, ri, rj
-         		stop '"x" is a NaN'
-      		endif
-         enddo !iterrad
-      enddo !iterang
+      ! the coordinates do not change, since we use `displacement` later on
+      ! when evaluating the function(r)
+      do j=1,nshell(1)
+      	grid_r(lower+j-1,:) = radii1(j) * lebedev_grid(ileb(1))%r(:, i)
+      enddo
 
-      if (R == 0.0_dp) stop 'This is a single center.'
-      alpha = pi/REAL(nshell(2)+1, dp)
-      do iterang=1, lebedev_grid(ileb(2))%n
-         tangw = lebedev_grid(ileb(2))%w(iterang)
-         do iterrad=1, nshell(2)
-            cnt = cnt+1
-            ! COORDINATE
-            targ = REAL(iterrad, dp)*alpha
-            tcos = cos(targ)
-            tr = (1+tcos)/(1-tcos)
+      grid_w(lower:upper) = 4.0_dp*pi * radii_w1 * lebedev_grid(ileb(1))%w(i)
+   enddo
 
-            thegrid(cnt)%r = tr*lebedev_grid(ileb(2))%r(:, iterang)-displacement
+   offset = lebedev_grid(ileb(1))%n * nshell(1)
+   do i=1, lebedev_grid(ileb(2))%n
+   	! lower:upper is the slice belonging to this angular point/ direction
+      lower = offset + 1+(i-1)*nshell(2)
+      upper = offset + i*nshell(2)
 
-            ! WEIGHTS
-            ! nuclear partition
-            ri = sqrt(sum((thegrid(cnt)%r**2)))
-            rj = sqrt(sum(((thegrid(cnt)%r-displacement)**2)))
+      ! the coordinates do not change, since we use `displacement` later on
+      ! when evaluating the function(r)
+      do j=1,nshell(2)
+      	grid_r(lower+j-1,:) = radii2(j) * lebedev_grid(ileb(2))%r(:, i)
+      enddo
 
-            mu = (ri-rj)/R
-            s1 = s3(mu)
-            s2 = s3(-mu)
-            p = s2/(s1+s2)
+      grid_w(lower:upper) = 4.0_dp*pi * radii_w2 * lebedev_grid(ileb(2))%w(i)
+   enddo
 
-            ! radial
-            tradw = 2.0_dp*alpha*sin(targ)**2/SQRT(1.0_dp-tcos**2)*tr**2/(1.0_dp-tcos)**2
+   ! nuclear partition	
+	do i=1,size(grid_w)
+		r1 = sqrt(sum( grid_r(i, :)**2 ))
+		r2 = sqrt(sum( (grid_r(i, :) - displacement)**2 ))
+	   mu = (r1-r2)/R
+	   s1 = s3(mu)
+	   s2 = s3(-mu)
 
-            thegrid(cnt)%weight = tangw * tradw * p
-         enddo !iterrad
-      enddo !iterang
-   end subroutine build_twocenter_grid
+	   if (i .lt. (nshell(1)+1)) then
+	   	grid_w(i) = grid_w(i) * s1/(s1+s2)
+	   else
+	   	grid_w(i) = grid_w(i) * s2/(s1+s2)
+	   endif
+
+	   print *, grid_r(i, :), grid_w(i)
+	enddo
+
+end subroutine build_twocenter_grid
 
    ! thegrid: the integration grid
    subroutine build_threecenter_grid(ileb, nshell, d12, d13, thegrid, &
@@ -216,7 +213,7 @@ end subroutine build_onecenter_grid
             tcos = cos(targ)
             tr = (1+tcos)/(1-tcos)
 
-            thegrid(cnt)%r = tr*lebedev_grid(ileb(2))%r(:, iterang)-d12
+            thegrid(cnt)%r = tr*lebedev_grid(ileb(2))%r(:, iterang)
 
             ! WEIGHTS
             ! nuclear partition
@@ -262,7 +259,7 @@ end subroutine build_onecenter_grid
             tcos = cos(targ)
             tr = (1+tcos)/(1-tcos)
 
-            thegrid(cnt)%r = tr*lebedev_grid(ileb(3))%r(:, iterang)-d13
+            thegrid(cnt)%r = tr*lebedev_grid(ileb(3))%r(:, iterang)
 
             ! WEIGHTS
             ! nuclear partition

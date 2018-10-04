@@ -31,7 +31,6 @@ subroutine test_onecenter(ntests, loud)
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand)
       rand = rand * 10.0_dp + 0.1_dp
-      rand = 1.0_dp
 
       ! Prepare grids
       y = exp(-rand * r**2 )
@@ -69,53 +68,53 @@ subroutine test_twocenter(ntests)
    REAL(KIND=dp) :: dr, integral, ri, mean_rel_error, err
    REAL(KIND=dp), DIMENSION(2) :: rand2
    REAL(KIND=dp), DIMENSION(3) :: rand_pos
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gr1, gy1, gy2, spline1, spline2
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, y1, y2, spline1, spline2
    INTEGER :: i, j, ntests
 
    print *, REPEAT('-', 80)
    print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
    print *, REPEAT('-', 80)
 
-   allocate(gr1(2000))
-   allocate(gy1(2000))
-   allocate(gy2(2000))
+   ! Prepare the grid
+   allocate(r(10000))
+   allocate(y1(10000))
+   allocate(y2(10000))
+   dr = 0.002_dp
+   do i=1,size(r)
+      r(i) = REAL(i, dp)*dr
+   enddo
 
    mean_rel_error = 0
    do j=1,ntests
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand2)
-      rand2 = rand2 * 10.0_dp
+      rand2 = rand2 * 10.0_dp + 0.1_dp
       ! Displacement
       CALL RANDOM_NUMBER(rand_pos)
-      rand_pos = rand_pos * sqrt(10.0_dp)
+      rand_pos = rand_pos * sqrt(3.0_dp)
 
-      ! Prepare grids
-      dr = 0.025_dp
-      do i=1,2000
-         gr1(i) = i*dr
-         gy1(i) = exp(-rand2(1) * gr1(i)**2 )
-         gy2(i) = exp(-rand2(2) * gr1(i)**2 )
-      enddo
-      call spline(gr1, gy1, size(gr1), 0.0_dp, 0.0_dp, spline1)
-      call spline(gr1, gy2, size(gr1), 0.0_dp, 0.0_dp, spline2)
+      y1 = exp(-rand2(1) * r**2 )
+      y2 = exp(-rand2(2) * r**2 )
+      call spline(r, y1, size(r), 0.0_dp, 0.0_dp, spline1)
+      call spline(r, y2, size(r), 0.0_dp, 0.0_dp, spline2)
 
-      call integration_twocenter(nleb=(/590, 590/), nshell=(/100, 100/), d12=rand_pos, &
-                                 gr1=gr1, gy1=gy1, gr2=gr1, gy2=gy2,&
+      call integration_twocenter(nang=(/5, 5/), nshell=(/5, 5/), d12=rand_pos, &
+                                 r1=r, y1=y1, r2=r, y2=y2,&
                                  spline1=spline1, spline2=spline2, integral=integral)
 
       ri = (pi/sum(rand2))**(1.5_dp)
-      ri = ri * exp(-rand2(1)*rand2(2)*sum(rand_pos**2)/(sum(rand2)))
+      ri = ri * exp(-rand2(1)*rand2(2)*sum(rand_pos**2)/sum(rand2))
 
       err = abs(1.0_dp-integral/ri)
       mean_rel_error = mean_rel_error+err
-      ! print *, 'Is: ', integral
-      ! print *, 'Should:', ri
-      ! print *, ''
-      ! print *, 'Absolute Difference: ', abs(integral-ri)
-      ! print *, 'Exponents: ', rand2
-      ! print *, 'Displacement: ', rand_pos
-      ! print *, 'Relative Error: ', err
-      ! print *, ''
+      print *, 'Is: ', integral
+      print *, 'Should:', ri
+      print *, ''
+      print *, 'Absolute Difference: ', abs(integral-ri)
+      print *, 'Exponents: ', rand2
+      print *, 'Displacement: ', rand_pos
+      print *, 'Relative Error: ', err
+      print *, ''
    enddo
 
    mean_rel_error = mean_rel_error/REAL(ntests, dp)
