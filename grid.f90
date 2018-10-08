@@ -12,6 +12,7 @@ module grid
     
 contains
 
+! Writes a radial grid of size N into r and the weights in to wr
 subroutine radial_grid(r, wr, n, addr2)
    implicit none
    INTEGER, intent(in) :: n

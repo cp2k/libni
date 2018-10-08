@@ -1,6 +1,7 @@
 module nao_unit
 USE eddi, ONLY: integration_onecenter, integration_twocenter, integration_threecenter, kinetic_energy, spline
 USE lebedev, ONLY: dp
+USE grid, ONLY: radial_grid
 implicit none
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 contains
@@ -12,19 +13,23 @@ subroutine test_onecenter(ntests, loud)
    REAL(KIND=dp), DIMENSION(ntests) :: errors
    REAL(KIND=dp) :: dr, integral, ri, err
    REAL(KIND=dp) :: rand
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, y, spline1
-   INTEGER :: i, j, ntests
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, y, spline1, wr
+   INTEGER :: i, j, ntests, ngrid
 
    print *, REPEAT('-', 30) // ' Testing One-Center ' // REPEAT('-', 30)
+   ngrid = 100
 
    ! Prepare the grid
-   allocate(r(300000))
-   allocate(y(300000))
+   allocate(r(ngrid))
+   allocate(wr(ngrid))
+   allocate(y(ngrid))
 
-   dr = 0.0001_dp
-   do i=1,size(r)
-      r(i) = REAL(i, dp)*dr
-   enddo
+   ! dr = 0.0001_dp
+   ! do i=1,size(r)
+   !    r(i) = REAL(i, dp)*dr
+   ! enddo
+   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE.)
+   r = r(ngrid:1:-1)
 
    ! Perform the tests
    do j=1,ntests
@@ -36,7 +41,7 @@ subroutine test_onecenter(ntests, loud)
       y = exp(-rand * r**2 )
       call spline(r, y, size(r), 0.0_dp, 0.0_dp, spline1)
 
-      call integration_onecenter(nang=50, nshell=50, r=r, y=y,&
+      call integration_onecenter(nang=50, nshell=ngrid, r=r, y=y,&
                                  spline=spline1, integral=integral)
 
       ri = 4.0_dp*pi**1.5_dp/(4.0_dp*rand**(1.5_dp))
@@ -59,6 +64,7 @@ subroutine test_onecenter(ntests, loud)
    print *, ''
 
    deallocate(r)
+   deallocate(wr)
    deallocate(y)
 end subroutine test_onecenter
 
@@ -69,19 +75,25 @@ subroutine test_twocenter(ntests, loud)
    REAL(KIND=dp) :: dr, integral, ri, err
    REAL(KIND=dp), DIMENSION(2) :: rand2
    REAL(KIND=dp), DIMENSION(3) :: rand_pos
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, y1, y2, spline1, spline2
-   INTEGER :: i, j, ntests
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, y1, y2, spline1, spline2, wr
+   INTEGER :: i, j, ntests, ngrid
 
    print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
+   ngrid = 10000
 
    ! Prepare the grid
-   allocate(r(100000))
-   allocate(y1(100000))
-   allocate(y2(100000))
-   dr = 0.001_dp
-   do i=1,size(r)
-      r(i) = REAL(i, dp)*dr
-   enddo
+   allocate(r(ngrid))
+   allocate(wr(ngrid))
+   allocate(y1(ngrid))
+   allocate(y2(ngrid))
+
+   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE.)
+   r = r(ngrid:1:-1)
+
+   ! dr = 0.001_dp
+   ! do i=1,size(r)
+   !    r(i) = REAL(i, dp)*dr
+   ! enddo
 
    do j=1,ntests
       ! Gaussian exponents
@@ -96,7 +108,7 @@ subroutine test_twocenter(ntests, loud)
       call spline(r, y1, size(r), 0.0_dp, 0.0_dp, spline1)
       call spline(r, y2, size(r), 0.0_dp, 0.0_dp, spline2)
 
-      call integration_twocenter(nang=(/590, 590/), nshell=(/50, 50/), d12=rand_pos, &
+      call integration_twocenter(nang=(/590, 590/), nshell=(/75, 75/), d12=rand_pos, &
                                  r1=r, y1=y1, r2=r, y2=y2,&
                                  spline1=spline1, spline2=spline2, integral=integral)
 
@@ -113,16 +125,17 @@ subroutine test_twocenter(ntests, loud)
          print *, 'Absolute Difference: ', abs(integral-ri)
          print *, 'Relative Error: ', errors(j)
          print *, ''
+         print *, REPEAT('-', 80)
       endif
    enddo
 
    err = sum(errors)/REAL(ntests, dp)
-   print *, REPEAT('-', 80)
    print *, 'Mean error: ', err
    print *, REPEAT('-', 28) // ' End Testing One-Center ' // REPEAT('-', 28)
    print *, ''
 
    deallocate(r)
+   deallocate(wr)
    deallocate(y1)
    deallocate(y2)
 end subroutine test_twocenter
