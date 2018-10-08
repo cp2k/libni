@@ -44,10 +44,9 @@ program hallo
 
 ! call test_onecenter(ntests=100, loud=.FALSE.)
 ! call test_twocenter(ntests=100, loud=.FALSE.)
-call test_threecenter(ntests=50 , loud=.FALSE.)
+! call test_threecenter(ntests=50 , loud=.FALSE.)
+call test_kinetic(ntests=100, loud=.FALSE.)
 return
-   ! ! Mean error in %:    9.8195364655696019E-002
-   ! call test_kinetic(ntests=100)
    ! ! Mean error in %:   0.41358588140703562
    ! return
 

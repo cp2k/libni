@@ -194,63 +194,64 @@ subroutine integration_threecenter(nang, nshell, d12, d13, &
    deallocate(f1)
    deallocate(f2)
    deallocate(f3)
-
 end subroutine integration_threecenter
 
-   subroutine kinetic_energy(nleb, nshell,&
-                             gr1, gy1, gr2, gy2,&
-                             spline1, spline2, integral)
-      implicit none
-      INTEGER, intent(in) :: nleb, nshell
-      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr1, gy1, &
-                                                              gr2, gy2, &
-                                                              spline1, spline2
-      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: rf2, d2rf2, d2rf2_spline
-      INTEGER :: ileb
-      INTEGER :: ngrid, i
-      TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-      REAL(KIND=dp) :: norm, f1, f2
-      REAL(KIND=dp) :: integral
+subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
+                          spline1, spline2, integral)
+   implicit none
+   ! Input
+   INTEGER, intent(in) :: nang, nshell
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, &
+                      r2, y2, spline1, spline2
+   ! Output
+   REAL(KIND=dp) :: integral
 
-      ileb = get_number_of_lebedev_grid(n=nleb)
-      ngrid = lebedev_grid(ileb)%n * nshell
+   ! Local variables
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: rf2, d2rf2, d2rf2_spline, f1, f2
+   REAL(KIND=dp) :: norm
+   INTEGER :: ngrid, ileb, i
 
-      ! allocate(thegrid(ngrid))
-      ! call build_onecenter_grid(ileb, nshell, thegrid)
-      ! ! Get the spline of the second derivative of r*f2 -> d2f2
-      ! ! < f1 | -0.5*laplace | f2 >
+   ileb = get_number_of_lebedev_grid(n=nang)
+   ngrid = lebedev_grid(ileb)%n * nshell
 
-      ! ! Compute (r*f2)
-      ! rf2 = -0.5_dp*gr2*gy2
-      ! ! Get the 2nd derivative d_r^2(r*f2)
-      ! call spline(gr2, rf2, size(gr2), 0.0_dp, 0.0_dp, d2rf2)
-      ! call spline(gr2, d2rf2, size(gr2), 0.0_dp, 0.0_dp, d2rf2_spline)
+   allocate(grid_r(ngrid, 3))
+   allocate(grid_w(ngrid))
+   allocate(f1(ngrid))
+   allocate(f2(ngrid))
 
-      ! ! Divide by r
-      ! do i=1,size(gr2)
-      !    if(gr2(i) .gt. 0.0_dp) then
-      !       d2rf2(i) = d2rf2(i)/gr2(i)
-      !    else
-      !       d2rf2(i) = d2rf2(i)!0.0_dp
-      !    endif
-      ! enddo
-      ! ! Laplace = 1/r * d_r^2(r*f2) ✓
+   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
+                             grid_r=grid_r, grid_w=grid_w)
+   ! Get the spline of the second derivative of r*f2 -> d2f2
+   ! < f1 | -0.5*laplace | f2 >
+      ! Compute -0.5*(r*f2)
+   rf2 = -0.5_dp*r2*y2
+   ! Get the 2nd derivative d_r^2(r*f2)
+   call spline(r2, rf2, size(r2), 0.0_dp, 0.0_dp, d2rf2)
+   call spline(r2, d2rf2, size(r2), 0.0_dp, 0.0_dp, d2rf2_spline)
 
-      ! integral = 0
-      ! do i=1,size(thegrid)
-      !    norm = sqrt(sum((thegrid(i)%r)**2))
-      !    call interpolation(gr1, gy1, spline1, norm, f1)
-      !    call interpolation(gr2, d2rf2, d2rf2_spline, norm, f2)
+   ! Divide by r
+   d2rf2 = d2rf2/r2
+   ! Laplace = 1/r * d_r^2(r*f2) ✓
 
-      !    integral = integral + thegrid(i)%weight * f1 * f2
-      ! enddo
+   do i=1,size(grid_w)
+      norm = sqrt(sum( grid_r(i, :)**2 ))
+      call interpolation(r1, y1, spline1, norm, f1(i))
+      call interpolation(r2, d2rf2, d2rf2_spline, norm, f2(i))
+   enddo
 
-      ! ! laplace = -0.5*🔺
-      ! ! lebedev integration: 4pi * sum_leb
-      ! integral = 4.0_dp*pi*integral
+   integral = sum(grid_w* f1*f2)
 
-      ! deallocate(thegrid)
-   end subroutine kinetic_energy
+   ! ! laplace = -0.5*🔺
+   ! ! lebedev integration: 4pi * sum_leb
+   ! integral = 4.0_dp*pi*integral
+
+   deallocate(grid_r)
+   deallocate(grid_w)
+   deallocate(f1)
+   deallocate(f2)
+end subroutine kinetic_energy
 
    subroutine coulomb_integral(nleb, nshell, r1, y1, r2, y2, s1, s2, d12,&
                                integral)

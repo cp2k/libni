@@ -219,87 +219,78 @@ subroutine test_threecenter(ntests, loud)
    print *, ''
 end subroutine test_threecenter
 
-subroutine test_kinetic(ntests)
+subroutine test_kinetic(ntests, loud)
    implicit none
-   REAL(KIND=dp) :: dr, integral, ri, mean_rel_error, err
+   LOGICAL :: loud
+   REAL(KIND=dp), DIMENSION(ntests) :: errors
+   REAL(KIND=dp) :: dr, integral, ri, err
    REAL(KIND=dp), DIMENSION(2) :: rand2
    REAL(KIND=dp), DIMENSION(3) :: rand_pos
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gr1, gy1, gy2, spline1, spline2, d2f2
-   INTEGER :: i, j, ntests
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, wr, y1, y2, spline1, spline2, d2f2
+   INTEGER :: i, j, ntests, ngrid
 
-   print *, REPEAT('-', 80)
    print *, REPEAT('-', 30) // ' Testing Kinetic energy ' // REPEAT('-', 30)
-   print *, REPEAT('-', 80)
-   print *, ''
+   ngrid = 10000
 
-   allocate(gr1(400))
-   allocate(gy1(400))
-   allocate(gy2(400))
-   allocate(d2f2(400))
+   allocate(r(ngrid))
+   allocate(wr(ngrid))
+   allocate(y1(ngrid))
+   allocate(y2(ngrid))
+   allocate(d2f2(ngrid))
 
-   mean_rel_error = 0
+   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE.)
+   r = r(ngrid:1:-1)
+
    do j=1,ntests
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand2)
-      rand2 = rand2 * 5.0_dp
+      rand2 = rand2 * 5.0_dp + 0.5_dp
 
       ! Prepare grids
-      dr = 0.05_dp
-      do i=1,400
-         gr1(i) = 0.0_dp+(i-1)*dr
-         gy1(i) = exp( -rand2(1) * gr1(i)**2 )
-         gy2(i) = exp( -rand2(2) * gr1(i)**2 )
-      enddo
-      call spline(gr1, gy1, size(gr1), -0.2_dp, 0.0_dp, spline1)
-      call spline(gr1, gy2, size(gr1), -0.2_dp, 0.0_dp, spline2)
+      y1 = exp( -rand2(1) * r**2 )
+      y2 = exp( -rand2(2) * r**2 )
+      call spline(r, y1, size(r), 0.0_dp, 0.0_dp, spline1)
+      call spline(r, y2, size(r), 0.0_dp, 0.0_dp, spline2)
 
       ! The result we get from subroutine kinetic_energy
-      call kinetic_energy(nleb=590, nshell=100,&
-                          gr1=gr1, gy1=gy1, gr2=gr1, gy2=gy2,&
+      call kinetic_energy(nang=10, nshell=75,&
+                          r1=r, y1=y1, r2=r, y2=y2,&
                           spline1=spline1, spline2=spline2, integral=integral)
 
       ! The result we want to have
       ri = 3.0_dp*rand2(2)*(pi/(sum(rand2)))**1.5_dp - 3.0_dp*rand2(2)**2*sqrt(pi**3/(sum(rand2)**5))
       ! 2.9530518648229536
 
-      ! The result we want to have by one-center integration, analytically
-      do i=1,400
-         gy1(i) = exp(-sum(rand2)*gr1(i)**2)
-         gy1(i) = gy1(i)* (3.0_dp*rand2(2) - 2.0_dp*rand2(2)**2*gr1(i)**2)
-      enddo
-      call integration_onecenter(nang=590, nshell=100, r=gr1, y=gy1,&
-                                 spline=spline1, integral=ri)
-      ! 2.9644830114845719
+      ! ! The result we want to have by one-center integration, analytically
+      ! y1 = exp(-sum(rand2) * r**2)
+      ! y1 = y1 * (3.0_dp*rand2(2) - 2.0_dp*rand2(2)**2 * r**2)
+      ! call integration_onecenter(nang=590, nshell=100, r=r, y=y1,&
+      !                            spline=spline1, integral=ri)
+      ! ! 2.9644830114845719
 
-      err = abs(1.0_dp-integral/ri)
-      mean_rel_error = mean_rel_error+err
-      ! print *, 'Is: ', integral
-      ! print *, 'Should:', ri
-      ! print *, 'Absolute Difference: ', abs(integral-ri)
-      ! print *, ''
-      ! print *, 'Exponents: ', rand2
-      ! print *, 'Relative Error: ', err
-      ! print *, ''
+      errors(j) = abs(1.0_dp-integral/ri)
+      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.000001_dp)) then
+         print *, 'Exponents: ', rand2
+         print *, 'Is: ', integral
+         print *, 'Should:', ri
+         print *, ''
+         print *, 'Absolute Difference: ', abs(integral-ri)
+         print *, 'Relative Error: ', errors(j)
+         print *, ''
+         print *, REPEAT('-', 80)
+      endif
    enddo
 
-   ! call spline(gr1, gy1, size(gr1), 0.0_dp, 0.0_dp, d2f2)
+   err = sum(errors)/REAL(ntests, dp)
+   print *, 'Mean error: ', err
 
-   ! print *, ''
-   ! print *, ''
-   ! print *, gy1
-   ! print *, ''
-   ! print *, ''
-   ! print *, spline2
-   ! print *, ''
-
-   mean_rel_error = mean_rel_error/REAL(ntests, dp)
-   print *, 'Mean error in %: ', mean_rel_error*100.0_dp
-
-   print *, REPEAT('-', 80)
    print *, REPEAT('-', 28) // ' End Testing Kinetic energy ' // REPEAT('-', 28)
-   print *, REPEAT('-', 80)
-   print *, ''
 
+   deallocate(r)
+   deallocate(wr)
+   deallocate(y1)
+   deallocate(y2)
+   deallocate(d2f2)
 end subroutine test_kinetic
 
 end module nao_unit
