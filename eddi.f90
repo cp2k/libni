@@ -107,7 +107,7 @@ subroutine integration_twocenter(nang, nshell, d12, r1, y1, r2, y2, &
    ! Local variables
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: int_i, f1, f2
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: f1, f2
    REAL(KIND=dp) :: norm
    INTEGER, DIMENSION(2) :: ileb
    INTEGER :: ngrid, i
@@ -119,11 +119,8 @@ subroutine integration_twocenter(nang, nshell, d12, r1, y1, r2, y2, &
            lebedev_grid(ileb(2))%n * nshell(2)
    allocate(grid_r(ngrid, 3))
    allocate(grid_w(ngrid))
-   allocate(int_i(ngrid))
    allocate(f1(ngrid))
    allocate(f2(ngrid))
-
-   int_i = 0.0_dp
 
    call build_twocenter_grid(ileb=ileb, nshell=nshell, displacement=d12, &
                              addr2=.TRUE., grid_r=grid_r, grid_w=grid_w)
@@ -139,65 +136,66 @@ subroutine integration_twocenter(nang, nshell, d12, r1, y1, r2, y2, &
 
    deallocate(grid_r)
    deallocate(grid_w)
-   deallocate(int_i)
+   deallocate(f1)
+   deallocate(f2)
 
 end subroutine integration_twocenter
 
-   subroutine integration_threecenter(nleb, nshell, d12, d13, &
-                                      gr1, gy1, gr2, gy2, gr3, gy3,&
-                                      spline1, spline2, spline3, integral)
-      implicit none
-      INTEGER, DIMENSION(3), intent(in) :: nleb, nshell
-      REAL(KIND=dp), DIMENSION(3), intent(in) :: d12, d13
-      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr1, gy1, &
-                      gr2, gy2, gr3, gy3, spline1, spline2, spline3
-      INTEGER, DIMENSION(3) :: ileb
-      INTEGER :: ngrid, i
-      TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-      REAL(KIND=dp) :: norm, f1, f2, f3
-      REAL(KIND=dp) :: integral
+subroutine integration_threecenter(nang, nshell, d12, d13, &
+                                   r1, y1, r2, y2, r3, y3, &
+                                   spline1, spline2, spline3, integral)
+   implicit none
+   ! Input
+   INTEGER, DIMENSION(3), intent(in) :: nang, nshell
+   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12, d13
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, &
+                   r2, y2, r3, y3, spline1, spline2, spline3
+   ! Output
+   REAL(KIND=dp) :: integral
 
-      ileb(1) = get_number_of_lebedev_grid(n=nleb(1))
-      ileb(2) = get_number_of_lebedev_grid(n=nleb(2))
-      ileb(3) = get_number_of_lebedev_grid(n=nleb(3))
-      ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
-              lebedev_grid(ileb(2))%n * nshell(2) + &
-              lebedev_grid(ileb(3))%n * nshell(3)
+   ! Local variables
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: f1, f2, f3
+   REAL(KIND=dp) :: norm
+   INTEGER, DIMENSION(3) :: ileb
+   INTEGER :: ngrid, i
 
-      ! print *, '!' // REPEAT('-', 78) // '!'
-      ! print *, '! Angular grid1 points: ', lebedev_grid(ileb(1))%n
-      ! print *, '! Radial grid1 points: ', nshell(1)
-      ! print *, '! Angular grid2 points: ', lebedev_grid(ileb(2))%n
-      ! print *, '! Radial grid2 points: ', nshell(2)
-      ! print *, '! Angular grid3 points: ', lebedev_grid(ileb(3))%n
-      ! print *, '! Radial grid3 points: ', nshell(3)
-      ! print *, '!' // REPEAT('-', 78) // '!'
-      ! print *, '! Total grid points:   ', ngrid
-      ! print *, '!' // REPEAT('-', 78) // '!'
+   ileb(1) = get_number_of_lebedev_grid(n=nang(1))
+   ileb(2) = get_number_of_lebedev_grid(n=nang(2))
+   ileb(3) = get_number_of_lebedev_grid(n=nang(3))
+   ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
+           lebedev_grid(ileb(2))%n * nshell(2) + &
+           lebedev_grid(ileb(3))%n * nshell(3)
 
-      allocate(thegrid(ngrid))
-      call build_threecenter_grid(ileb, nshell, d12, d13, thegrid, &
-                                  gr1, gy1, gr2, gy2, gr3, gy3)
+   allocate(grid_r(ngrid, 3))
+   allocate(grid_w(ngrid))
+   allocate(f1(ngrid))
+   allocate(f2(ngrid))
+   allocate(f3(ngrid))
 
-      integral = 0
-      do i=1,size(thegrid)
-         norm = sqrt(sum((thegrid(i)%r)**2))
-         call interpolation(gr1, gy1, spline1, norm, f1)
+   call build_threecenter_grid(ileb=ileb, nshell=nshell, d12=d12, d13=d13, &
+                               addr2=.TRUE., grid_r=grid_r, grid_w=grid_w)
 
-         norm = sqrt(sum((thegrid(i)%r+d12)**2))
-         call interpolation(gr2, gy2, spline2, norm, f2)
+   do i=1,size(grid_w)
+      norm = sqrt(sum( grid_r(i, :)**2 ))
+      call interpolation(r1, y1, spline1, norm, f1(i))
 
-         norm = sqrt(sum((thegrid(i)%r+d13)**2))
-         call interpolation(gr3, gy3, spline3, norm, f3)
+      norm = sqrt(sum( (grid_r(i, :) + d12 )**2 ))
+      call interpolation(r2, y2, spline2, norm, f2(i))
 
-         integral = integral + thegrid(i)%weight * f1 * f2 * f3
-      enddo
-      ! lebedev integration: 4pi * sum_leb
-      integral = 4.0_dp*pi*integral
+      norm = sqrt(sum( (grid_r(i, :) + d13 )**2 ))
+      call interpolation(r3, y3, spline3, norm, f3(i))
+   enddo
+   integral = sum(grid_w * f1*f2*f3 )
 
-      deallocate(thegrid)
+   deallocate(grid_r)
+   deallocate(grid_w)
+   deallocate(f1)
+   deallocate(f2)
+   deallocate(f3)
 
-   end subroutine integration_threecenter
+end subroutine integration_threecenter
 
    subroutine kinetic_energy(nleb, nshell,&
                              gr1, gy1, gr2, gy2,&
