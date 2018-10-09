@@ -8,7 +8,7 @@ module grid
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 
    public :: type_grid_point, build_onecenter_grid, build_twocenter_grid, &
-   		    build_threecenter_grid, radial_grid
+             build_threecenter_grid, radial_grid
     
 contains
 
@@ -23,11 +23,11 @@ subroutine radial_grid(r, wr, n, addr2)
 
    alpha = pi/REAL(n+1, dp)
    do i=1,n
-   	! COORDINATE
-		t = REAL(i, dp)*alpha
-		x = COS(t)
-		r(i) = (1.0_dp+x)/(1.0_dp-x)
-		wr(i) = alpha*2.0_dp*SIN(t)/(1.0_dp-x)**2
+      ! COORDINATE
+      t = REAL(i, dp)*alpha
+      x = COS(t)
+      r(i) = (1.0_dp+x)/(1.0_dp-x)
+      wr(i) = alpha*2.0_dp*SIN(t)/(1.0_dp-x)**2
    enddo
    if (present(addr2)) then
       ! dxdydz = dr r^2 dcos(theta) dphi
@@ -56,7 +56,7 @@ subroutine build_onecenter_grid(ileb, nshell, addr2, grid_r, grid_w)
       upper = i*nshell
 
       do j=1,nshell
-      	grid_r(lower+j-1,:) = radii(j) * lebedev_grid(ileb)%r(:, i)
+         grid_r(lower+j-1,:) = radii(j) * lebedev_grid(ileb)%r(:, i)
       enddo
       grid_w(lower:upper) = 4.0_dp*pi * radii_w * lebedev_grid(ileb)%w(i)
    enddo
@@ -89,14 +89,14 @@ subroutine build_twocenter_grid(ileb, nshell, displacement, addr2, grid_r, grid_
    R = sqrt(sum(displacement**2))
 
    do i=1, lebedev_grid(ileb(1))%n
-   	! lower:upper is the slice belonging to this angular point/ direction
+      ! lower:upper is the slice belonging to this angular point/ direction
       lower = 1+(i-1)*nshell(1)
       upper = i*nshell(1)
 
       ! the coordinates do not change, since we use `displacement` later on
       ! when evaluating the function(r)
       do j=1,nshell(1)
-      	grid_r(lower+j-1,:) = radii1(j) * lebedev_grid(ileb(1))%r(:, i)
+         grid_r(lower+j-1,:) = radii1(j) * lebedev_grid(ileb(1))%r(:, i)
       enddo
 
       grid_w(lower:upper) = 4.0_dp*pi * radii_w1 * lebedev_grid(ileb(1))%w(i)
@@ -104,33 +104,33 @@ subroutine build_twocenter_grid(ileb, nshell, displacement, addr2, grid_r, grid_
 
    offset = lebedev_grid(ileb(1))%n * nshell(1)
    do i=1, lebedev_grid(ileb(2))%n
-   	! lower:upper is the slice belonging to this angular point/ direction
+      ! lower:upper is the slice belonging to this angular point/ direction
       lower = offset + 1+(i-1)*nshell(2)
       upper = offset + i*nshell(2)
 
       ! the coordinates do not change, since we use `displacement` later on
       ! when evaluating the function(r)
       do j=1,nshell(2)
-      	grid_r(lower+j-1,:) = radii2(j) * lebedev_grid(ileb(2))%r(:, i)
+         grid_r(lower+j-1,:) = radii2(j) * lebedev_grid(ileb(2))%r(:, i)
       enddo
 
       grid_w(lower:upper) = 4.0_dp*pi * radii_w2 * lebedev_grid(ileb(2))%w(i)
    enddo
 
-   ! nuclear partition	
-	do i=1,size(grid_w)
-		r1 = sqrt(sum( grid_r(i, :)**2 ))
-		r2 = sqrt(sum( (grid_r(i, :) - displacement)**2 ))
-	   mu = (r1-r2)/R
-	   s1 = s3(mu)
-	   s2 = s3(-mu)
+   ! nuclear partition   
+   do i=1,size(grid_w)
+      r1 = sqrt(sum( grid_r(i, :)**2 ))
+      r2 = sqrt(sum( (grid_r(i, :) - displacement)**2 ))
+      mu = (r1-r2)/R
+      s1 = s3(mu)
+      s2 = s3(-mu)
 
-	   if (i .lt. (lebedev_grid(ileb(1))%n*nshell(1)+1)) then
-	   	grid_w(i) = grid_w(i) * s1/(s1+s2)
-	   else
-	   	grid_w(i) = grid_w(i) * s2/(s1+s2)
-	   endif
-	enddo
+      if (i .lt. (lebedev_grid(ileb(1))%n*nshell(1)+1)) then
+         grid_w(i) = grid_w(i) * s1/(s1+s2)
+      else
+         grid_w(i) = grid_w(i) * s2/(s1+s2)
+      endif
+   enddo
 end subroutine build_twocenter_grid
 
 subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid_r, grid_w)
@@ -148,7 +148,7 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid_r, grid_w)
    REAL(KIND=dp), DIMENSION(nshell(3)) :: radii3, radii_w3
    INTEGER :: i, j, lower, upper, offset, off1, off2
    REAL(KIND=dp) :: R12, R13, R23, r1, r2, r3,&
-   					  mu12, mu13, mu23, s12, s13, s23, s21, s31, s32
+                    mu12, mu13, mu23, s12, s13, s23, s21, s31, s32
 
    REAL(KIND=dp) :: tP1, tP2, tP3, sP, p1, p2, p3
 
@@ -247,15 +247,15 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid_r, grid_w)
       p3 = tP3/sP
 
       if (i .lt. off1) then
-   		grid_w(i) = grid_w(i) * p1
-		else if ((i .gt. (off1-1)) .and. (i .lt. off2) ) then
-      	grid_w(i) = grid_w(i) * p2
+         grid_w(i) = grid_w(i) * p1
+      else if ((i .gt. (off1-1)) .and. (i .lt. off2) ) then
+         grid_w(i) = grid_w(i) * p2
       else if (i .gt. (off2-1)) then
-   		grid_w(i) = grid_w(i) * p3
-		else
-			print *, i, '/', size(grid_w)
-			stop 'Whoopsie'
-		endif 
+         grid_w(i) = grid_w(i) * p3
+      else
+         print *, i, '/', size(grid_w)
+         stop 'Whoopsie'
+      endif 
    enddo
 end subroutine build_threecenter_grid
 
@@ -266,14 +266,14 @@ end subroutine build_threecenter_grid
    end function h
 
    function z(mu)
-   	implicit none
-   	REAL(KIND=dp) :: mu, mua, mua2, mua4, mua6, z
-   	mua = (mu/0.64_dp)
-   	mua2 = mua*mua
-   	mua4 = mua2*mua2
-   	mua6 = mua4*mua2
-   	z = mua*(35.0_dp*(1-mua2)+21.0_dp*mua4-5.0_dp*mua6)/16.0_dp
-	end function z
+      implicit none
+      REAL(KIND=dp) :: mu, mua, mua2, mua4, mua6, z
+      mua = (mu/0.64_dp)
+      mua2 = mua*mua
+      mua4 = mua2*mua2
+      mua6 = mua4*mua2
+      z = mua*(35.0_dp*(1-mua2)+21.0_dp*mua4-5.0_dp*mua6)/16.0_dp
+   end function z
 
    function s3(mu)
       implicit none

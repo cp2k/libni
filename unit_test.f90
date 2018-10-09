@@ -11,10 +11,10 @@ subroutine test_onecenter(ntests, loud)
    implicit none
    LOGICAL :: loud
    REAL(KIND=dp), DIMENSION(ntests) :: errors
-   REAL(KIND=dp) :: dr, integral, ri, err
+   REAL(KIND=dp) :: integral, ri, err
    REAL(KIND=dp) :: rand
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, y, spline1, wr
-   INTEGER :: i, j, ntests, ngrid
+   INTEGER :: j, ntests, ngrid
 
    print *, REPEAT('-', 30) // ' Testing One-Center ' // REPEAT('-', 30)
    ngrid = 100
@@ -24,10 +24,6 @@ subroutine test_onecenter(ntests, loud)
    allocate(wr(ngrid))
    allocate(y(ngrid))
 
-   ! dr = 0.0001_dp
-   ! do i=1,size(r)
-   !    r(i) = REAL(i, dp)*dr
-   ! enddo
    call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE.)
    r = r(ngrid:1:-1)
 
@@ -72,11 +68,11 @@ subroutine test_twocenter(ntests, loud)
    implicit none
    LOGICAL :: loud
    REAL(KIND=dp), DIMENSION(ntests) :: errors
-   REAL(KIND=dp) :: dr, integral, ri, err
+   REAL(KIND=dp) :: integral, ri, err
    REAL(KIND=dp), DIMENSION(2) :: rand2
    REAL(KIND=dp), DIMENSION(3) :: rand_pos
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, y1, y2, spline1, spline2, wr
-   INTEGER :: i, j, ntests, ngrid
+   INTEGER :: j, ntests, ngrid
 
    print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
    ngrid = 10000
@@ -89,11 +85,6 @@ subroutine test_twocenter(ntests, loud)
 
    call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE.)
    r = r(ngrid:1:-1)
-
-   ! dr = 0.001_dp
-   ! do i=1,size(r)
-   !    r(i) = REAL(i, dp)*dr
-   ! enddo
 
    do j=1,ntests
       ! Gaussian exponents
@@ -144,12 +135,10 @@ subroutine test_threecenter(ntests, loud)
    implicit none
    LOGICAL :: loud
    REAL(KIND=dp), DIMENSION(ntests) :: errors
-   REAL(KIND=dp) :: dr, abc, exparg, expargb, integral, ri, err
-   REAL(KIND=dp), DIMENSION(3) :: rand3
-   REAL(KIND=dp), DIMENSION(3) :: rand_pos1
-   REAL(KIND=dp), DIMENSION(3) :: rand_pos2
+   REAL(KIND=dp) :: abc, exparg, integral, ri, err
+   REAL(KIND=dp), DIMENSION(3) :: rand3, rand_pos1, rand_pos2
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, wr, y1, y2, y3, s1, s2, s3
-   INTEGER :: i, j, ntests, ngrid
+   INTEGER :: j, ntests, ngrid
 
    print *, REPEAT('-', 30) // ' Testing Three-Center ' // REPEAT('-', 30)
    ngrid = 5000
@@ -223,11 +212,10 @@ subroutine test_kinetic(ntests, loud)
    implicit none
    LOGICAL :: loud
    REAL(KIND=dp), DIMENSION(ntests) :: errors
-   REAL(KIND=dp) :: dr, integral, ri, err
+   REAL(KIND=dp) :: integral, ri, err
    REAL(KIND=dp), DIMENSION(2) :: rand2
-   REAL(KIND=dp), DIMENSION(3) :: rand_pos
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, wr, y1, y2, spline1, spline2, d2f2
-   INTEGER :: i, j, ntests, ngrid
+   INTEGER :: j, ntests, ngrid
 
    print *, REPEAT('-', 30) // ' Testing Kinetic energy ' // REPEAT('-', 30)
    ngrid = 10000
@@ -258,8 +246,8 @@ subroutine test_kinetic(ntests, loud)
                           spline1=spline1, spline2=spline2, integral=integral)
 
       ! The result we want to have
-      ri = 3.0_dp*rand2(2)*(pi/(sum(rand2)))**1.5_dp - 3.0_dp*rand2(2)**2*sqrt(pi**3/(sum(rand2)**5))
-      ! 2.9530518648229536
+      ri = 3.0_dp*rand2(2)*(pi/(sum(rand2)))**1.5_dp&
+           - 3.0_dp*rand2(2)**2*sqrt(pi**3/(sum(rand2)**5))
 
       ! ! The result we want to have by one-center integration, analytically
       ! y1 = exp(-sum(rand2) * r**2)

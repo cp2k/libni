@@ -12,10 +12,7 @@ program hallo
    TYPE(type_atom), DIMENSION(3) :: atoms
    INTEGER, DIMENSION(:), ALLOCATABLE :: nleb, nshell
    REAL(KIND=dp), DIMENSION(3) :: d12, d13
-   REAL(KIND=dp) :: integral, integral_low
-   REAL(KIND=dp) :: start, finish, del, eps
-   INTEGER :: i
-   REAL(KIND=dp) :: y
+   REAL(KIND=dp) :: integral
 
    CHARACTER(len=*), PARAMETER :: fn1 = 'gaussian.grid'
    CHARACTER(len=*), PARAMETER :: fn2 = 'gaussian.grid'
@@ -23,33 +20,14 @@ program hallo
                                                spline1, spline2, spline3
 
 
-! ! Get the gaussian on a useful grid
-! allocate(gy1(5000))
-! allocate(gr1(5000))
-
-! del = 0.001_dp
-! integral_low = 0.0_dp
-! do i=1,size(gy1)
-!    gr1(i) = REAL(i-1, dp)*del
-!    gy1(i) = exp(-gr1(i)**2)
-!    integral_low = integral_low + del*gy1(i)
-! enddo
-! call radial_integration(f=gy1, r=gr1, n=50, integral=integral)
-! print *, integral, integral_low/2.0_dp
-! print *, abs(1-integral/(sqrt(pi)/4))
-
-! deallocate(gy1)
-! deallocate(gr1)
-! return
-
 ! call test_onecenter(ntests=100, loud=.FALSE.)
 ! call test_twocenter(ntests=100, loud=.FALSE.)
 ! call test_threecenter(ntests=50 , loud=.FALSE.)
-call test_kinetic(ntests=100, loud=.FALSE.)
-return
-   ! ! Mean error in %:   0.41358588140703562
-   ! return
+! call test_kinetic(ntests=100, loud=.FALSE.)
+! return
 
+
+return
    ! Build parameters
    atoms(1)%r = (/ 0.0_dp, 0.0_dp, 0.0_dp /)
    atoms(1)%z = 1

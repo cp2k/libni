@@ -30,7 +30,7 @@ subroutine radial_integration(f, r, n, integral)
    INTEGER, intent(in)                                  :: n
    REAL(KIND=dp) :: integral
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: rad, wr, d2f, fun
-   INTEGER :: i, j, ileb
+   INTEGER :: i
 
    allocate(rad(n))
    allocate(wr(n))
@@ -223,11 +223,9 @@ subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
 
    call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
                              grid_r=grid_r, grid_w=grid_w)
-   ! Get the spline of the second derivative of r*f2 -> d2f2
-   ! < f1 | -0.5*laplace | f2 >
-      ! Compute -0.5*(r*f2)
+   ! < f1 | -0.5*🔺 | f2 >
    rf2 = -0.5_dp*r2*y2
-   ! Get the 2nd derivative d_r^2(r*f2)
+   ! Get the 2nd derivative d_r^2(r*f2) as well as its spline
    call spline(r2, rf2, size(r2), 0.0_dp, 0.0_dp, d2rf2)
    call spline(r2, d2rf2, size(r2), 0.0_dp, 0.0_dp, d2rf2_spline)
 
@@ -241,11 +239,7 @@ subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
       call interpolation(r2, d2rf2, d2rf2_spline, norm, f2(i))
    enddo
 
-   integral = sum(grid_w* f1*f2)
-
-   ! ! laplace = -0.5*🔺
-   ! ! lebedev integration: 4pi * sum_leb
-   ! integral = 4.0_dp*pi*integral
+   integral = sum(grid_w * f1*f2)
 
    deallocate(grid_r)
    deallocate(grid_w)
