@@ -247,113 +247,94 @@ subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
    deallocate(f2)
 end subroutine kinetic_energy
 
-   subroutine coulomb_integral(nleb, nshell, r1, y1, r2, y2, s1, s2, d12,&
-                               integral)
-      implicit none
-      INTEGER, DIMENSION(2), intent(in) :: nleb, nshell
-      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, &
-                                                              r2, y2, s1, s2
-      REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
-      INTEGER, DIMENSION(2) :: ileb
-      INTEGER :: ngrid, i, j
-      TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: pot
-      REAL(KIND=dp) :: norm, f1, f2, integral, r12, rnu1, rnu2, potential
+subroutine coulomb_integral(nang, nshell, d12, r1, y1, r2, y2, s1, s2, integral)
+   implicit none
+   ! Input
+   INTEGER, DIMENSION(2), intent(in) :: nang, nshell
+   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, r2, y2, s1, s2
+   ! Output
+   REAL(KIND=dp) :: integral
+   ! Local variables
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w, grid_r2
+   INTEGER, DIMENSION(2) :: ileb
+   INTEGER :: ngrid, i, l
+   ! Local variables (potential)
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: a, b, G, H, unique_r
+   INTEGER :: nunique
 
-      ! ileb(1) = get_number_of_lebedev_grid(n=nleb(1))
-      ! ileb(2) = get_number_of_lebedev_grid(n=nleb(2))
+   l = 0 ! Quantum number
 
-      ! ngrid = lebedev_grid(ileb(1))%n * nshell(1) &
-      !         + lebedev_grid(ileb(2))%n * nshell(2)
+   ileb(1) = get_number_of_lebedev_grid(n=nang(1))
+   ileb(2) = get_number_of_lebedev_grid(n=nang(2))
 
-      ! allocate(thegrid(ngrid))
-      ! allocate(pot(ngrid))
-      ! pot = 0.0_dp
-      ! print *, d12
-      ! call build_twocenter_grid(ileb, nshell, d12, .TRUE. thegrid)
+   ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
+           lebedev_grid(ileb(2))%n * nshell(2)
+   allocate(grid_r(ngrid, 3))
+   allocate(grid_w(ngrid))
 
-      ! print *, 'Writing Grid'
-      ! open(unit=100, file='twocenter.grid')
-      ! do i=1,size(thegrid)
-      !    write(100, *) thegrid(i)%r, thegrid(i)%weight
-      ! enddo
-      ! close(100)
+   call build_twocenter_grid(ileb=ileb, nshell=nshell, displacement=d12, &
+                             addr2=.TRUE., grid_r=grid_r, grid_w=grid_w)
 
-      ! ! First evaluate the potential at all points of the grid
-      ! print *, 'Evaluating V(r)'
-      ! do j=1,size(pot)
-      !    potential = 0.0_dp
-      !    do i=1,size(thegrid)
-      !       r12 = sqrt(sum( (thegrid(i)%r-thegrid(j)%r)**2 ))
-      !       if (r12 == 0.0_dp) then
-      !          if (i /= j) then
-      !             print *, i, j
-      !          endif
-      !          CYCLE
-      !       endif
+   ! First sort the grid in such a way that the smallest distances come first
+   ! R is the distance form the origin to a grid point
+   allocate(grid_r2(ngrid)) ! we sort by r^2
 
-      !       norm = sqrt(sum((thegrid(i)%r-d12)**2))
-      !       call interpolation(r2, y2, s2, norm, f2)
+   do i=1, lebedev_grid(ileb(1))%n * nshell(1)
+      grid_r2(i) = sqrt(sum( (grid_r(i, :))**2 ))
+   enddo
+   do i=lebedev_grid(ileb(1))%n * nshell(1)+1,ngrid 
+      grid_r2(i) = sqrt(sum( (grid_r(i, :)+d12)**2 ))
+   enddo
 
-      !       potential = potential + thegrid(i)%weight * f2/r12
-      !    enddo
-      !    pot(j) = 4.0_dp*pi*potential
-      !    if (mod(j, 1000) == 0) then
-      !       print *, j, '/', size(thegrid)
-      !    endif
-      ! enddo
+   call qsort(grid_r2)
 
-      ! print *, 'Writing V(r)'
-      ! open(unit=100, file='coulomb_potential.grid')
-      ! do i=1,size(thegrid)
-      !    write(100, *) thegrid(i)%r, pot(i)
-      ! enddo
-      ! close(100)
+   ! The Coulomb potential is radially symmetric (for now).
+   ! As such we need to evaluate it only once for every radius
 
-      ! print *, 'Evaluating CI'
-      ! integral = 0.0_dp
-      ! do i=1,size(thegrid)
-      !    norm = sqrt(sum((thegrid(i)%r)**2))
-      !    call interpolation(r1, y1, s1, norm, f1)
+   allocate(unique_r(ngrid))
+   unique_r = 0.0_dp
+   unique_r(1) = grid_r2(1)
+   nunique = 1
+   do i=2,size(grid_r2)
+      if (any( unique_r == grid_r2(i) )) cycle
+      nunique = nunique + 1
+      unique_r(nunique) = grid_r2(i)
+   enddo
 
-      !    integral = integral + thegrid(i)%weight * f1 * pot(i)
-      !    if (mod(i, 1000) == 0) then
-      !       print *, i, '/', size(thegrid)
-      !    endif
-      ! enddo
+   ! Evaluate the Coulomb potential at every unique r
+   allocate(a(nunique))
+   allocate(b(nunique))
+   allocate(G(nunique))
+   allocate(H(nunique))
+   a = unique_r**(-l-1)
+   b = unique_r**l
+   do i=1,nunique
+      
+   enddo
 
-      ! ! integral = 0
-      ! ! do i=1,size(thegrid) ! r2
-      ! !    potential = 0
-      ! !    do j=1,size(thegrid) ! r1
-      ! !       rnu1 = sqrt(sum(thegrid(i)%r**2))
-      ! !       rnu2 = sqrt(sum(thegrid(j)%r**2))
-      ! !       if (rnu1 .gt. rnu2) then
-      ! !          r12 = rnu1
-      ! !       else
-      ! !          r12 = rnu2
-      ! !       endif
-      ! !       norm = sqrt(sum((thegrid(j)%r+d12)**2))
-      ! !       call interpolation(r1, y1, s1, norm, f1)
-      ! !       f1 = f1/r12
+   ! do i=1,size(grid_w)
+   !    norm = sqrt(sum( grid_r(i, :)**2 ))
+   !    call interpolation(r1, y1, spline1, norm, f1(i))
 
-      ! !       potential = potential + thegrid(j)%weight * f1
-      ! !    enddo
+   !    norm = sqrt(sum( (grid_r(i, :) + d12 )**2 ))
+   !    call interpolation(r2, y2, spline2, norm, f2(i))
+   ! enddo
+   ! integral = sum(grid_w * f1*f2 )
 
-      ! !    norm = sqrt(sum((thegrid(j)%r)**2))
-      ! !    call interpolation(r2, y2, s2, norm, f2)
-      ! !    integral = integral + thegrid(i)%weight * potential * f2
-      ! !    if (mod(i, 1000) == 0) then
-      ! !       print *, integral
-      ! !       print *, i, '/', size(thegrid)            
-      ! !    endif
-      ! ! enddo
-      ! ! ! lebedev integration: 4pi * sum_leb
-      ! ! integral = 4.0_dp*pi*integral
+   deallocate(a)
+   deallocate(b)
+   deallocate(G)
+   deallocate(H)
 
-      ! deallocate(pot)
-      ! deallocate(thegrid) 
-   end subroutine coulomb_integral
+   deallocate(unique_r)
+
+   deallocate(grid_r)
+   deallocate(grid_w)
+   deallocate(grid_r2)
+
+end subroutine coulomb_integral
 
    subroutine read_nfun(fn, gridax, gridf)
       CHARACTER(len=*) :: fn
@@ -465,4 +446,38 @@ end subroutine kinetic_energy
          ! print *, 'Extrapolation!'
       endif
    end subroutine interpolation
+
+recursive subroutine qsort(arr)!, brr)
+   implicit none
+   ! Input
+   REAL(KIND=dp), DIMENSION(:) :: arr
+   ! REAL(KIND=dp), DIMENSION(:, :) :: brr
+   ! Local variables
+   INTEGER :: first, last, mid, i, j
+   ! REAL(KIND=dp), DIMENSION(3) :: temp_arr
+   REAL(KIND=dp) :: a, b, temp
+
+   first = 1
+   last = size(arr, 1)
+   a = arr( (first+last)/2 )
+   i = first
+   j = last
+
+   do
+      do while (arr(i) .lt. a)
+         i = i+1
+      enddo
+      do while (arr(j) .gt. a)
+         j = j-1
+      enddo
+      if (j .le. i) exit
+      temp = arr(i); arr(i) = arr(j); arr(j) = temp;
+      ! temp_arr = brr(i, :); brr(i, :) = brr(j, :); brr(j, :) = temp_arr;
+      i = i+1
+      j = j-1
+   enddo
+
+   if (first .lt. (i-1)) call qsort( arr(first:i-1))!, brr(first:i-1, :) )
+   if ((j+1) .lt. last) call qsort( arr(j+1:last))!, brr(j+1:last, :) )
+end subroutine qsort
 end module eddi
