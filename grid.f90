@@ -80,11 +80,11 @@ subroutine build_twocenter_grid(ileb, nshell, displacement, addr2, grid_r, grid_
 
    call radial_grid(r=radii1, &
                     wr=radii_w1, &
-                    n=nshell(1), addr2=.TRUE.)
+                    n=nshell(1), addr2=addr2)
 
    call radial_grid(r=radii2, &
                     wr=radii_w2, &
-                    n=nshell(2), addr2=.TRUE.)
+                    n=nshell(2), addr2=addr2)
 
    R = sqrt(sum(displacement**2))
 

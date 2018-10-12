@@ -258,7 +258,7 @@ subroutine coulomb_integral(nang, nshell, d12, r1, y1, r2, y2, s1, s2, integral)
    ! Local variables
    INTEGER :: i, j, l
    ! Local variables (potential)
-   INTEGER, PARAMETER :: coul_n = 10000
+   INTEGER, PARAMETER :: coul_n = 1000
    REAL(KIND=dp), DIMENSION(coul_n) :: f, gi, hi, G, H, coul_w
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: coul_r, pot, pots
 
@@ -300,8 +300,81 @@ subroutine coulomb_integral(nang, nshell, d12, r1, y1, r2, y2, s1, s2, integral)
    deallocate(coul_r)
    deallocate(pot)
    deallocate(pots)
-
 end subroutine coulomb_integral
+
+subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, integral)
+   implicit none
+   ! Input
+   INTEGER, DIMENSION(2), intent(in) :: nang, nshell
+   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, r2, y2, s1, s2
+   ! Output
+   REAL(KIND=dp) :: integral
+   ! Local variables
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
+   INTEGER, DIMENSION(2) :: ileb
+   INTEGER :: i, j, l, ngrid
+   ! Local variables (potential)
+
+
+   l = 0 ! Quantum number
+
+   ! 1: Evaluate the Coulomb potential on the two-center grid
+   ! ! the integral is purely radial => addr2=False
+   ileb(1) = get_number_of_lebedev_grid(n=nang(1))
+   ileb(2) = get_number_of_lebedev_grid(n=nang(2))
+
+   ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
+           lebedev_grid(ileb(2))%n * nshell(2)
+   allocate(grid_r(ngrid, 3))
+   allocate(grid_w(ngrid))
+
+   call build_twocenter_grid(ileb=ileb, nshell=nshell, displacement=d12, &
+                             addr2=.TRUE., grid_r=grid_r, grid_w=grid_w)
+
+   ! First we need all unique distances
+
+   deallocate(grid_r)
+   deallocate(grid_w)
+
+   ! allocate(coul_r(coul_n))
+   ! allocate(pot(coul_n))
+   ! allocate(pots(coul_n))
+   ! call radial_grid(r=coul_r, &
+   !                  wr=coul_w, &
+   !                  n=coul_n, addr2=.FALSE.)
+   ! coul_r = coul_r(coul_n:1:-1)
+   ! coul_w = coul_w(coul_n:1:-1)
+
+   ! do i=1,coul_n
+   !    call interpolation(r1, y1, s1, coul_r(i), f(i))
+   ! enddo
+   ! gi = coul_w * coul_r**(l+2) * f
+   ! hi = coul_w * coul_r**(1-l) * f
+
+   ! G(coul_n) = sum(gi)
+   ! H(coul_n) = 0.0_dp
+   ! do j=coul_n,1,-1
+   !    pot(j) = coul_r(j)**(-l-1) * G(j) + coul_r(j)**l * H(j)
+   !    G(j-1) = G(j) - gi(j)
+   !    H(j-1) = H(j) + hi(j)
+   ! enddo
+
+   ! pot = pot * 4.0_dp*pi/(2.0_dp*l+1.0_dp)
+   ! call spline(coul_r, pot, coul_n, 0.0_dp, 0.0_dp, pots)
+
+   ! ! 2: Calculate the overlap of y2(r-d12) and the coulomb potential
+   ! call integration_twocenter(nang=nang, nshell=nshell, d12=d12, &
+   !                            r1=coul_r, y1=pot, r2=r2, y2=y2,&
+   !                            spline1=pots, spline2=s2, integral=integral)
+
+   ! deallocate(coul_r)
+   ! deallocate(pot)
+   ! deallocate(pots)
+
+end subroutine coulomb_integral_grid
+
 
    subroutine read_nfun(fn, gridax, gridf)
       CHARACTER(len=*) :: fn

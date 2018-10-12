@@ -3,9 +3,9 @@ USE lebedev, ONLY: dp
 USE eddi, ONLY: type_atom, integration_twocenter, &
                 read_nfun, pi, interpolation, spline, &
                 integration_threecenter, kinetic_energy, &
-                integration_onecenter, coulomb_integral, &
+                integration_onecenter, coulomb_integral, coulomb_integral_grid, &
                 radial_integration
-USE grid, ONLY: grid_parameters
+USE grid, ONLY: grid_parameters, radial_grid
 USE nao_unit, ONLY: test_onecenter, test_twocenter, test_threecenter, test_kinetic
 implicit none
 
@@ -21,7 +21,7 @@ REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r1, r2, y1, y2, r3, y3,&
 
 ! Temp variables
 REAL(KIND=dp), DIMENSION(500) :: d12_range
-INTEGER :: i
+INTEGER :: i, ngrid
 
 
 ! call test_onecenter(ntests=100, loud=.FALSE.)
@@ -41,10 +41,26 @@ atoms(3)%z = 1
 d12 = atoms(2)%r - atoms(1)%r
 d13 = atoms(3)%r - atoms(1)%r
 
-call read_nfun(fn1, r1, y1)
+ngrid = 10000
+allocate(r1(ngrid))
+allocate(y1(ngrid))
+allocate(spline1(ngrid))
+allocate(r2(ngrid))
+allocate(y2(ngrid))
+allocate(spline2(ngrid))
+
+call radial_grid(r=r1, wr=spline1, n=ngrid, addr2=.FALSE.)
+r1 = r1(ngrid:1:-1)
+r2 = r1
+
+! call read_nfun(fn1, r1, y1)
+y1 = exp(-r1**2.0_dp)
 call spline(r1, y1, size(r1), 0.0_dp, 0.0_dp, spline1)
-call read_nfun(fn2, r2, y2)
+
+! call read_nfun(fn2, r2, y2)
+y2 = exp(-r2**2.0_dp)
 call spline(r2, y2, size(r2), 0.0_dp, 0.0_dp, spline2)
+
 call read_nfun(fn2, r3, y3)
 call spline(r3, y3, size(r3), 0.0_dp, 0.0_dp, spline3)
 
@@ -62,17 +78,28 @@ print *, REPEAT('-', 30) // '! Coulomb integral !' // REPEAT('-', 30)
 nang = (/ 590, 590 /)
 nshell = (/ 1000, 1000 /)
 
-d12_range = [ (0.1_dp*REAL(i, dp) , i=1,500) ]
+d12_range = [ (0.25_dp*REAL(i, dp) , i=1,500) ]
 open(unit=100, file='coulomb_integral')
-do i=1,500
+do i=1,30
    d12 = (/ d12_range(i), 0._dp, 0._dp /)
    call coulomb_integral(nang=nang, nshell=nshell, d12=d12, r1=r1, y1=y1, r2=r2, &
                          y2=y2, s1=spline1, s2=spline2, integral=integral)
+   print *, d12_range(i), integral
+   call coulomb_integral_grid(nang=nang, nshell=nshell, d12=d12, r1=r1, y1=y1, r2=r2, &
+                              y2=y2, s1=spline1, s2=spline2, integral=integral)
+   print *, d12_range(i), integral
    write(100, *) d12_range(i), integral
 enddo
 close(100)
 
 deallocate(nang)
 deallocate(nshell)
+
+deallocate(r1)
+deallocate(y1)
+deallocate(spline1)
+deallocate(r2)
+deallocate(y1)
+deallocate(spline2)
 
 end program hallo
