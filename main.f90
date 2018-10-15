@@ -27,8 +27,8 @@ INTEGER :: i, ngrid
 ! call test_onecenter(ntests=100, loud=.FALSE.)
 ! call test_twocenter(ntests=100, loud=.FALSE.)
 ! call test_threecenter(ntests=50 , loud=.FALSE.)
-! call test_kinetic(ntests=100, loud=.FALSE.)
-! return
+call test_kinetic(ntests=100, loud=.FALSE.)
+return
 
 ! Build parameters
 atoms(1)%r = (/ 0.0_dp, 0.0_dp, 0.0_dp /)
@@ -70,17 +70,16 @@ allocate(nshell(2))
 call grid_parameters(atoms(1)%z, nang(1), nshell(1))
 call grid_parameters(atoms(2)%z, nang(2), nshell(2))
 
-
 ! Coulomb integral
 integral = 1e6
 print *, REPEAT('-', 30) // '! Coulomb integral !' // REPEAT('-', 30)
 
-nang = (/ 590, 590 /)
-nshell = (/ 1000, 1000 /)
+nang = (/ 1, 1 /)
+nshell = (/ 5, 5 /)
 
 d12_range = [ (0.25_dp*REAL(i, dp) , i=1,500) ]
 open(unit=100, file='coulomb_integral')
-do i=1,30
+do i=1,1
    d12 = (/ d12_range(i), 0._dp, 0._dp /)
    call coulomb_integral(nang=nang, nshell=nshell, d12=d12, r1=r1, y1=y1, r2=r2, &
                          y2=y2, s1=spline1, s2=spline2, integral=integral)
@@ -88,6 +87,7 @@ do i=1,30
    call coulomb_integral_grid(nang=nang, nshell=nshell, d12=d12, r1=r1, y1=y1, r2=r2, &
                               y2=y2, s1=spline1, s2=spline2, integral=integral)
    print *, d12_range(i), integral
+   return
    write(100, *) d12_range(i), integral
 enddo
 close(100)
@@ -99,7 +99,7 @@ deallocate(r1)
 deallocate(y1)
 deallocate(spline1)
 deallocate(r2)
-deallocate(y1)
+deallocate(y2)
 deallocate(spline2)
 
 end program hallo

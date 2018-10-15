@@ -69,13 +69,14 @@ subroutine test_twocenter(ntests, loud)
    LOGICAL :: loud
    REAL(KIND=dp), DIMENSION(ntests) :: errors
    REAL(KIND=dp) :: integral, ri, err
-   REAL(KIND=dp), DIMENSION(2) :: rand2
+   REAL(KIND=dp), DIMENSION(2) :: rand2, nshell_rand
    REAL(KIND=dp), DIMENSION(3) :: rand_pos
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, y1, y2, spline1, spline2, wr
+   INTEGER, DIMENSION(2) :: nshell
    INTEGER :: j, ntests, ngrid
 
    print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
-   ngrid = 10000
+   ngrid = 5000
 
    ! Prepare the grid
    allocate(r(ngrid))
@@ -83,6 +84,7 @@ subroutine test_twocenter(ntests, loud)
    allocate(y1(ngrid))
    allocate(y2(ngrid))
 
+   ! Discard wr
    call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE.)
    r = r(ngrid:1:-1)
 
@@ -92,14 +94,18 @@ subroutine test_twocenter(ntests, loud)
       rand2 = rand2 * 5.0_dp + 0.5_dp
       ! Displacement
       CALL RANDOM_NUMBER(rand_pos)
-      rand_pos = rand_pos * sqrt(3.0_dp)
+      rand_pos = rand_pos * sqrt(5.0_dp)
+      ! nshell
+      CALL RANDOM_NUMBER(nshell_rand)
+      nshell = 100 + INT(50 * nshell_rand)
+      ! nshell = (/ 100, 100 /)
 
       y1 = exp(-rand2(1) * r**2 )
       y2 = exp(-rand2(2) * r**2 )
       call spline(r, y1, size(r), 0.0_dp, 0.0_dp, spline1)
       call spline(r, y2, size(r), 0.0_dp, 0.0_dp, spline2)
 
-      call integration_twocenter(nang=(/590, 590/), nshell=(/75, 75/), d12=rand_pos, &
+      call integration_twocenter(nang=(/590, 590/), nshell=nshell, d12=rand_pos, &
                                  r1=r, y1=y1, r2=r, y2=y2,&
                                  spline1=spline1, spline2=spline2, integral=integral)
 

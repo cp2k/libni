@@ -96,7 +96,7 @@ subroutine build_twocenter_grid(ileb, nshell, displacement, addr2, grid_r, grid_
       ! the coordinates do not change, since we use `displacement` later on
       ! when evaluating the function(r)
       do j=1,nshell(1)
-         grid_r(lower+j-1,:) = radii1(j) * lebedev_grid(ileb(1))%r(:, i)
+         grid_r(lower+j-1, :) = radii1(j) * lebedev_grid(ileb(1))%r(:, i)
       enddo
 
       grid_w(lower:upper) = 4.0_dp*pi * radii_w1 * lebedev_grid(ileb(1))%w(i)
@@ -118,18 +118,24 @@ subroutine build_twocenter_grid(ileb, nshell, displacement, addr2, grid_r, grid_
    enddo
 
    ! nuclear partition   
-   do i=1,size(grid_w)
+   do i=1,offset
       r1 = sqrt(sum( grid_r(i, :)**2 ))
       r2 = sqrt(sum( (grid_r(i, :) - displacement)**2 ))
       mu = (r1-r2)/R
       s1 = s3(mu)
       s2 = s3(-mu)
 
-      if (i .lt. (lebedev_grid(ileb(1))%n*nshell(1)+1)) then
-         grid_w(i) = grid_w(i) * s1/(s1+s2)
-      else
-         grid_w(i) = grid_w(i) * s2/(s1+s2)
-      endif
+      grid_w(i) = grid_w(i) * s1/(s1+s2)
+   enddo
+
+   do i=1+offset,size(grid_w)
+      r1 = sqrt(sum( (grid_r(i, :) + displacement)**2 ))
+      r2 = sqrt(sum( grid_r(i, :)**2 ))
+      mu = (r1-r2)/R
+      s1 = s3(mu)
+      s2 = s3(-mu)
+      
+      grid_w(i) = grid_w(i) * s2/(s1+s2)
    enddo
 end subroutine build_twocenter_grid
 
