@@ -122,22 +122,14 @@ subroutine integration_twocenter(nang, nshell, d12, r1, y1, r2, y2, &
    allocate(f1(ngrid))
    allocate(f2(ngrid))
 
-   call build_twocenter_grid(ileb=ileb, nshell=nshell, displacement=d12, &
+   call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
                              addr2=.TRUE., grid_r=grid_r, grid_w=grid_w)
 
-   do i=1,lebedev_grid(ileb(1))%n * nshell(1)
+   do i=1,ngrid
       norm = sqrt(sum( grid_r(i, :)**2 ))
       call interpolation(r1, y1, spline1, norm, f1(i))
 
       norm = sqrt(sum( (grid_r(i, :) - d12 )**2 ))
-      call interpolation(r2, y2, spline2, norm, f2(i))
-   enddo
-
-   do i=1+lebedev_grid(ileb(1))%n * nshell(1),ngrid
-      norm = sqrt(sum( (grid_r(i, :) + d12 )**2 ))
-      call interpolation(r1, y1, spline1, norm, f1(i))
-
-      norm = sqrt(sum( grid_r(i, :)**2 ))
       call interpolation(r2, y2, spline2, norm, f2(i))
    enddo
 
@@ -342,7 +334,7 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    allocate(grid_r(ngrid, 3))
    allocate(grid_w(ngrid))
 
-   call build_twocenter_grid(ileb=ileb, nshell=nshell, displacement=d12, &
+   call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
                              addr2=.TRUE., grid_r=grid_r, grid_w=grid_w)
 
    ! First we need all unique distances

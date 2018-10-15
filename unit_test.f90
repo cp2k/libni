@@ -76,7 +76,7 @@ subroutine test_twocenter(ntests, loud)
    INTEGER :: j, ntests, ngrid
 
    print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
-   ngrid = 5000
+   ngrid = 10000
 
    ! Prepare the grid
    allocate(r(ngrid))
@@ -97,7 +97,7 @@ subroutine test_twocenter(ntests, loud)
       rand_pos = rand_pos * sqrt(5.0_dp)
       ! nshell
       CALL RANDOM_NUMBER(nshell_rand)
-      nshell = 100 + INT(50 * nshell_rand)
+      nshell = 100 !+ INT(50 * nshell_rand)
       ! nshell = (/ 100, 100 /)
 
       y1 = exp(-rand2(1) * r**2 )

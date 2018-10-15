@@ -24,8 +24,8 @@ REAL(KIND=dp), DIMENSION(500) :: d12_range
 INTEGER :: i, ngrid
 
 
-! call test_onecenter(ntests=100, loud=.FALSE.)
-! call test_twocenter(ntests=100, loud=.FALSE.)
+call test_onecenter(ntests=100, loud=.FALSE.)
+call test_twocenter(ntests=100, loud=.FALSE.)
 ! call test_threecenter(ntests=50 , loud=.FALSE.)
 call test_kinetic(ntests=100, loud=.FALSE.)
 return
