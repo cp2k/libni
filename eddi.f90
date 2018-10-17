@@ -126,6 +126,7 @@ subroutine integration_twocenter(nang, nshell, d12, r1, y1, r2, y2, &
                              addr2=.TRUE., grid_r=grid_r, grid_w=grid_w)
 
    do i=1,ngrid
+      if (grid_w(i) .eq. 0.0_dp) cycle         
       norm = sqrt(sum( grid_r(i, :)**2 ))
       call interpolation(r1, y1, spline1, norm, f1(i))
 
@@ -178,14 +179,14 @@ subroutine integration_threecenter(nang, nshell, d12, d13, &
    call build_threecenter_grid(ileb=ileb, nshell=nshell, d12=d12, d13=d13, &
                                addr2=.TRUE., grid_r=grid_r, grid_w=grid_w)
 
-   do i=1,size(grid_w)
+   do i=1,ngrid
       norm = sqrt(sum( grid_r(i, :)**2 ))
       call interpolation(r1, y1, spline1, norm, f1(i))
 
-      norm = sqrt(sum( (grid_r(i, :) + d12 )**2 ))
+      norm = sqrt(sum( (grid_r(i, :) - d12 )**2 ))
       call interpolation(r2, y2, spline2, norm, f2(i))
 
-      norm = sqrt(sum( (grid_r(i, :) + d13 )**2 ))
+      norm = sqrt(sum( (grid_r(i, :) - d13 )**2 ))
       call interpolation(r3, y3, spline3, norm, f3(i))
    enddo
    integral = sum(grid_w * f1*f2*f3 )
@@ -234,7 +235,7 @@ subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
    d2rf2 = d2rf2/r2
    ! Laplace = 1/r * d_r^2(r*f2) ✓
 
-   do i=1,size(grid_w)
+   do i=1,ngrid
       norm = sqrt(sum( grid_r(i, :)**2 ))
       call interpolation(r1, y1, spline1, norm, f1(i))
       call interpolation(r2, d2rf2, d2rf2_spline, norm, f2(i))
@@ -248,10 +249,11 @@ subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
    deallocate(f2)
 end subroutine kinetic_energy
 
-subroutine coulomb_integral(nang, nshell, d12, r1, y1, r2, y2, s1, s2, integral)
+subroutine coulomb_integral(nang, nshell, coul_n, d12, r1, y1, r2, y2, s1, s2, integral)
    implicit none
    ! Input
    INTEGER, DIMENSION(2), intent(in) :: nang, nshell
+   INTEGER, intent(in) :: coul_n
    REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, r2, y2, s1, s2
    ! Output
@@ -259,7 +261,6 @@ subroutine coulomb_integral(nang, nshell, d12, r1, y1, r2, y2, s1, s2, integral)
    ! Local variables
    INTEGER :: i, j, l
    ! Local variables (potential)
-   INTEGER, PARAMETER :: coul_n = 1000
    REAL(KIND=dp), DIMENSION(coul_n) :: f, gi, hi, G, H, coul_w
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: coul_r, pot, pots
 
@@ -273,6 +274,7 @@ subroutine coulomb_integral(nang, nshell, d12, r1, y1, r2, y2, s1, s2, integral)
    call radial_grid(r=coul_r, &
                     wr=coul_w, &
                     n=coul_n, addr2=.FALSE.)
+
    coul_r = coul_r(coul_n:1:-1)
    coul_w = coul_w(coul_n:1:-1)
 
@@ -318,14 +320,13 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    INTEGER, DIMENSION(2) :: ileb
    INTEGER :: i, j, idx, l, ngrid
    ! Local variables (potential)
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: coul_r, grid_r2, pot, f1, f2
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: coul_r, coul_w, grid_r2, pot, f1, f2
    REAL(KIND=dp) :: temp
    INTEGER :: coul_n 
 
    l = 0 ! Quantum number
 
    ! 1: Evaluate the Coulomb potential on the two-center grid
-   ! ! the integral is purely radial => addr2=False
    ileb(1) = get_number_of_lebedev_grid(n=nang(1))
    ileb(2) = get_number_of_lebedev_grid(n=nang(2))
 
@@ -334,19 +335,22 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    allocate(grid_r(ngrid, 3))
    allocate(grid_w(ngrid))
 
+   ! TODO
+   ! When integrating f1 - retrieving the coulomb potential - the radial weights
+   ! need to be included in order to get the right potential. After that the
+   ! regular weights are used for the overlap integral
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.TRUE., grid_r=grid_r, grid_w=grid_w)
+                             addr2=.FALSE., grid_r=grid_r, grid_w=grid_w)
 
    ! First we need all unique distances
+   !! together with the weights
    allocate(coul_r(ngrid))
+   allocate(coul_w(ngrid))
    allocate(grid_r2(ngrid))
-   do i=1,lebedev_grid(ileb(1))%n * nshell(1)
+   do i=1,ngrid
       grid_r2(i) = sqrt(sum(grid_r(i, :)**2))
    enddo
-   do i=lebedev_grid(ileb(1))%n * nshell(1)+1,ngrid
-      grid_r2(i) = sqrt(sum((grid_r(i, :)+d12)**2))
-   enddo
-   call qsort(grid_r2)
+   call qsort_sim2(grid_r2, grid_w)
 
    coul_n = 0
    do i=1,ngrid
@@ -354,6 +358,7 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
       coul_n = coul_n + 1
       temp = grid_r2(i)
       coul_r(coul_n) = temp
+      coul_w(coul_n) = grid_w(i)
    enddo
 
    ! Next we evaluate the coulomb potential and spline at those distances
@@ -367,8 +372,8 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    do i=1,coul_n
       call interpolation(r1, y1, s1, coul_r(i), f(i))
    enddo
-   gi = coul_r**(l+2) * f !coul_w * 
-   hi = coul_r**(1-l) * f !coul_w * 
+   gi = coul_r**(l+2) * f * coul_w
+   hi = coul_r**(1-l) * f * coul_w
 
    G(coul_n) = sum(gi)
    H(coul_n) = 0.0_dp
@@ -391,18 +396,19 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    do i=1,ngrid
       ! evaluate the potential
       norm = sqrt(sum( grid_r(i, :)**2 ))
+      ! Look for 
       do j=1,coul_n
          f1(i) = j
-         if ( norm==coul_r(j) ) then
+         if ( norm .eq. coul_r(j) ) then
             f1(i) = pot(j)
             exit
          endif
       enddo
-      if (f1(i) == j) then
+      if (f1(i) .eq. j) then
          print *, 'oh noes', i, j
       endif
       ! evaluate y2 at the same point
-      norm = sqrt(sum( (grid_r(i, :) + d12 )**2 ))
+      norm = sqrt(sum( (grid_r(i, :) - d12 )**2 ))
       call interpolation(r2, y2, s2, norm, f2(i))
    enddo
 
@@ -413,6 +419,7 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    deallocate(pot)
    deallocate(grid_r2)
    deallocate(coul_r)
+   deallocate(coul_w)
    deallocate(grid_r)
    deallocate(grid_w)
 end subroutine coulomb_integral_grid
@@ -562,4 +569,37 @@ recursive subroutine qsort(arr)!, brr)
    if (first .lt. (i-1)) call qsort( arr(first:i-1))!, brr(first:i-1, :) )
    if ((j+1) .lt. last) call qsort( arr(j+1:last))!, brr(j+1:last, :) )
 end subroutine qsort
+
+recursive subroutine qsort_sim2(arr, brr)
+   implicit none
+   ! Input
+   REAL(KIND=dp), DIMENSION(:) :: arr
+   REAL(KIND=dp), DIMENSION(:) :: brr
+   ! Local variables
+   INTEGER :: first, last, mid, i, j
+   REAL(KIND=dp) :: a, b, temp
+
+   first = 1
+   last = size(arr, 1)
+   a = arr( (first+last)/2 )
+   i = first
+   j = last
+
+   do
+      do while (arr(i) .lt. a)
+         i = i+1
+      enddo
+      do while (arr(j) .gt. a)
+         j = j-1
+      enddo
+      if (j .le. i) exit
+      temp = arr(i); arr(i) = arr(j); arr(j) = temp;
+      temp = brr(i); brr(i) = brr(j); brr(j) = temp;
+      i = i+1
+      j = j-1
+   enddo
+
+   if (first .lt. (i-1)) call qsort_sim2( arr(first:i-1), brr(first:i-1) )
+   if ((j+1) .lt. last) call qsort_sim2( arr(j+1:last), brr(j+1:last) )
+end subroutine qsort_sim2
 end module eddi
