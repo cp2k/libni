@@ -29,7 +29,7 @@ subroutine radial_grid(r, wr, n, addr2)
       r(i) = (1.0_dp+x)/(1.0_dp-x)
       wr(i) = alpha*2.0_dp*SIN(t)/(1.0_dp-x)**2
    enddo
-   if (present(addr2)) then
+   if (present(addr2) .and. (addr2 .eqv. .true.)) then
       ! dxdydz = dr r^2 dcos(theta) dphi
       wr = wr * r**2
    endif
@@ -63,11 +63,11 @@ subroutine build_onecenter_grid(ileb, nshell, addr2, grid_r, grid_w)
 end subroutine build_onecenter_grid
 
 
-subroutine build_twocenter_grid(ileb, nshell, displacement, addr2, grid_r, grid_w)
+subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w)
    implicit none
    ! Input
    INTEGER, DIMENSION(2), intent(in) :: ileb, nshell
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: displacement
+   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
    LOGICAL, OPTIONAL, intent(in) :: addr2
    ! Output
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
@@ -78,6 +78,13 @@ subroutine build_twocenter_grid(ileb, nshell, displacement, addr2, grid_r, grid_
    INTEGER :: i, j, lower, upper, offset
    REAL(KIND=dp) :: R, r1, r2, mu, s1, s2
 
+   R = sqrt(sum(d12**2))
+   if (R .eq. 0.0_dp) then
+      call build_onecenter_grid(ileb=ileb(1), nshell=nshell(1), addr2=addr2,&
+                                grid_r=grid_r, grid_w=grid_w)
+      return
+   endif
+
    call radial_grid(r=radii1, &
                     wr=radii_w1, &
                     n=nshell(1), addr2=addr2)
@@ -86,15 +93,11 @@ subroutine build_twocenter_grid(ileb, nshell, displacement, addr2, grid_r, grid_
                     wr=radii_w2, &
                     n=nshell(2), addr2=addr2)
 
-   R = sqrt(sum(displacement**2))
-
    do i=1, lebedev_grid(ileb(1))%n
       ! lower:upper is the slice belonging to this angular point/ direction
       lower = 1+(i-1)*nshell(1)
       upper = i*nshell(1)
 
-      ! the coordinates do not change, since we use `displacement` later on
-      ! when evaluating the function(r)
       do j=1,nshell(1)
          grid_r(lower+j-1, :) = radii1(j) * lebedev_grid(ileb(1))%r(:, i)
       enddo
@@ -108,19 +111,21 @@ subroutine build_twocenter_grid(ileb, nshell, displacement, addr2, grid_r, grid_
       lower = offset + 1+(i-1)*nshell(2)
       upper = offset + i*nshell(2)
 
-      ! the coordinates do not change, since we use `displacement` later on
-      ! when evaluating the function(r)
+      ! The second batch of grid points is displaced by `d12`
       do j=1,nshell(2)
-         grid_r(lower+j-1,:) = radii2(j) * lebedev_grid(ileb(2))%r(:, i)
+         grid_r(lower+j-1,:) = radii2(j) * lebedev_grid(ileb(2))%r(:, i) + d12
       enddo
 
       grid_w(lower:upper) = 4.0_dp*pi * radii_w2 * lebedev_grid(ileb(2))%w(i)
    enddo
 
-   ! nuclear partition   
+   ! nuclear partition
+   !! A = 0, B = d12
+   !! r1 is the distance A -> grid_r = grid_r-0 = grid_r
+   !! r2 is the distance B -> grid_r = grid_r-d12
    do i=1,offset
       r1 = sqrt(sum( grid_r(i, :)**2 ))
-      r2 = sqrt(sum( (grid_r(i, :) - displacement)**2 ))
+      r2 = sqrt(sum( (grid_r(i, :) - d12)**2 ))
       mu = (r1-r2)/R
       s1 = s3(mu)
       s2 = s3(-mu)
@@ -129,8 +134,8 @@ subroutine build_twocenter_grid(ileb, nshell, displacement, addr2, grid_r, grid_
    enddo
 
    do i=1+offset,size(grid_w)
-      r1 = sqrt(sum( (grid_r(i, :) + displacement)**2 ))
-      r2 = sqrt(sum( grid_r(i, :)**2 ))
+      r1 = sqrt(sum( grid_r(i, :)**2 ))
+      r2 = sqrt(sum( (grid_r(i, :) - d12)**2 ))
       mu = (r1-r2)/R
       s1 = s3(mu)
       s2 = s3(-mu)
@@ -174,18 +179,12 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid_r, grid_w)
    R13 = sqrt(sum(d13**2))
    R23 = sqrt(sum((d13-d12)**2))
 
-   ! Let's us jump to the right index in grid_r, grid_w
-   off1 = lebedev_grid(ileb(1))%n * nshell(1)+1
-   off2 = off1 + lebedev_grid(ileb(2))%n * nshell(2)
-
    ! Center 1
    do i=1, lebedev_grid(ileb(1))%n
       ! lower:upper is the slice belonging to this angular point/ direction
       lower = 1+(i-1)*nshell(1)
       upper = i*nshell(1)
 
-      ! the coordinates do not change, since we use `displacement` later on
-      ! when evaluating the function(r)
       do j=1,nshell(1)
           grid_r(lower+j-1,:) = radii1(j) * lebedev_grid(ileb(1))%r(:, i)
       enddo
@@ -200,10 +199,8 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid_r, grid_w)
       lower = offset + 1+(i-1)*nshell(2)
       upper = offset + i*nshell(2)
 
-      ! the coordinates do not change, since we use `displacement` later on
-      ! when evaluating the function(r)
       do j=1,nshell(2)
-          grid_r(lower+j-1,:) = radii2(j) * lebedev_grid(ileb(2))%r(:, i)
+          grid_r(lower+j-1,:) = radii2(j) * lebedev_grid(ileb(2))%r(:, i) + d12
       enddo
 
       grid_w(lower:upper) = 4.0_dp*pi * radii_w2 * lebedev_grid(ileb(2))%w(i)
@@ -216,16 +213,22 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid_r, grid_w)
       lower = offset + 1+(i-1)*nshell(3)
       upper = offset + i*nshell(3)
 
-      ! the coordinates do not change, since we use `displacement` later on
-      ! when evaluating the function(r)
       do j=1,nshell(3)
-          grid_r(lower+j-1,:) = radii3(j) * lebedev_grid(ileb(3))%r(:, i)
+          grid_r(lower+j-1,:) = radii3(j) * lebedev_grid(ileb(3))%r(:, i) + d13
       enddo
 
       grid_w(lower:upper) = 4.0_dp*pi * radii_w3 * lebedev_grid(ileb(3))%w(i)
    enddo
 
    ! nuclear partition
+   !! A = 0, B = d12, C = d13
+   !! r1 is the distance A -> grid_r = grid_r-0 = grid_r
+   !! r2 is the distance B -> grid_r = grid_r-d12
+   !! r3 is the distance C -> grid_r = grid_r-d13
+
+   ! Lets us jump to the right index in grid_r, grid_w
+   off1 = lebedev_grid(ileb(1))%n * nshell(1)+1
+   off2 = off1 + lebedev_grid(ileb(2))%n * nshell(2)
    do i=1,size(grid_w)
       r1 = sqrt(sum( grid_r(i, :)**2 ))
       r2 = sqrt(sum( (grid_r(i, :) - d12)**2 ))
@@ -284,8 +287,8 @@ end subroutine build_threecenter_grid
    function s3(mu)
       implicit none
       REAL(KIND=dp) :: mu, s3
-      ! s3 = 0.5_dp*(1-h(h(h(mu))))
-      s3 = 0.5_dp*(1-z(mu))
+      s3 = 0.5_dp*(1 - h(h(h(mu))) )
+      ! s3 = 0.5_dp*(1-z(mu))
    end function s3
 
    subroutine grid_parameters(atom, nleb, nshell)
