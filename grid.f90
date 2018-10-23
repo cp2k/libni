@@ -13,32 +13,47 @@ module grid
 contains
 
 ! Writes a radial grid of size N into r and the weights in to wr
-subroutine radial_grid(r, wr, n, addr2)
+subroutine radial_grid(r, wr, n, addr2, quadr)
    implicit none
+   ! Input
    INTEGER, intent(in) :: n
    LOGICAL, OPTIONAL, intent(in) :: addr2
+   !! 1: Gauss-Chebyshev
+   !! 2: Gauss-Hermite
+   INTEGER, intent(in) :: quadr
+   ! Output
    REAL(KIND=dp), DIMENSION(:) :: r, wr
+   ! Local variables
    INTEGER :: i
    REAL(KIND=dp) :: alpha, t, x
+   REAL(KIND=dp), DIMENSION(n) :: her_r, her_wr
 
    alpha = pi/REAL(n+1, dp)
-   do i=1,n
-      ! COORDINATE
-      t = REAL(i, dp)*alpha
-      x = COS(t)
-      r(i) = (1.0_dp+x)/(1.0_dp-x)
-      wr(i) = alpha*2.0_dp*SIN(t)/(1.0_dp-x)**2
-   enddo
+   if (quadr .eq. 1) then
+      do i=1,n
+         t = REAL(i, dp)*alpha
+         x = COS(t)
+         r(i) = (1.0_dp+x)/(1.0_dp-x)
+         wr(i) = alpha*2.0_dp*SIN(t)/(1.0_dp-x)**2
+      enddo
+   else if (quadr .eq. 2) then
+      call gauher(r=her_r, wr=her_wr, n=n)
+      r = EXP(her_r)
+      wr = her_wr * r
+   else
+      stop 'quadr'
+   endif
+
    if (present(addr2) .and. (addr2 .eqv. .true.)) then
       ! dxdydz = dr r^2 dcos(theta) dphi
       wr = wr * r**2
    endif
 end subroutine radial_grid
 
-subroutine build_onecenter_grid(ileb, nshell, addr2, grid_r, grid_w)
+subroutine build_onecenter_grid(ileb, nshell, addr2, quadr, grid_r, grid_w)
    implicit none
    ! Input
-   INTEGER, intent(in) :: ileb, nshell
+   INTEGER, intent(in) :: ileb, nshell, quadr
    LOGICAL, OPTIONAL, intent(in) :: addr2
    ! Output
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
@@ -46,10 +61,9 @@ subroutine build_onecenter_grid(ileb, nshell, addr2, grid_r, grid_w)
    ! Local variables
    INTEGER :: i, j, lower, upper
    REAL(KIND=dp), DIMENSION(nshell) :: radii, radii_w
-
    call radial_grid(r=radii, &
                     wr=radii_w, &
-                    n=nshell, addr2=.TRUE.)
+                    n=nshell, addr2=.TRUE., quadr=quadr)
 
    do i=1, lebedev_grid(ileb)%n
       lower = 1+(i-1)*nshell
@@ -81,17 +95,17 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w)
    R = sqrt(sum(d12**2))
    if (R .eq. 0.0_dp) then
       call build_onecenter_grid(ileb=ileb(1), nshell=nshell(1), addr2=addr2,&
-                                grid_r=grid_r, grid_w=grid_w)
+                                grid_r=grid_r, grid_w=grid_w, quadr=1)
       return
    endif
 
    call radial_grid(r=radii1, &
                     wr=radii_w1, &
-                    n=nshell(1), addr2=addr2)
+                    n=nshell(1), addr2=addr2, quadr=1)
 
    call radial_grid(r=radii2, &
                     wr=radii_w2, &
-                    n=nshell(2), addr2=addr2)
+                    n=nshell(2), addr2=addr2, quadr=1)
 
    do i=1, lebedev_grid(ileb(1))%n
       ! lower:upper is the slice belonging to this angular point/ direction
@@ -130,7 +144,9 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w)
       s1 = s3(mu)
       s2 = s3(-mu)
 
-      grid_w(i) = grid_w(i) * s1/(s1+s2)
+      if (s1+s2 .ne. 1.0_dp) stop 'Two-center nuclear partition'
+
+      grid_w(i) = grid_w(i) * s1!/(s1+s2)
    enddo
 
    do i=1+offset,size(grid_w)
@@ -139,8 +155,10 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w)
       mu = (r1-r2)/R
       s1 = s3(mu)
       s2 = s3(-mu)
+
+      if (s1+s2 .ne. 1.0_dp) stop 'Two-center nuclear partition'
       
-      grid_w(i) = grid_w(i) * s2/(s1+s2)
+      grid_w(i) = grid_w(i) * s2!/(s1+s2)
    enddo
 end subroutine build_twocenter_grid
 
@@ -165,15 +183,15 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid_r, grid_w)
 
    call radial_grid(r=radii1, &
                     wr=radii_w1, &
-                    n=nshell(1), addr2=.TRUE.)
+                    n=nshell(1), addr2=.TRUE., quadr=1)
 
    call radial_grid(r=radii2, &
                     wr=radii_w2, &
-                    n=nshell(2), addr2=.TRUE.)
+                    n=nshell(2), addr2=.TRUE., quadr=1)
 
    call radial_grid(r=radii3, &
                     wr=radii_w3, &
-                    n=nshell(3), addr2=.TRUE.)
+                    n=nshell(3), addr2=.TRUE., quadr=1)
 
    R12 = sqrt(sum(d12**2))
    R13 = sqrt(sum(d13**2))
@@ -227,44 +245,84 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid_r, grid_w)
    !! r3 is the distance C -> grid_r = grid_r-d13
 
    ! Lets us jump to the right index in grid_r, grid_w
-   off1 = lebedev_grid(ileb(1))%n * nshell(1)+1
+   off1 = lebedev_grid(ileb(1))%n * nshell(1)
    off2 = off1 + lebedev_grid(ileb(2))%n * nshell(2)
-   do i=1,size(grid_w)
+   do i=1,off1
       r1 = sqrt(sum( grid_r(i, :)**2 ))
       r2 = sqrt(sum( (grid_r(i, :) - d12)**2 ))
       r3 = sqrt(sum( (grid_r(i, :) - d13)**2 ))
 
-      mu12 = (r1-r2)/R12
-      mu13 = (r1-r3)/R13
-      mu23 = (r2-r3)/R23
+      mu12 = (r1-r2)/R12; mu13 = (r1-r3)/R13; mu23 = (r2-r3)/R23
 
-      s12 = 1.0_dp-z(mu12)
-      s21 = 1.0_dp+z(mu12)
-      s13 = 1.0_dp-z(mu13)
-      s31 = 1.0_dp+z(mu13)
-      s32 = 1.0_dp+z(mu23)
-      s23 = 1.0_dp-z(mu23)
+      s12 = s3(mu12)
+      s21 = s3(-mu12)
+      s13 = s3(mu13)
+      s31 = s3(-mu13)
+      s32 = s3(-mu23)
+      s23 = s3(mu23)
 
-      tP1 = s12*s13
-      tP2 = s21*s23
-      tP3 = s31*s32
-
+      tP1 = s12*s13; tP2 = s21*s23; tP3 = s31*s32
       sP = tP1+tP2+tP3
+      p1 = tP1/sP; p2 = tP2/sP; p3 = tP3/sP
 
-      p1 = tP1/sP
-      p2 = tP2/sP
-      p3 = tP3/sP
+      grid_w(i) = grid_w(i) * p1
 
-      if (i .lt. off1) then
-         grid_w(i) = grid_w(i) * p1
-      else if ((i .gt. (off1-1)) .and. (i .lt. off2) ) then
-         grid_w(i) = grid_w(i) * p2
-      else if (i .gt. (off2-1)) then
-         grid_w(i) = grid_w(i) * p3
-      else
-         print *, i, '/', size(grid_w)
-         stop 'Whoopsie'
-      endif 
+      if (abs(mu12).gt.1.0_dp .or. abs(mu13).gt.1.0_dp .or. abs(mu23).gt.1.0_dp) then
+         stop 'Nuclear partition - Three-center'
+      endif
+      ! if (abs(sP-1.0_dp) .gt. 0.1_dp) then
+      !    print *, i
+      !    print *, s3(-1.0_dp), s3(0.0_dp), s3(1.0_dp)
+      !    print *, sP, grid_w(i), grid_r(i, :)
+      ! endif
+   enddo
+
+   do i=off1+1,off2
+      r1 = sqrt(sum( grid_r(i, :)**2 ))
+      r2 = sqrt(sum( (grid_r(i, :) - d12)**2 ))
+      r3 = sqrt(sum( (grid_r(i, :) - d13)**2 ))
+
+      mu12 = (r1-r2)/R12; mu13 = (r1-r3)/R13; mu23 = (r2-r3)/R23
+
+      s12 = s3(mu12)
+      s21 = s3(-mu12)
+      s13 = s3(mu13)
+      s31 = s3(-mu13)
+      s32 = s3(-mu23)
+      s23 = s3(mu23)
+
+      tP1 = s12*s13; tP2 = s21*s23; tP3 = s31*s32
+      sP = tP1+tP2+tP3
+      p1 = tP1/sP; p2 = tP2/sP; p3 = tP3/sP
+      
+      grid_w(i) = grid_w(i) * p2
+      if (abs(mu12).gt.1.0_dp .or. abs(mu13).gt.1.0_dp .or. abs(mu23).gt.1.0_dp) then
+         stop 'Nuclear partition - Three-center'
+      endif
+   enddo
+
+   do i=off2+1,size(grid_w)
+      r1 = sqrt(sum( grid_r(i, :)**2 ))
+      r2 = sqrt(sum( (grid_r(i, :) - d12)**2 ))
+      r3 = sqrt(sum( (grid_r(i, :) - d13)**2 ))
+
+      mu12 = (r1-r2)/R12; mu13 = (r1-r3)/R13; mu23 = (r2-r3)/R23
+
+      s12 = s3(mu12)
+      s21 = s3(-mu12)
+      s13 = s3(mu13)
+      s31 = s3(-mu13)
+      s32 = s3(-mu23)
+      s23 = s3(mu23)
+
+      tP1 = s12*s13; tP2 = s21*s23; tP3 = s31*s32
+      sP = tP1+tP2+tP3
+      p1 = tP1/sP; p2 = tP2/sP; p3 = tP3/sP
+      
+      grid_w(i) = grid_w(i) * p3
+      if (abs(mu12).gt.1.0_dp .or. abs(mu13).gt.1.0_dp .or. abs(mu23).gt.1.0_dp) then
+         stop 'Nuclear partition - Three-center'
+      endif
    enddo
 end subroutine build_threecenter_grid
 
@@ -284,12 +342,12 @@ end subroutine build_threecenter_grid
       z = mua*(35.0_dp*(1-mua2)+21.0_dp*mua4-5.0_dp*mua6)/16.0_dp
    end function z
 
-   function s3(mu)
-      implicit none
-      REAL(KIND=dp) :: mu, s3
-      s3 = 0.5_dp*(1 - h(h(h(mu))) )
-      ! s3 = 0.5_dp*(1-z(mu))
-   end function s3
+function s3(mu)
+   implicit none
+   REAL(KIND=dp) :: mu, s3
+   s3 = 0.5_dp*(1 - h(h(h(mu))) )
+   ! s3 = 0.5_dp*(1-z(mu))
+end function s3
 
    subroutine grid_parameters(atom, nleb, nshell)
       implicit none
@@ -325,5 +383,73 @@ end subroutine build_threecenter_grid
          print *, thegrid(i)%r, thegrid(i)%weight
       enddo 
    end subroutine print_grid
+
+recursive subroutine hermite(n, x, y)
+   implicit none
+   INTEGER, intent(in) :: n
+   REAL(KIND=dp), intent(in) :: x
+   REAL(KIND=dp) :: y, a, b
+
+   if (n .eq. 0) then
+      y = 1.0_dp
+      return
+   else if (n .eq. 1) then
+      y = 2.0_dp * x
+      return
+   endif
+
+   call hermite(n=n-1, x=x, y=a)
+   call hermite(n=n-2, x=x, y=b)
+   y = 2.0_dp * (x*a - (n-1)*b)
+end subroutine hermite
+
+! Return the nodes `r` and weights `wr` of Gauss-Hermite quadratures of order n
+subroutine gauher(r, wr, n)
+   implicit none
+   ! Input
+   INTEGER :: n
+   ! Output
+   REAL(KIND=dp), DIMENSION(n) :: r, wr
+   ! Local variables
+   INTEGER :: i, j, k, m, maxit
+   REAL(KIND=dp) :: u, pim4, p1, p2, p3, p4, pp, z, z1
+
+   ! Only find n/2 zeros
+   m = (n+1)/2
+   do i=1,m
+      ! Initial guess for the root
+      if (i .eq. 1) then
+         z = sqrt( REAL(2*n+1, dp) ) - 1.85575_dp * (2.0_dp*n+1)**(-0.16667_dp)
+      else if (i .eq. 2) then
+         z = z-1.14_dp*n**0.426_dp / z
+      else if (i .eq. 3) then
+         z = 1.86_dp*z - 0.86_dp*r(1)
+      else if (i .eq. 4) then
+         z = 1.91_dp*z - 0.91_dp*r(2)
+      else
+         z = 2.0_dp*z - r(i-2)
+      endif
+
+      maxit = 1e6
+      pim4 = pi**(-0.25_dp)
+      do k=1,maxit
+         p1 = pim4
+         p2 = 0.0_dp
+         do j=1,n
+            p3 = p2
+            p2 = p1
+            p1 = z*sqrt(2.0_dp/REAL(j, dp))*p2 - sqrt(REAL(j-1, dp)/REAL(j, dp))*p3
+         enddo
+         pp = sqrt(2.0_dp * n)*p2
+         z1 = z
+         z = z1 - p1/pp
+         if (abs(z-z1) .le. epsilon(z)) exit
+      enddo
+      r(i) = z
+      r(n+1-i) = -z
+      wr(i) = 2.0_dp/(pp**2) * exp(r(i)**2)
+      wr(n+1-i) = wr(i)
+   enddo
+end subroutine gauher
 
 end module grid

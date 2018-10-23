@@ -6,7 +6,6 @@ implicit none
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 contains
 
-! Compute the integrals r^2 * exp(-a r^2)
 subroutine test_onecenter(ntests, loud)
    implicit none
    LOGICAL :: loud
@@ -24,7 +23,7 @@ subroutine test_onecenter(ntests, loud)
    allocate(wr(ngrid))
    allocate(y(ngrid))
 
-   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE.)
+   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE., quadr=1)
    r = r(ngrid:1:-1)
 
    ! Perform the tests
@@ -38,7 +37,7 @@ subroutine test_onecenter(ntests, loud)
       call spline(r, y, size(r), 0.0_dp, 0.0_dp, spline1)
 
       call integration_onecenter(nang=50, nshell=ngrid, r=r, y=y,&
-                                 spline=spline1, integral=integral)
+                                 spline=spline1, quadr=1, integral=integral)
 
       ri = 4.0_dp*pi**1.5_dp/(4.0_dp*rand**(1.5_dp))
 
@@ -64,6 +63,72 @@ subroutine test_onecenter(ntests, loud)
    deallocate(y)
 end subroutine test_onecenter
 
+subroutine test_radial_quadrature(ntests, loud)
+   implicit none
+   LOGICAL :: loud
+   REAL(KIND=dp), DIMENSION(ntests) :: errors
+   REAL(KIND=dp) :: integral_c, integral_h, ri, err
+   REAL(KIND=dp) :: rand
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r_c, r_h, y, spline1, wr
+   INTEGER :: j, ntests, ngrid
+
+   print *, REPEAT('-', 26) // ' Testing Hermite-Chebyshev ' // REPEAT('-', 26)
+   ngrid = 40
+
+   ! Prepare the grid
+   allocate(r_c(ngrid))
+   allocate(r_h(ngrid))
+   allocate(wr(ngrid))
+   allocate(y(ngrid))
+
+   call radial_grid(r=r_c, wr=wr, n=ngrid, addr2=.TRUE., quadr=1)
+   call radial_grid(r=r_h, wr=wr, n=ngrid, addr2=.TRUE., quadr=2)
+   r_c = r_c(ngrid:1:-1)
+   r_h = r_h(ngrid:1:-1)
+
+   ! Perform the tests
+   do j=1,ntests
+      ! Gaussian exponents
+      CALL RANDOM_NUMBER(rand)
+      rand = rand * 5.0_dp + 0.1_dp
+
+      ! Prepare grids
+      y = exp(-rand * r_c**2 )
+      call spline(r_c, y, size(r_c), 0.0_dp, 0.0_dp, spline1)
+      call integration_onecenter(nang=50, nshell=ngrid, r=r_c, y=y,&
+                                 spline=spline1, quadr=1, integral=integral_c)
+
+      y = exp(-rand * r_h**2 )
+      call spline(r_h, y, size(r_h), 0.0_dp, 0.0_dp, spline1)
+      call integration_onecenter(nang=50, nshell=ngrid, r=r_h, y=y,&
+                                 spline=spline1, quadr=2, integral=integral_h)
+
+      ri = 4.0_dp*pi**1.5_dp/(4.0_dp*rand**(1.5_dp))
+
+      errors(j) = abs(1.0_dp-integral_h/integral_c)
+      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.01_dp)) then
+         print *, 'Exponents: ', rand
+         print *, 'Hermite: ', integral_h
+         print *, 'Chebyshev: ', integral_c
+         print *, 'Should:', ri
+         print *, ''
+         print *, 'Absolute Difference: ', abs(integral_h-integral_c)
+         print *, 'Relative Error: ', errors(j)
+         print *, REPEAT('-', 80)
+      endif
+   enddo
+
+   err = sum(errors)/REAL(ntests, dp)
+   print *, 'Mean error: ', err
+   print *, REPEAT('-', 24) // ' End Testing Hermite-Chebyshev ' // REPEAT('-', 24)
+   print *, ''
+
+   deallocate(r_c)
+   deallocate(r_h)
+   deallocate(wr)
+   deallocate(y)
+end subroutine test_radial_quadrature
+
 subroutine test_twocenter(ntests, loud)
    implicit none
    LOGICAL :: loud
@@ -85,7 +150,7 @@ subroutine test_twocenter(ntests, loud)
    allocate(y2(ngrid))
 
    ! Discard wr
-   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE.)
+   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE., quadr=1)
    r = r(ngrid:1:-1)
 
    do j=1,ntests
@@ -147,7 +212,7 @@ subroutine test_threecenter(ntests, loud)
    INTEGER :: j, ntests, ngrid
 
    print *, REPEAT('-', 30) // ' Testing Three-Center ' // REPEAT('-', 30)
-   ngrid = 10000
+   ngrid = 5000
 
    ! Prepare the grid
    allocate(r(ngrid))
@@ -156,7 +221,7 @@ subroutine test_threecenter(ntests, loud)
    allocate(y2(ngrid))
    allocate(y3(ngrid))
 
-   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE.)
+   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE., quadr=1)
    r = r(ngrid:1:-1)
 
    do j=1,ntests
@@ -170,7 +235,7 @@ subroutine test_threecenter(ntests, loud)
       rand_pos2 = rand_pos2 * sqrt(5.0_dp)
       ! nshell
       CALL RANDOM_NUMBER(nshell_rand)
-      nshell = (/ 75, 75, 75 /) + INT(50 * nshell_rand)
+      nshell = (/ 50, 50, 50 /) + INT(50 * nshell_rand)
       nang = (/590, 590, 590/)
 
       y1 = exp(-rand3(1) * r**2 )
@@ -198,7 +263,7 @@ subroutine test_threecenter(ntests, loud)
       ri = (pi/abc)**(1.5_dp) * exp(sum(exparg))
 
       errors(j) = abs(1.0_dp-integral/ri)
-      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.001_dp)) then
+      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.00001_dp)) then
          print *, 'Exponents: ', rand3
          print *, 'Distances: ', sqrt(sum(rand_pos1**2)), sqrt(sum(rand_pos2**2))
          print *, 'Is: ', integral
@@ -236,7 +301,7 @@ subroutine test_kinetic(ntests, loud)
    allocate(y2(ngrid))
    allocate(d2f2(ngrid))
 
-   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE.)
+   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE., quadr=1)
    r = r(ngrid:1:-1)
 
    do j=1,ntests
@@ -312,7 +377,7 @@ subroutine test_coulomb(ntests, loud)
    allocate(y2(ngrid))
 
    ! Discard wr
-   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE.)
+   call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE., quadr=1)
    r = r(ngrid:1:-1)
 
    do j=1,ntests
@@ -386,14 +451,16 @@ subroutine test_radial_grid(ntests)
       ngrid = i**2
       allocate(r(ngrid))
       allocate(wr(ngrid))
-      call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE.)
+      call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE., quadr=1)
+      failed = failed .or. any(wr .lt. 0)
+      call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE., quadr=2)
       failed = failed .or. any(wr .lt. 0)
 
       deallocate(r)
       deallocate(wr)
    enddo
    if (.not. failed) then
-      print *, 'test_radial_grid passed'
+      print *, 'test_radial_grid - all weights positive - passed'
    endif
 end subroutine test_radial_grid
 

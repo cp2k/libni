@@ -40,7 +40,7 @@ subroutine radial_integration(f, r, n, integral)
    integral = 0.0_dp
    
    ! Put the radial grid points into `rad` and their weights into `wr`
-   call radial_grid(r=rad, wr=wr, n=n, addr2=.TRUE.)
+   call radial_grid(r=rad, wr=wr, n=n, addr2=.TRUE., quadr=1)
 
    ! Create the spline
    call spline(r=r, y=f, n=size(r), bound1=0.0_dp, boundn=0.0_dp, yspline=d2f)
@@ -57,11 +57,24 @@ subroutine radial_integration(f, r, n, integral)
    deallocate(fun)
 end subroutine radial_integration
 
-subroutine integration_onecenter(nang, nshell, r, y, spline, integral)
+! Compute <Y_L | f>_w^ri for all r
+subroutine pp_projector(l, r, f, p)
+   implicit none
+   ! Inputs
+   INTEGER, intent(in) :: l
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, f
+   ! Outputs
+   REAL(KIND=dp), DIMENSION(size(r)) :: p
+
+   ! Local variables 
+end subroutine pp_projector
+
+subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
    implicit none
    ! Input
    INTEGER, intent(in) :: nang, nshell
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r, y, spline
+   INTEGER, intent(in) :: quadr
    ! Output
    REAL(KIND=dp) :: integral
    ! Local variables
@@ -79,7 +92,7 @@ subroutine integration_onecenter(nang, nshell, r, y, spline, integral)
    allocate(int_i(ngrid))
    int_i = 0.0_dp
 
-   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
+   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE., quadr=quadr,&
                              grid_r=grid_r, grid_w=grid_w)
 
    do i=1,size(grid_w)
@@ -224,7 +237,7 @@ subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
    allocate(f2(ngrid))
 
    call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
-                             grid_r=grid_r, grid_w=grid_w)
+                             grid_r=grid_r, grid_w=grid_w, quadr=1)
    ! < f1 | -0.5*🔺 | f2 >
    rf2 = -0.5_dp*r2*y2
    ! Get the 2nd derivative d_r^2(r*f2) as well as its spline
@@ -273,7 +286,7 @@ subroutine coulomb_integral(nang, nshell, coul_n, d12, r1, y1, r2, y2, s1, s2, i
    allocate(pots(coul_n))
    call radial_grid(r=coul_r, &
                     wr=coul_w, &
-                    n=coul_n, addr2=.FALSE.)
+                    n=coul_n, addr2=.FALSE., quadr=1)
 
    coul_r = coul_r(coul_n:1:-1)
    coul_w = coul_w(coul_n:1:-1)
