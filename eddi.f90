@@ -4,6 +4,7 @@ USE lebedev, ONLY: lebedev_grid,&
                    dp
 USE grid, ONLY: build_onecenter_grid, build_twocenter_grid, build_threecenter_grid, &
                 type_grid_point, radial_grid
+USE spherical_harmonics, ONLY: rry_lm
 implicit none
 REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 
@@ -57,17 +58,99 @@ subroutine radial_integration(f, r, n, integral)
    deallocate(fun)
 end subroutine radial_integration
 
-! Compute <Y_L | f>_w^ri for all r
-subroutine pp_projector(l, r, f, p)
+! Compute <Y_L | f>_w^ri for all r_i
+subroutine pp_projector(l, m, r, f, s, d12, p)
    implicit none
    ! Inputs
-   INTEGER, intent(in) :: l
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, f
+   INTEGER, intent(in) :: l, m
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, f, s
+   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
    ! Outputs
    REAL(KIND=dp), DIMENSION(size(r)) :: p
+   ! Local variables
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: ylm, funs
+   REAL(KIND=dp), DIMENSION(3) :: gr
+   REAL(KIND=dp) :: norm
+   INTEGER :: ileb, iang, irad
 
-   ! Local variables 
+   ileb = get_number_of_lebedev_grid(l=l+5)
+   allocate(ylm(lebedev_grid(ileb)%n))
+   do iang=1,lebedev_grid(ileb)%n
+      call rry_lm(l=l, m=m, r=lebedev_grid(ileb)%r(:, iang), y=ylm(iang))
+   enddo
+
+   ! Compute the value of f at each point
+   allocate(funs(lebedev_grid(ileb)%n))
+   do irad=1,size(r)
+      funs = 0.0_dp
+      do iang=1,lebedev_grid(ileb)%n
+         gr = r(irad) * lebedev_grid(ileb)%r(:, iang)
+         norm = sqrt(sum( (gr-d12)**2 ))
+         call interpolation(gr=r, gy=f, spline=s, r=norm, y=funs(iang))
+      enddo
+      p(irad) = sum(lebedev_grid(ileb)%w * ylm * funs)
+   enddo
+   deallocate(funs)
+   deallocate(ylm)
+   p = 4.0_dp * pi * p
 end subroutine pp_projector
+
+! r \in |R(n) :: the radial grid to integrate over
+! vl \in |R[(lmax+1)**2, n] :: the pseudopotentials evaluated on r
+! p1, p2 \in |R((lmax+1)**2, n) :: the projectors evaluted on r
+
+!                          L           L
+! Σ 1/Ω * Σ w (V_l(r_i) * P (alpha) * P (beta))
+! L       i                i           i
+
+subroutine pp_nonloc(rv, v, rp1, p1, rp2, p2, d12, d13, lmax, nrad, integral)
+   implicit none
+   ! Input
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: rv, v, rp1, p1, rp2, p2
+   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12, d13
+   INTEGER, intent(in) :: lmax, nrad
+   ! Output
+   REAL(KIND=dp) :: integral
+   ! Local variables
+   REAL(KIND=dp), DIMENSION(nrad) :: r, wr, gv, gp1, gp2, gsv, gsp1, gsp2,&
+                                     v_pp, proj1, proj2
+   REAL(KIND=dp), DIMENSION(size(rv)) :: sv
+   REAL(KIND=dp), DIMENSION(size(rp1)) :: sp1
+   REAL(KIND=dp), DIMENSION(size(rp2)) :: sp2
+   REAL(KIND=dp), DIMENSION((lmax+1)**2) :: integral_sub
+   INTEGER :: i, il, im, h!elp
+   ! End header
+
+   ! First we transpose the three functions to a common grid
+   call radial_grid(r=r, wr=wr, n=nrad, addr2=.TRUE., quadr=2) !2=hermite
+   call spline(r=rv, y=v, n=size(rv), bound1=0.0_dp, boundn=0.0_dp, yspline=sv)
+   call spline(r=rp1, y=p1, n=size(rp1), bound1=0.0_dp, boundn=0.0_dp, yspline=sp1)
+   call spline(r=rp2, y=p2, n=size(rp2), bound1=0.0_dp, boundn=0.0_dp, yspline=sp2)
+
+   do i=1,nrad
+      call interpolation(gr=rv, gy=v, spline=sv, r=r(i), y=gv(i))
+      call interpolation(gr=rp1, gy=p1, spline=sp1, r=r(i), y=gp1(i))
+      call interpolation(gr=rp2, gy=p2, spline=sp2, r=r(i), y=gp2(i))
+   enddo
+
+   ! The interpolated functions need splines as well
+   call spline(r=r, y=gv , n=size(r), bound1=0._dp, boundn=0._dp, yspline=gsv)
+   call spline(r=r, y=gp1, n=size(r), bound1=0._dp, boundn=0._dp, yspline=gsp1)
+   call spline(r=r, y=gp2, n=size(r), bound1=0._dp, boundn=0._dp, yspline=gsp2)
+
+   ! Then we go over all L={l,m} where (l .le. lmax)
+   h = 0
+   do il=0,lmax
+      do im=-il,+il
+         h = h + 1
+         call pp_projector(l=il, m=im, r=r, f=gp1, s=s1, d12=d12, p=proj1)
+         call pp_projector(l=il, m=im, r=r, f=gp2, s=s2, d12=d13, p=proj2)
+         integral_sub(h) = sum(wr * gv * proj1 * proj2)
+      enddo
+   enddo
+
+   integral = sum(integral_sub)
+end subroutine pp_nonloc
 
 subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
    implicit none
@@ -437,7 +520,6 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    deallocate(grid_w)
 end subroutine coulomb_integral_grid
 
-
    subroutine read_nfun(fn, gridax, gridf)
       CHARACTER(len=*) :: fn
       REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gridax, gridf
@@ -507,7 +589,7 @@ end subroutine coulomb_integral_grid
    ! Given a function `gy` on a grid `gr` and a requested
    ! function value y(r) interpolates the function value `y`
    subroutine interpolation(gr, gy, spline, r, y)
-      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: gr, gy
+      REAL(KIND=dp), DIMENSION(:), intent(in) :: gr, gy
       REAL(KIND=dp), DIMENSION(1:size(gr)) :: spline
       REAL(KIND=dp), intent(in) :: r
       REAL(KIND=dp), intent(out) :: y
@@ -615,4 +697,48 @@ recursive subroutine qsort_sim2(arr, brr)
    if (first .lt. (i-1)) call qsort_sim2( arr(first:i-1), brr(first:i-1) )
    if ((j+1) .lt. last) call qsort_sim2( arr(j+1:last), brr(j+1:last) )
 end subroutine qsort_sim2
+
+subroutine spherical_harmonic(l, m, r, ylm)
+   implicit none
+   ! Input
+   INTEGER, intent(in) :: l, m
+   REAL(KIND=dp), DIMENSION(3), intent(in) :: r
+   ! Output
+   REAL(KIND=dp) :: ylm
+   ! Local variables
+   REAL(kind=dp) :: x, y, z, rad, n
+   rad = sqrt(sum(r**2))
+   x = r(1); y = r(2); z = r(3)
+
+   if (l .eq. 0) then
+      ylm = 1.0_dp/sqrt(4*pi)
+   else if (l .eq. 1) then
+      n = sqrt(0.75_dp/pi)
+      select case (m)
+         case (-1)
+            ylm = n * y/rad
+         case (0) 
+            ylm = n * z/rad
+         case (1) 
+            ylm = n * x/rad
+      end select
+   else if (l .eq. 2) then
+      n = 0.5_dp * sqrt(15.0_dp/pi)
+      select case (m)
+         case (-2)
+            ylm = n * x*y
+         case (-1)
+            ylm = n * y*z
+         case (0) 
+            ylm = 0.25_dp*sqrt(5.0_dp/pi)*(2.0_dp*z*z-x*x-y*y)
+         case (1) 
+            ylm = n * x*z
+         case (2) 
+            ylm = n * 0.5_dp * (x*x-y*y)
+      end select
+   else
+      stop 'NotImplemented - l>2'
+   endif
+end subroutine spherical_harmonic
+
 end module eddi
