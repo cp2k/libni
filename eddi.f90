@@ -95,14 +95,9 @@ subroutine pp_projector(l, m, r, f, s, d12, p)
    p = 4.0_dp * pi * p
 end subroutine pp_projector
 
-! r \in |R(n) :: the radial grid to integrate over
-! vl \in |R[(lmax+1)**2, n] :: the pseudopotentials evaluated on r
-! p1, p2 \in |R((lmax+1)**2, n) :: the projectors evaluted on r
-
-!                          L           L
-! Σ 1/Ω * Σ w (V_l(r_i) * P (alpha) * P (beta))
-! L       i                i           i
-
+!  nloc                            L           L
+! V     = Σ 1/Ω * Σ w (V_l(r_i) * P (alpha) * P (beta))
+!         L       i                i           i
 subroutine pp_nonloc(rv, v, rp1, p1, rp2, p2, d12, d13, lmax, nrad, integral)
    implicit none
    ! Input
@@ -128,9 +123,9 @@ subroutine pp_nonloc(rv, v, rp1, p1, rp2, p2, d12, d13, lmax, nrad, integral)
    call spline(r=rp2, y=p2, n=size(rp2), bound1=0.0_dp, boundn=0.0_dp, yspline=sp2)
 
    do i=1,nrad
-      call interpolation(gr=rv, gy=v, spline=sv, r=r(i), y=gv(i))
-      call interpolation(gr=rp1, gy=p1, spline=sp1, r=r(i), y=gp1(i))
-      call interpolation(gr=rp2, gy=p2, spline=sp2, r=r(i), y=gp2(i))
+      call interpolation(rv , v , sv , r=r(i), y=gv(i) )
+      call interpolation(rp1, p1, sp1, r=r(i), y=gp1(i))
+      call interpolation(rp2, p2, sp2, r=r(i), y=gp2(i))
    enddo
 
    ! The interpolated functions need splines as well
@@ -143,12 +138,12 @@ subroutine pp_nonloc(rv, v, rp1, p1, rp2, p2, d12, d13, lmax, nrad, integral)
    do il=0,lmax
       do im=-il,+il
          h = h + 1
-         call pp_projector(l=il, m=im, r=r, f=gp1, s=s1, d12=d12, p=proj1)
-         call pp_projector(l=il, m=im, r=r, f=gp2, s=s2, d12=d13, p=proj2)
+         ! gv – the interpolation of V_l – we can use as is
+         call pp_projector(l=il, m=im, r=r, f=gp1, s=gsp1, d12=d12, p=proj1)
+         call pp_projector(l=il, m=im, r=r, f=gp2, s=gsp2, d12=d13, p=proj2)
          integral_sub(h) = sum(wr * gv * proj1 * proj2)
       enddo
    enddo
-
    integral = sum(integral_sub)
 end subroutine pp_nonloc
 
@@ -544,17 +539,10 @@ end subroutine coulomb_integral_grid
       INTEGER, INTENT(in) :: n
       REAL(KIND=dp), DIMENSION(1:n), INTENT(in) :: r, y
       REAL(KIND=dp), INTENT(in) :: bound1, boundn
-      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: yspline, u
+      REAL(KIND=dp), DIMENSION(n) :: yspline, u
 
       INTEGER :: i
       REAL(KIND=dp) :: sig, p, un, qn
-
-      if (.not. allocated(yspline)) then
-         allocate(yspline(n))
-      endif
-      if (.not. allocated(u)) then
-         allocate(u(n))
-      endif
 
       if (bound1 .gt. 1e10) then
          yspline(1) = 0.0_dp

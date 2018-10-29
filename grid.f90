@@ -48,6 +48,8 @@ subroutine radial_grid(r, wr, n, addr2, quadr)
       ! dxdydz = dr r^2 dcos(theta) dphi
       wr = wr * r**2
    endif
+   r = r(n:1:-1)
+   wr = wr(n:1:-1)
 end subroutine radial_grid
 
 subroutine build_onecenter_grid(ileb, nshell, addr2, quadr, grid_r, grid_w)
