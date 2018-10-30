@@ -4,10 +4,13 @@ USE eddi, ONLY: type_atom, integration_twocenter, &
                 read_nfun, pi, interpolation, spline, &
                 integration_threecenter, kinetic_energy, &
                 integration_onecenter, coulomb_integral, coulomb_integral_grid, &
-                radial_integration, pp_projector, pp_nonloc
+                radial_integration, pp_projector, pp_nonloc,&
+                forward_derivative_weights
 USE grid, ONLY: grid_parameters, radial_grid, gauher
 USE nao_unit, ONLY: test_onecenter, test_twocenter, test_threecenter, test_kinetic, &
-                    test_coulomb, test_radial_grid, test_radial_quadrature
+                    test_coulomb,&
+                    test_radial_weight_pos, test_radial_chebyherm, test_radial_weight_asc, &
+                    test_forward_deriv_coeff, test_derivative
 implicit none
 
 CHARACTER(len=*), PARAMETER :: fn1 = 'gaussian.grid'
@@ -20,14 +23,17 @@ REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: projector1, projector2
 INTEGER :: i, nang, nshell, ngrid
 
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
+! call test_radial_weight_pos(ntests=9)
+! call test_radial_weight_asc(ntests=9)
+call test_forward_deriv_coeff()
 ! call test_onecenter(ntests=100, loud=.FALSE.)
 ! call test_twocenter(ntests=100, loud=.FALSE.)
-! call test_threecenter(ntests=1000 , loud=.TRUE.)
+! call test_threecenter(ntests=100 , loud=.FALSE.)
 ! call test_kinetic(ntests=100, loud=.FALSE.)
-! call test_coulomb(ntests=100, loud=.FALSE.)
-! call test_radial_grid(ntests=200)
-! call test_radial_quadrature(ntests=100, loud=.FALSE.)
-! return
+! call test_coulomb(ntests=50, loud=.FALSE.)
+! call test_radial_chebyherm(ntests=50, loud=.FALSE.)
+! call test_derivative(ntests=1, loud=.TRUE.)
+return
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 
 ngrid = 50
@@ -47,15 +53,15 @@ y1 = exp(-r1*r1)
 ! do i=1,ngrid
 !    print *, i, r1(i), y1(i), projector1(i), projector2(i), projector1(i)*projector2(i)
 ! enddo
-o = 0
-do i=1,50
-   o = integral
-   call pp_nonloc(rv=r1, v=y1, rp1=r1, p1=y1, rp2=r1, p2=y1,&
-                  d12=(/1._dp, 1._dp, 1._dp/), d13=(/1._dp, 1._dp, 1._dp/),&
-                  lmax=0, nrad=i*10, integral=integral)
-   print *, i, i*10, integral, integral/o
+! o = 0
+! do i=1,50
+!    o = integral
+!    call pp_nonloc(rv=r1, v=y1, rp1=r1, p1=y1, rp2=r1, p2=y1,&
+!                   d12=(/1._dp, 1._dp, 1._dp/), d13=(/1._dp, 1._dp, 1._dp/),&
+!                   lmax=0, nrad=i*10, integral=integral)
+!    print *, i, i*10, integral, integral/o
    
-enddo
+! enddo
 
 deallocate(r1)
 deallocate(wr1)

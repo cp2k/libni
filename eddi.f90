@@ -313,6 +313,8 @@ subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
    allocate(grid_w(ngrid))
    allocate(f1(ngrid))
    allocate(f2(ngrid))
+   allocate(d2rf2(size(r2)))
+   allocate(d2rf2_spline(size(r2)))
 
    call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
                              grid_r=grid_r, grid_w=grid_w, quadr=1)
@@ -338,6 +340,8 @@ subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
    deallocate(grid_w)
    deallocate(f1)
    deallocate(f2)
+   deallocate(d2rf2)
+   deallocate(d2rf2_spline)
 end subroutine kinetic_energy
 
 subroutine coulomb_integral(nang, nshell, coul_n, d12, r1, y1, r2, y2, s1, s2, integral)
@@ -365,9 +369,6 @@ subroutine coulomb_integral(nang, nshell, coul_n, d12, r1, y1, r2, y2, s1, s2, i
    call radial_grid(r=coul_r, &
                     wr=coul_w, &
                     n=coul_n, addr2=.FALSE., quadr=1)
-
-   coul_r = coul_r(coul_n:1:-1)
-   coul_w = coul_w(coul_n:1:-1)
 
    do i=1,coul_n
       call interpolation(r1, y1, s1, coul_r(i), f(i))
@@ -515,6 +516,83 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    deallocate(grid_w)
 end subroutine coulomb_integral_grid
 
+subroutine forward_derivative_weights(M, x0, r, coeff)
+   implicit none
+   ! Input
+   INTEGER, intent(in) :: M
+   REAL(KIND=dp), intent(in) :: x0
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r
+   ! Output
+   REAL(KIND=dp), DIMENSION(2,2,4) :: coeff
+   ! Local variables
+   INTEGER :: N, ider, iacc, ip
+   REAL(KIND=dp) :: c1, c2, c3
+   REAL(KIND=dp), DIMENSION(0:M,0:size(r),0:size(r)) :: d
+
+   N = size(r)-1
+
+   d = 0.0_dp
+   d(0,0,1) = 1.0_dp
+   c1 = 1.0_dp
+
+   do iacc=1,N
+      c2 = 1.0_dp
+      do ip=0,iacc-1
+         c3 = r(iacc+1) - r(ip+1)
+         c2 = c2 * c3
+         do ider=0,min(iacc,M)
+            d(ider,iacc,ip) = ( r(iacc+1)-x0 )*d(ider,iacc-1,ip)/c3
+            if (ider .ne. 0) then
+               d(ider,iacc,ip) = d(ider,iacc,ip) - ider*d(ider-1,iacc-1,ip)/c3
+            endif
+         enddo
+      enddo
+
+      do ider=0,min(iacc,M)
+         d(ider,iacc,iacc) = -c1/c2 * (r(iacc)-x0)*d(ider,iacc-1,iacc-1)
+         if (ider .ne. 0) then
+            d(ider,iacc,iacc) = d(ider,iacc,iacc) + c1/c2 * ider*d(ider-1,iacc-1,iacc-1)
+         endif
+      enddo
+      c1 = c2
+   enddo
+
+   print *, d(1,1,:)
+
+
+   ! do n=1,size(r)-1
+   !    c2 = 1.0_dp
+   !    do i=0,n-1
+   !       c3 = r(n)-r(i)
+   !       c2 = c2 * c3
+   !       do j=0,min(n,M)
+   !          if (j .eq. 0) then
+   !             d(j,n,i) = ( (r(n)-x0)*d(j,n-1,i) )/c3
+   !          else
+   !             d(j,n,i) = ( (r(n)-x0)*d(j,n-1,i) - j*d(j-1,n-1,i) )/c3
+   !          endif
+   !       enddo
+   !    enddo
+   !    do j=0,min(n,M)
+   !       if (j .eq. 0) then
+   !          d(j,n,n) = -1.0_dp * c1/c2 *  (r(n-1)-x0) * d(j,n-1,n-1)
+   !       else
+   !          d(j,n,n) = c1/c2 * (j*d(j-1,n-1,n-1) - (r(n-1)-x0)*d(j,n-1,n-1) )
+   !       endif
+         
+   !    enddo
+   !    c1 = c2
+   ! enddo
+
+   ! d contains way more information than we want it to
+   ! instead we construct a smaller field `coeff`,
+   ! where coeff[derivative, accuracy, coefficients]
+   coeff(1,1,:) = d(1,1,1:4)
+   coeff(1,2,:) = d(1,2,1:4)
+   coeff(2,1,:) = d(2,2,1:4)
+   coeff(2,2,:) = d(2,3,1:4)
+end subroutine forward_derivative_weights
+
    subroutine read_nfun(fn, gridax, gridf)
       CHARACTER(len=*) :: fn
       REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gridax, gridf
@@ -536,21 +614,28 @@ end subroutine coulomb_integral_grid
 
    subroutine spline(r, y, n, bound1, boundn, yspline)
       implicit none
+      ! Input
       INTEGER, INTENT(in) :: n
-      REAL(KIND=dp), DIMENSION(1:n), INTENT(in) :: r, y
+      REAL(KIND=dp), DIMENSION(:), INTENT(in) :: r, y
       REAL(KIND=dp), INTENT(in) :: bound1, boundn
-      REAL(KIND=dp), DIMENSION(n) :: yspline, u
-
+      ! Output
+      REAL(KIND=dp), DIMENSION(n) :: yspline
+      ! Local variables
+      REAL(KIND=dp), DIMENSION(n) :: u
+      REAL(KIND=dp), DIMENSION(2,2,4) :: coeff
       INTEGER :: i
-      REAL(KIND=dp) :: sig, p, un, qn
+      REAL(KIND=dp) :: sig, p, un, qn, der1, h
 
-      if (bound1 .gt. 1e10) then
-         yspline(1) = 0.0_dp
-         u(1) = 0.0_dp
-      else
-         yspline(1) = -0.5_dp
-         u(1) = (3.0_dp/(r(2)-r(1)))*((y(2)-y(1))/(r(2)-r(1))-bound1)
-      endif
+      ! bound1 is the first derivative at r(0)
+      yspline(1) = -0.5_dp
+
+      call forward_derivative_weights(M=2, x0=0.0_dp, r=r, coeff=coeff)
+      print *, sum(y(1:4) * coeff(1,2,:))/10._dp
+      print *, '-'
+      der1 = (y(2)-y(1))/abs(r(2)-r(1))
+      ! der1 = bound1
+
+      u(1) = (3.0_dp/(r(2)-r(1)))*((y(2)-y(1))/(r(2)-r(1))-der1)
 
       do i=2,n-1
          sig = (r(i)-r(i-1))/(r(i+1)-r(i-1))
@@ -562,11 +647,9 @@ end subroutine coulomb_integral_grid
                   (r(i+1)-r(i-1)) - sig*u(i-1)) / p
       enddo
 
-      ! addendum: zero second derivative at r->infinity seems reasonable
-      !! ignore bound for now and just make it natural
+      ! zero first derivative at r->infinity seems reasonable for our purposes
       qn = 0.0_dp
       un = 0.0_dp
-      !
 
       yspline(n) = 0
       do i=n-1,1,-1
@@ -578,7 +661,7 @@ end subroutine coulomb_integral_grid
    ! function value y(r) interpolates the function value `y`
    subroutine interpolation(gr, gy, spline, r, y)
       REAL(KIND=dp), DIMENSION(:), intent(in) :: gr, gy
-      REAL(KIND=dp), DIMENSION(1:size(gr)) :: spline
+      REAL(KIND=dp), DIMENSION(size(gr)) :: spline
       REAL(KIND=dp), intent(in) :: r
       REAL(KIND=dp), intent(out) :: y
 
