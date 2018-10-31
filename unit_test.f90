@@ -17,6 +17,7 @@ subroutine test_derivative(ntests, loud)
    REAL(KIND=dp), DIMENSION(30) :: r, wr, y, ys, y1s, y2s, y1r, y2r
    REAL(KIND=dp) :: alpha
    INTEGER :: i
+   REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
 
    ! Set up the gaussian function and its derivatives analytically
    call RANDOM_NUMBER(alpha)
@@ -30,14 +31,12 @@ subroutine test_derivative(ntests, loud)
    y2r = (4.0_dp * alpha**2 * r**2 - 2.0_dp * alpha)*y
 
    ! Get the derivatives via spline interpolation
-   call spline(r, y, size(r), y1r(1), 0.0_dp, y2s)
+   call spline(r, y, size(r), y2s)
    do i=1,size(r)
       call interpolation(r, y, y2s, r(i), ys(i))
       print *, r(i), y(i), ys(i), y(i)-ys(i)
    enddo
    print *, alpha
-   print *, y1r(1)
-   print *, (y(2)-y(1))/(r(2)-r(1))
 
    open(unit=100, file='poly')
    do i=1,size(r)
@@ -48,7 +47,7 @@ end subroutine test_derivative
 
 subroutine test_forward_deriv_coeff()
    implicit none
-   REAL(KIND=dp), DIMENSION(2,2,4) :: c
+   REAL(KIND=dp), DIMENSION(2,3,5) :: c
    REAL(KIND=dp), DIMENSION(7) :: tr
    INTEGER :: i
    LOGICAL :: failed = .FALSE.
@@ -57,10 +56,10 @@ subroutine test_forward_deriv_coeff()
    ! call radial_grid(r=tr, wr=twr, n=10, addr2=.TRUE., quadr=1)
 
    call forward_derivative_weights(order=2, x0=0.0_dp, r=tr, coeff=c)
-   failed = failed .or. all(c(1,1,:) .ne. (/-1._dp, 1._dp, 0._dp, 0._dp/))
-   failed = failed .or. all(c(1,2,:) .ne. (/-1.5_dp, 2._dp, -0.5_dp, 0._dp/))
-   failed = failed .or. all(c(2,1,:) .ne. (/1._dp, -2._dp, 1._dp, 0._dp/))
-   failed = failed .or. all(c(2,2,:) .ne. (/2._dp, -5._dp, 4._dp, -1._dp/))
+   failed = failed .or. all(c(1,1,1:4) .ne. (/-1._dp, 1._dp, 0._dp, 0._dp/))
+   failed = failed .or. all(c(1,2,1:4) .ne. (/-1.5_dp, 2._dp, -0.5_dp, 0._dp/))
+   failed = failed .or. all(c(2,1,1:4) .ne. (/1._dp, -2._dp, 1._dp, 0._dp/))
+   failed = failed .or. all(c(2,2,1:4) .ne. (/2._dp, -5._dp, 4._dp, -1._dp/))
    if (failed .eqv. .TRUE.) then
       print *, 'test forward derivative coefficients - failed 💣'
       print *, c(1,1,:)
@@ -99,7 +98,7 @@ subroutine test_onecenter(ntests, loud)
 
       ! Prepare grids
       y = exp(-rand * r**2 )
-      call spline(r, y, size(r), 0.0_dp, 0.0_dp, spline1)
+      call spline(r, y, size(r), spline1)
       call integration_onecenter(nang=50, nshell=ngrid, r=r, y=y,&
                                  spline=spline1, quadr=1, integral=integral)
 
@@ -166,8 +165,8 @@ subroutine test_twocenter(ntests, loud)
 
       y1 = exp(-rand2(1) * r**2 )
       y2 = exp(-rand2(2) * r**2 )
-      call spline(r, y1, size(r), 0.0_dp, 0.0_dp, spline1)
-      call spline(r, y2, size(r), 0.0_dp, 0.0_dp, spline2)
+      call spline(r, y1, size(r), spline1)
+      call spline(r, y2, size(r), spline2)
 
       call integration_twocenter(nang=(/590, 590/), nshell=nshell, d12=rand_pos, &
                                  r1=r, y1=y1, r2=r, y2=y2,&
@@ -245,9 +244,9 @@ subroutine test_threecenter(ntests, loud)
       y1 = exp(-rand3(1) * r**2 )
       y2 = exp(-rand3(2) * r**2 )
       y3 = exp(-rand3(3) * r**2 )
-      call spline(r, y1, size(r), 0.0_dp, 0.0_dp, s1)
-      call spline(r, y2, size(r), 0.0_dp, 0.0_dp, s2)
-      call spline(r, y3, size(r), 0.0_dp, 0.0_dp, s3)
+      call spline(r, y1, size(r), s1)
+      call spline(r, y2, size(r), s2)
+      call spline(r, y3, size(r), s3)
 
       call integration_threecenter(nang=nang, nshell=nshell,&
          d12=rand_pos1, d13=rand_pos2, r1=r, y1=y1, r2=r, y2=y2, r3=r, y3=y3,&
@@ -326,8 +325,8 @@ subroutine test_kinetic(ntests, loud)
       ! Prepare grids
       y1 = exp( -rand2(1) * r**2 )
       y2 = exp( -rand2(2) * r**2 )
-      call spline(r, y1, size(r), 0.0_dp, 0.0_dp, spline1)
-      call spline(r, y2, size(r), 0.0_dp, 0.0_dp, spline2)
+      call spline(r, y1, size(r), spline1)
+      call spline(r, y2, size(r), spline2)
 
       ! The result we get from subroutine kinetic_energy
       call kinetic_energy(nang=1, nshell=100,&
@@ -413,8 +412,8 @@ subroutine test_coulomb(ntests, loud)
 
       y1 = exp(-rand2(1) * r**2 )
       y2 = exp(-rand2(2) * r**2 )
-      call spline(r, y1, size(r), 0.0_dp, 0.0_dp, spline1)
-      call spline(r, y2, size(r), 0.0_dp, 0.0_dp, spline2)
+      call spline(r, y1, size(r), spline1)
+      call spline(r, y2, size(r), spline2)
 
       call coulomb_integral(nang=(/590, 590/), nshell=nshell, coul_n=coul_n, d12=rand_pos,&
                             r1=r, y1=y1, r2=r, y2=y2, s1=spline1, s2=spline2,&
@@ -517,12 +516,12 @@ subroutine test_radial_chebyherm(ntests, loud)
 
       ! Prepare grids
       y = exp(-rand * r_c**2 )
-      call spline(r_c, y, size(r_c), 0.0_dp, 0.0_dp, spline1)
+      call spline(r_c, y, size(r_c), spline1)
       call integration_onecenter(nang=50, nshell=ngrid, r=r_c, y=y,&
                                  spline=spline1, quadr=1, integral=integral_c)
 
       y = exp(-rand * r_h**2 )
-      call spline(r_h, y, size(r_h), 0.0_dp, 0.0_dp, spline1)
+      call spline(r_h, y, size(r_h), spline1)
       call integration_onecenter(nang=50, nshell=ngrid, r=r_h, y=y,&
                                  spline=spline1, quadr=2, integral=integral_h)
 

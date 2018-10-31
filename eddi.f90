@@ -44,7 +44,7 @@ subroutine radial_integration(f, r, n, integral)
    call radial_grid(r=rad, wr=wr, n=n, addr2=.TRUE., quadr=1)
 
    ! Create the spline
-   call spline(r=r, y=f, n=size(r), bound1=0.0_dp, boundn=0.0_dp, yspline=d2f)
+   call spline(r=r, y=f, n=size(r), yspline=d2f)
    
    ! Sum over all radial grid points
    do i=1,n
@@ -118,9 +118,9 @@ subroutine pp_nonloc(rv, v, rp1, p1, rp2, p2, d12, d13, lmax, nrad, integral)
 
    ! First we transpose the three functions to a common grid
    call radial_grid(r=r, wr=wr, n=nrad, addr2=.TRUE., quadr=2) !2=hermite
-   call spline(r=rv, y=v, n=size(rv), bound1=0.0_dp, boundn=0.0_dp, yspline=sv)
-   call spline(r=rp1, y=p1, n=size(rp1), bound1=0.0_dp, boundn=0.0_dp, yspline=sp1)
-   call spline(r=rp2, y=p2, n=size(rp2), bound1=0.0_dp, boundn=0.0_dp, yspline=sp2)
+   call spline(r=rv, y=v, n=size(rv), yspline=sv)
+   call spline(r=rp1, y=p1, n=size(rp1), yspline=sp1)
+   call spline(r=rp2, y=p2, n=size(rp2), yspline=sp2)
 
    do i=1,nrad
       call interpolation(rv , v , sv , r=r(i), y=gv(i) )
@@ -129,9 +129,9 @@ subroutine pp_nonloc(rv, v, rp1, p1, rp2, p2, d12, d13, lmax, nrad, integral)
    enddo
 
    ! The interpolated functions need splines as well
-   call spline(r=r, y=gv , n=size(r), bound1=0._dp, boundn=0._dp, yspline=gsv)
-   call spline(r=r, y=gp1, n=size(r), bound1=0._dp, boundn=0._dp, yspline=gsp1)
-   call spline(r=r, y=gp2, n=size(r), bound1=0._dp, boundn=0._dp, yspline=gsp2)
+   call spline(r=r, y=gv , n=size(r), yspline=gsv)
+   call spline(r=r, y=gp1, n=size(r), yspline=gsp1)
+   call spline(r=r, y=gp2, n=size(r), yspline=gsp2)
 
    ! Then we go over all L={l,m} where (l .le. lmax)
    h = 0
@@ -321,8 +321,8 @@ subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
    ! < f1 | -0.5*🔺 | f2 >
    rf2 = -0.5_dp*r2*y2
    ! Get the 2nd derivative d_r^2(r*f2) as well as its spline
-   call spline(r2, rf2, size(r2), 0.0_dp, 0.0_dp, d2rf2)
-   call spline(r2, d2rf2, size(r2), 0.0_dp, 0.0_dp, d2rf2_spline)
+   call spline(r2, rf2, size(r2), d2rf2)
+   call spline(r2, d2rf2, size(r2), d2rf2_spline)
 
    ! Divide by r
    d2rf2 = d2rf2/r2
@@ -385,7 +385,7 @@ subroutine coulomb_integral(nang, nshell, coul_n, d12, r1, y1, r2, y2, s1, s2, i
    enddo
 
    pot = pot * 4.0_dp*pi/(2.0_dp*l+1.0_dp)
-   call spline(coul_r, pot, coul_n, 0.0_dp, 0.0_dp, pots)
+   call spline(coul_r, pot, coul_n, pots)
 
    ! 2: Calculate the overlap of y2(r-d12) and the coulomb potential
    call integration_twocenter(nang=nang, nshell=nshell, d12=d12, &
@@ -523,7 +523,7 @@ subroutine forward_derivative_weights(order, x0, r, coeff)
    REAL(KIND=dp), intent(in) :: x0
    REAL(KIND=dp), DIMENSION(:), intent(in) :: r
    ! Output
-   REAL(KIND=dp), DIMENSION(2,2,4) :: coeff
+   REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
    ! Local variables
    INTEGER :: points, n, nu, m
    REAL(KIND=dp) :: c1, c2, c3
@@ -560,10 +560,12 @@ subroutine forward_derivative_weights(order, x0, r, coeff)
    ! d contains way more information than we need it to.
    ! instead we construct a smaller field `coeff`
    ! where coeff[derivative, accuracy, coefficients]
-   coeff(1,1,:) = d(1,1,0:3)
-   coeff(1,2,:) = d(1,2,0:3)
-   coeff(2,1,:) = d(2,2,0:3)
-   coeff(2,2,:) = d(2,3,0:3)
+   coeff(1,1,:) = d(1,1,0:4)
+   coeff(1,2,:) = d(1,2,0:4)
+   coeff(1,3,:) = d(1,3,0:4)
+   coeff(2,1,:) = d(2,2,0:4)
+   coeff(2,2,:) = d(2,3,0:4)
+   coeff(2,3,:) = d(2,4,0:4)
 end subroutine forward_derivative_weights
 
    subroutine read_nfun(fn, gridax, gridf)
@@ -585,30 +587,23 @@ end subroutine forward_derivative_weights
       close(100)
    end subroutine read_nfun
 
-   subroutine spline(r, y, n, bound1, boundn, yspline)
+   subroutine spline(r, y, n, yspline)
       implicit none
       ! Input
       INTEGER, INTENT(in) :: n
       REAL(KIND=dp), DIMENSION(:), INTENT(in) :: r, y
-      REAL(KIND=dp), INTENT(in) :: bound1, boundn
       ! Output
       REAL(KIND=dp), DIMENSION(n) :: yspline
       ! Local variables
       REAL(KIND=dp), DIMENSION(n) :: u
-      REAL(KIND=dp), DIMENSION(2,2,4) :: coeff
+      REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
       INTEGER :: i
       REAL(KIND=dp) :: sig, p, un, qn, der1, h
 
-      ! bound1 is the first derivative at r(0)
+      ! der1 is the first derivative at r(1)
       yspline(1) = -0.5_dp
-
-      call forward_derivative_weights(order=2, x0=0.0_dp, r=r, coeff=coeff)
-      print *, 'derivatives'
-      print *, sum( coeff(1,2,1:4) * y(1:4) )
-      der1 = (y(2)-y(1))/abs(r(2)-r(1))
-      print *, der1
-      ! der1 = bound1
-
+      call forward_derivative_weights(order=2, x0=r(1), r=r, coeff=coeff)
+      der1 = sum( coeff(1,2,1:4) * y(1:4) )  ! 2nd order accuracy
       u(1) = (3.0_dp/(r(2)-r(1)))*((y(2)-y(1))/(r(2)-r(1))-der1)
 
       do i=2,n-1
@@ -624,8 +619,8 @@ end subroutine forward_derivative_weights
       ! zero first derivative at r->infinity seems reasonable for our purposes
       qn = 0.0_dp
       un = 0.0_dp
-
       yspline(n) = 0
+
       do i=n-1,1,-1
          yspline(i) = yspline(i)*yspline(i+1)+u(i)
       enddo
