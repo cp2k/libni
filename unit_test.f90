@@ -1,12 +1,68 @@
 module nao_unit
 USE eddi, ONLY: integration_onecenter, integration_twocenter, integration_threecenter, &
                 kinetic_energy, coulomb_integral, spline, interpolation,&
-                forward_derivative_weights 
+                forward_derivative_weights, bisection, derivative_point
 USE lebedev, ONLY: dp
 USE grid, ONLY: radial_grid
 implicit none
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 contains
+
+subroutine test_derivative_point()
+   implicit none
+   REAL(KIND=dp), DIMENSION(500) :: r, wr, y, y1_exact, y1_approx
+   REAL(KIND=dp), DIMENSION(500-3) :: errors
+   REAL(KIND=dp) :: alpha, r0
+   INTEGER :: i
+   INTEGER :: low, upper, atindex
+
+   ! Set up the function to test
+   call radial_grid(r=r, wr=wr, n=size(r), addr2=.FALSE., quadr=1)
+   call RANDOM_NUMBER(alpha); alpha = alpha * 5
+   y = exp(-alpha * r**2)
+   y1_exact = -2.0_dp * alpha * r * y
+
+   errors = 0._dp
+   do i=1,size(errors)
+      call bisection(r=r, r0=r(i), low=low, upper=upper)
+      call derivative_point(r=r, y=y, r0=r(i), y1=y1_approx(i))
+      if (y1_exact(i) .ne. 0._dp) then
+         errors(i) = abs((y1_exact(i)-y1_approx(i))/y1_exact(i))
+      endif
+      ! print *, r(i), y1_exact(i), y1_approx(i), errors(i)
+   enddo
+
+   ! Oh my.
+   if ( count(errors>0.2)/REAL(size(errors), dp) < 0.2_dp&
+         .and. sum(errors)/size(errors) < 0.1_dp ) then
+      ! The test passes, if less than 20% of all derivatives are ~bad~ awful
+      print *, '👌 test_derivative_point – radial grid - passed'
+   else
+      print *, '💣 test_derivative_point – radial grid - failed'
+      print *, count(errors>0.2)/REAL(size(errors), dp)
+      print *, sum(errors)/size(errors)
+   endif
+
+   ! Should be much better on an equally spaced grid
+   r = (/ ( 0.0001_dp*REAL(i, dp), i = 1,size(r) ) /)
+   y = exp(-alpha * r**2)
+   y1_exact = -2.0_dp * alpha * r * y
+   errors = 0._dp
+   do i=1,size(errors)
+      call bisection(r=r, r0=r(i), low=low, upper=upper)
+      call derivative_point(r=r, y=y, r0=r(i), y1=y1_approx(i))
+      if (y1_exact(i) .ne. 0._dp) then
+         errors(i) = abs((y1_exact(i)-y1_approx(i))/y1_exact(i))
+      endif
+   enddo
+   if (sum(errors)/size(errors) .lt. 0.01) then
+      print *, '👌 test_derivative_point – equally spaced grid - passed '
+   else
+      print *, '💣 test_derivative_point – equally spaced grid - failed '
+      print *, count(errors>0.2)/REAL(size(errors), dp)
+      print *, sum(errors)/size(errors)
+   endif
+end subroutine test_derivative_point
 
 subroutine test_derivative(ntests, loud)
    implicit none
@@ -14,7 +70,7 @@ subroutine test_derivative(ntests, loud)
    INTEGER, intent(in) :: ntests
    LOGICAL, intent(in) :: loud
    ! Local variables
-   REAL(KIND=dp), DIMENSION(30) :: r, wr, y, ys, y1s, y2s, y1r, y2r
+   REAL(KIND=dp), DIMENSION(100) :: r, wr, y, ys, y1_s, y2_s, y1_ex, y2_ex
    REAL(KIND=dp) :: alpha
    INTEGER :: i
    REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
@@ -27,23 +83,47 @@ subroutine test_derivative(ntests, loud)
    ! r = (/ ( 0.1_dp*i**2, i = 1,size(r) ) /)
 
    y = exp(-alpha * r**2)
-   y1r = -2.0_dp * alpha * r * y
-   y2r = (4.0_dp * alpha**2 * r**2 - 2.0_dp * alpha)*y
+   y1_ex = -2.0_dp * alpha * r * y
+   y2_ex = (4.0_dp * alpha**2 * r**2 - 2.0_dp * alpha)*y
 
    ! Get the derivatives via spline interpolation
-   call spline(r, y, size(r), y2s)
+   call spline(r, y, size(r), y2_s)
    do i=1,size(r)
-      call interpolation(r, y, y2s, r(i), ys(i))
-      print *, r(i), y(i), ys(i), y(i)-ys(i)
+      call interpolation(gr=r, gy=y, spline=y2_s, r=r(i), y=ys(i), yprime=y1_s(i))
+      print *, 'r:' , r(i)
+      print *, 'y_exact, y_spline:', y(i), ys(i), y(i)-ys(i)
+      print *, 'y1_exact, y1_spline:', y1_ex(i), y1_s(i), abs(1.-y1_s(i)/y1_ex(i))/r(i)
+      print *,
    enddo
    print *, alpha
 
    open(unit=100, file='poly')
    do i=1,size(r)
-      write(100, *) r(i), y(i), y1r(i), y2r(i), y2s(i)
+      write(100, *) r(i), y(i), y1_ex(i), y1_s(i), y2_ex(i), y2_s(i)
    enddo
    close(100)
 end subroutine test_derivative
+
+subroutine test_spline()
+   implicit none
+   ! Local variables
+   REAL(KIND=dp), DIMENSION(30) :: r, wr, y, y1_exact, y2_exact, y2_spline
+   REAL(KIND=dp) :: alpha
+   INTEGER :: i
+
+   call RANDOM_NUMBER(alpha)
+   alpha = alpha * 5
+   call radial_grid(r=r, wr=wr, n=size(r), addr2=.FALSE., quadr=1)
+   y = exp(-alpha * r**2)
+   y1_exact = -2.0_dp * alpha * r * y
+   y2_exact = (4.0_dp * alpha**2 * r**2 - 2.0_dp * alpha)*y
+
+   call spline(r=r, y=y, n=size(r), yspline=y2_spline)
+   print *, 'alpha=', alpha
+   do i=1,size(r)
+      print *, r(i), y2_exact(i), y2_spline(i), abs(1-y2_exact(i)/y2_spline(i))
+   enddo
+end subroutine test_spline
 
 subroutine test_forward_deriv_coeff()
    implicit none
@@ -69,6 +149,10 @@ subroutine test_forward_deriv_coeff()
    else
       print *, 'test forward derivative coefficients - passed 👌'
    endif
+
+   print *, REPEAT('-', 20) // ' BACKWARDS ' // REPEAT('-', 20)
+   call forward_derivative_weights(order=2, x0=6._dp, r=tr(7:1:-1), coeff=c)
+   print *, c(1,1,:)
 end subroutine test_forward_deriv_coeff
 
 subroutine test_onecenter(ntests, loud)

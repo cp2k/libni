@@ -568,6 +568,64 @@ subroutine forward_derivative_weights(order, x0, r, coeff)
    coeff(2,3,:) = d(2,4,0:4)
 end subroutine forward_derivative_weights
 
+subroutine derivative_point(r, y, r0, y1)
+   implicit none
+   ! Input
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, y
+   REAL(KIND=dp), intent(in) :: r0
+   ! Output
+   REAL(KIND=dp) :: y1
+   ! Local variables
+   REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
+   INTEGER :: low, upper
+
+   call bisection(r=r, r0=r0, low=low, upper=upper)
+   call forward_derivative_weights(order=2, x0=r0, r=r(low:size(r)), coeff=coeff)
+   y1 = sum( coeff(1,2,1:3) * y(low:low+2) )  ! 2nd order accuracy
+   ! this will crash/yield 0 if we want the derivative at the end points
+end subroutine derivative_point
+
+subroutine spline(r, y, n, yspline)
+   implicit none
+   ! Input
+   INTEGER, INTENT(in) :: n
+   REAL(KIND=dp), DIMENSION(:), INTENT(in) :: r, y
+   ! Output
+   REAL(KIND=dp), DIMENSION(n) :: yspline
+   ! Local variables
+   REAL(KIND=dp), DIMENSION(n) :: u
+   REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
+   INTEGER :: i
+   REAL(KIND=dp) :: sig, p, un, qn, der1, dern, h
+
+   ! der1 is the first derivative at r(1)
+   yspline(1) = -0.5_dp
+   call forward_derivative_weights(order=2, x0=r(1), r=r, coeff=coeff)
+   der1 = sum( coeff(1,2,1:4) * y(1:4) )  ! 2nd order accuracy
+   u(1) = (3.0_dp/(r(2)-r(1))) * ((y(2)-y(1))/(r(2)-r(1))-der1)
+
+   do i=2,n-1
+      sig = (r(i)-r(i-1))/(r(i+1)-r(i-1))
+      p = sig*yspline(i-1)+2.0_dp
+      yspline(i) = (sig-1.0_dp)/p
+
+      u(i) = (6.0_dp * ( (y(i+1)-y(i))/(r(i+1)-r(i)) -&
+                         (y(i)-y(i-1))/(r(i)-r(i-1)) )/&
+               (r(i+1)-r(i-1)) - sig*u(i-1)) / p
+   enddo
+
+   ! zero first derivative at r->infinity seems reasonable for our purposes
+   qn = 0.5_dp
+   dern = 0.0_dp
+   un = (3.0_dp/(r(n)-r(n-1))) * (dern - (y(n)-y(n-1))/(r(n)-r(n-1)) )
+
+   yspline(n) = (un-qn*u(n-1))/(qn*yspline(n-1)+1.0_dp);
+
+   do i=n-1,1,-1
+      yspline(i) = yspline(i)*yspline(i+1)+u(i)
+   enddo
+end subroutine spline
+
    subroutine read_nfun(fn, gridax, gridf)
       CHARACTER(len=*) :: fn
       REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gridax, gridf
@@ -587,80 +645,66 @@ end subroutine forward_derivative_weights
       close(100)
    end subroutine read_nfun
 
-   subroutine spline(r, y, n, yspline)
-      implicit none
-      ! Input
-      INTEGER, INTENT(in) :: n
-      REAL(KIND=dp), DIMENSION(:), INTENT(in) :: r, y
-      ! Output
-      REAL(KIND=dp), DIMENSION(n) :: yspline
-      ! Local variables
-      REAL(KIND=dp), DIMENSION(n) :: u
-      REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
-      INTEGER :: i
-      REAL(KIND=dp) :: sig, p, un, qn, der1, h
+subroutine bisection(r, r0, low, upper)
+   implicit none
+   ! Input
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r
+   REAL(KIND=dp), intent(in) :: r0
+   ! Output
+   INTEGER :: low, upper
+   ! Local variables
+   INTEGER :: mid
 
-      ! der1 is the first derivative at r(1)
-      yspline(1) = -0.5_dp
-      call forward_derivative_weights(order=2, x0=r(1), r=r, coeff=coeff)
-      der1 = sum( coeff(1,2,1:4) * y(1:4) )  ! 2nd order accuracy
-      u(1) = (3.0_dp/(r(2)-r(1)))*((y(2)-y(1))/(r(2)-r(1))-der1)
-
-      do i=2,n-1
-         sig = (r(i)-r(i-1))/(r(i+1)-r(i-1))
-         p = sig*yspline(i-1)+2.0_dp
-         yspline(i) = (sig-1.0_dp)/p
-
-         u(i) = (6.0_dp * ( (y(i+1)-y(i))/(r(i+1)-r(i)) -&
-                            (y(i)-y(i-1))/(r(i)-r(i-1)) )/&
-                  (r(i+1)-r(i-1)) - sig*u(i-1)) / p
-      enddo
-
-      ! zero first derivative at r->infinity seems reasonable for our purposes
-      qn = 0.0_dp
-      un = 0.0_dp
-      yspline(n) = 0
-
-      do i=n-1,1,-1
-         yspline(i) = yspline(i)*yspline(i+1)+u(i)
-      enddo
-   end subroutine spline
+   low = 1
+   upper = size(r)
+   do while (upper .gt. low)
+      mid = NINT((low+upper)/2.0_dp)
+      if (r(mid) .gt. r0) then
+         upper = mid
+      else
+         low = mid
+      endif
+      if (r(low) .eq. r0) upper = low 
+      if (r(upper) .eq. r0) low = upper 
+   enddo
+end subroutine bisection
 
    ! Given a function `gy` on a grid `gr` and a requested
-   ! function value y(r) interpolates the function value `y`
-   subroutine interpolation(gr, gy, spline, r, y)
+   ! function value y(r) interpolates the function value `y` using `spline`
+   subroutine interpolation(gr, gy, spline, r, y, yprime)
+      ! Input
       REAL(KIND=dp), DIMENSION(:), intent(in) :: gr, gy
-      REAL(KIND=dp), DIMENSION(size(gr)) :: spline
+      REAL(KIND=dp), DIMENSION(size(gr)), intent(in) :: spline
       REAL(KIND=dp), intent(in) :: r
-      REAL(KIND=dp), intent(out) :: y
+      ! Output
+      REAL(KIND=dp) :: y
+      REAL(KIND=dp), OPTIONAL :: yprime
+      ! Local variables
+      INTEGER :: low, upper
+      REAL(KIND=dp) :: A, B, C, D, h
 
-      INTEGER :: low, upper, mid
-      REAL(KIND=dp) :: A, B, h
       ! find the closest grid point by bisection
-      low = 1
-      upper = size(gr)
-      do while (upper-low .gt. 1)
-         mid = NINT((low+upper)/2.0_dp)
-         if (gr(mid) .gt. r) then
-            upper = mid
-         else
-            low = mid
-         endif
-      enddo
+      call bisection(r=gr, r0=r, low=low, upper=upper)
+
       if (gr(upper) .eq. r) then
          y = gy(upper)
+         if (present(yprime)) call derivative_point(r=gr, y=gy, r0=r, y1=yprime)
       else if (gr(low) .eq. r) then
          y = gy(low)
+         if (present(yprime)) call derivative_point(r=gr, y=gy, r0=r, y1=yprime)
       else if ((gr(upper) .gt. r) .and. (gr(low) .lt. r)) then
-         ! LINEAR INTERPOLATION
-         ! A = (gr(upper)-r)/(gr(upper)-gr(low))
-         ! y = A*gy(low) + (1.0_dp-A)*gy(upper)
          ! SPLINE INTERPOLATION
          h = gr(upper)-gr(low)
          A = (gr(upper)-r)/h
          B = (r-gr(low))/h
-         y = A*gy(low) + B*gy(upper) + &
-               ((A**3.0_dp-A)*spline(low)+(B**3.0_dp-B)*spline(upper)) * (h**2.0_dp)/6.0_dp
+         C = (A**3.0_dp-A) * (h**2.0_dp)/6.0_dp
+         D = (B**3.0_dp-B) * (h**2.0_dp)/6.0_dp
+         y = A*gy(low) + B*gy(upper) + C*spline(low) + D*spline(upper)
+         if (present(yprime)) then
+         yprime = ( gy(upper)-gy(low) )/h - (3._dp*A**2-1._dp)*h/6._dp*spline(low)&
+                                          + (3._dp*B**2-1._dp)*h/6._dp*spline(upper)
+         print *, 'prime', yprime
+         endif
       else if (gr(upper) .lt. r) then
          y = gy(upper)
          ! print *, 'Extrapolation!'
