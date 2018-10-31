@@ -25,14 +25,14 @@ INTEGER :: i, nang, nshell, ngrid
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 ! call test_radial_weight_pos(ntests=9)
 ! call test_radial_weight_asc(ntests=9)
-call test_forward_deriv_coeff()
+! call test_forward_deriv_coeff()
 ! call test_onecenter(ntests=100, loud=.FALSE.)
 ! call test_twocenter(ntests=100, loud=.FALSE.)
 ! call test_threecenter(ntests=100 , loud=.FALSE.)
 ! call test_kinetic(ntests=100, loud=.FALSE.)
 ! call test_coulomb(ntests=50, loud=.FALSE.)
 ! call test_radial_chebyherm(ntests=50, loud=.FALSE.)
-! call test_derivative(ntests=1, loud=.TRUE.)
+call test_derivative(ntests=1, loud=.TRUE.)
 return
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 

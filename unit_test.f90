@@ -49,14 +49,14 @@ end subroutine test_derivative
 subroutine test_forward_deriv_coeff()
    implicit none
    REAL(KIND=dp), DIMENSION(2,2,4) :: c
-   REAL(KIND=dp), DIMENSION(5) :: tr
+   REAL(KIND=dp), DIMENSION(7) :: tr
    INTEGER :: i
    LOGICAL :: failed = .FALSE.
 
-   tr = (/(REAL(i, dp), i=1,5)/)
+   tr = (/(REAL(i, dp), i=0,6)/)
    ! call radial_grid(r=tr, wr=twr, n=10, addr2=.TRUE., quadr=1)
 
-   call forward_derivative_weights(M=3, x0=0.0_dp, r=tr, coeff=c)
+   call forward_derivative_weights(order=2, x0=0.0_dp, r=tr, coeff=c)
    failed = failed .or. all(c(1,1,:) .ne. (/-1._dp, 1._dp, 0._dp, 0._dp/))
    failed = failed .or. all(c(1,2,:) .ne. (/-1.5_dp, 2._dp, -0.5_dp, 0._dp/))
    failed = failed .or. all(c(2,1,:) .ne. (/1._dp, -2._dp, 1._dp, 0._dp/))

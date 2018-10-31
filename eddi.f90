@@ -516,81 +516,54 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    deallocate(grid_w)
 end subroutine coulomb_integral_grid
 
-subroutine forward_derivative_weights(M, x0, r, coeff)
+subroutine forward_derivative_weights(order, x0, r, coeff)
    implicit none
    ! Input
-   INTEGER, intent(in) :: M
+   INTEGER, intent(in) :: order
    REAL(KIND=dp), intent(in) :: x0
    REAL(KIND=dp), DIMENSION(:), intent(in) :: r
    ! Output
    REAL(KIND=dp), DIMENSION(2,2,4) :: coeff
    ! Local variables
-   INTEGER :: N, ider, iacc, ip
+   INTEGER :: points, n, nu, m
    REAL(KIND=dp) :: c1, c2, c3
-   REAL(KIND=dp), DIMENSION(0:M,0:size(r),0:size(r)) :: d
+   REAL(KIND=dp), DIMENSION(0:order,0:size(r),0:size(r)) :: d
 
-   N = size(r)-1
+   points = size(r)-1
 
    d = 0.0_dp
-   d(0,0,1) = 1.0_dp
+   d(0,0,0) = 1.0_dp
    c1 = 1.0_dp
 
-   do iacc=1,N
+   do n=1,points
       c2 = 1.0_dp
-      do ip=0,iacc-1
-         c3 = r(iacc+1) - r(ip+1)
+      do nu=0,n-1
+         c3 = r(n+1) - r(nu+1)
          c2 = c2 * c3
-         do ider=0,min(iacc,M)
-            d(ider,iacc,ip) = ( r(iacc+1)-x0 )*d(ider,iacc-1,ip)/c3
-            if (ider .ne. 0) then
-               d(ider,iacc,ip) = d(ider,iacc,ip) - ider*d(ider-1,iacc-1,ip)/c3
+         do m=0,min(n,order)
+            d(m,n,nu) = (r(n+1)-x0)*d(m,n-1,nu)
+            if (m .ne. 0) then
+               d(m,n,nu) = d(m,n,nu) - m*d(m-1,n-1,nu)
             endif
+            d(m,n,nu) = d(m,n,nu)/c3
          enddo
       enddo
-
-      do ider=0,min(iacc,M)
-         d(ider,iacc,iacc) = -c1/c2 * (r(iacc)-x0)*d(ider,iacc-1,iacc-1)
-         if (ider .ne. 0) then
-            d(ider,iacc,iacc) = d(ider,iacc,iacc) + c1/c2 * ider*d(ider-1,iacc-1,iacc-1)
+      do m=0,min(n,order)
+         if (m .ne. 0) then
+            d(m,n,n) = m*d(m-1,n-1,n-1)
          endif
+         d(m,n,n) = c1/c2*(d(m,n,n) - (r(n)-x0)*d(m,n-1,n-1))
       enddo
       c1 = c2
    enddo
 
-   print *, d(1,1,:)
-
-
-   ! do n=1,size(r)-1
-   !    c2 = 1.0_dp
-   !    do i=0,n-1
-   !       c3 = r(n)-r(i)
-   !       c2 = c2 * c3
-   !       do j=0,min(n,M)
-   !          if (j .eq. 0) then
-   !             d(j,n,i) = ( (r(n)-x0)*d(j,n-1,i) )/c3
-   !          else
-   !             d(j,n,i) = ( (r(n)-x0)*d(j,n-1,i) - j*d(j-1,n-1,i) )/c3
-   !          endif
-   !       enddo
-   !    enddo
-   !    do j=0,min(n,M)
-   !       if (j .eq. 0) then
-   !          d(j,n,n) = -1.0_dp * c1/c2 *  (r(n-1)-x0) * d(j,n-1,n-1)
-   !       else
-   !          d(j,n,n) = c1/c2 * (j*d(j-1,n-1,n-1) - (r(n-1)-x0)*d(j,n-1,n-1) )
-   !       endif
-         
-   !    enddo
-   !    c1 = c2
-   ! enddo
-
-   ! d contains way more information than we want it to
-   ! instead we construct a smaller field `coeff`,
+   ! d contains way more information than we need it to.
+   ! instead we construct a smaller field `coeff`
    ! where coeff[derivative, accuracy, coefficients]
-   coeff(1,1,:) = d(1,1,1:4)
-   coeff(1,2,:) = d(1,2,1:4)
-   coeff(2,1,:) = d(2,2,1:4)
-   coeff(2,2,:) = d(2,3,1:4)
+   coeff(1,1,:) = d(1,1,0:3)
+   coeff(1,2,:) = d(1,2,0:3)
+   coeff(2,1,:) = d(2,2,0:3)
+   coeff(2,2,:) = d(2,3,0:3)
 end subroutine forward_derivative_weights
 
    subroutine read_nfun(fn, gridax, gridf)
@@ -629,10 +602,11 @@ end subroutine forward_derivative_weights
       ! bound1 is the first derivative at r(0)
       yspline(1) = -0.5_dp
 
-      call forward_derivative_weights(M=2, x0=0.0_dp, r=r, coeff=coeff)
-      print *, sum(y(1:4) * coeff(1,2,:))/10._dp
-      print *, '-'
+      call forward_derivative_weights(order=2, x0=0.0_dp, r=r, coeff=coeff)
+      print *, 'derivatives'
+      print *, sum( coeff(1,2,1:4) * y(1:4) )
       der1 = (y(2)-y(1))/abs(r(2)-r(1))
+      print *, der1
       ! der1 = bound1
 
       u(1) = (3.0_dp/(r(2)-r(1)))*((y(2)-y(1))/(r(2)-r(1))-der1)
