@@ -8,7 +8,65 @@ implicit none
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 contains
 
-subroutine test_derivative_point()
+subroutine test_derivative_point_off()
+   implicit none
+   REAL(KIND=dp), DIMENSION(1000) :: r_exact, wr, y_exact
+   REAL(KIND=dp), DIMENSION(100) :: r_appr, y1_appr
+   REAL(KIND=dp), DIMENSION(100-3) :: errors
+   REAL(KIND=dp) :: alpha, r0, y1_exact
+   INTEGER :: i
+   INTEGER :: low, upper, atindex
+
+   ! Set up the function to test
+   call radial_grid(r=r_exact, wr=wr, n=size(r_exact), addr2=.FALSE., quadr=1)
+   call radial_grid(r=r_appr, wr=wr, n=size(r_appr), addr2=.FALSE., quadr=1)
+   call RANDOM_NUMBER(alpha); alpha = alpha * 5
+   y_exact = exp(-alpha * r_exact**2)
+
+   errors = 0._dp
+   do i=1,size(errors)
+      call derivative_point(r=r_exact, y=y_exact, r0=r_appr(i), y1=y1_appr(i))
+      y1_exact = -2.0_dp * alpha * r_appr(i) * exp(-alpha * r_appr(i)**2)
+      if (y1_exact .ne. 0._dp .and. abs(y1_exact) .gt. 1e-40_dp) then
+         errors(i) = abs((y1_exact-y1_appr(i))/y1_exact)
+      endif
+      ! print *, r_appr(i), y1_exact, y1_appr(i), errors(i)
+   enddo
+
+   ! Oh my.
+   if ( count(errors>0.2)/REAL(size(errors), dp) < 0.2_dp&
+         .and. sum(errors)/size(errors) < 0.1_dp ) then
+      ! The test passes, if less than 20% of all derivatives are ~bad~ awful
+      print *, '👌 test_derivative_point_off – radial grid - passed'
+   else
+      print *, '💣 test_derivative_point_off – radial grid - failed'
+      print *, count(errors>0.2)/REAL(size(errors), dp)
+      print *, sum(errors)/size(errors)
+   endif
+
+   ! Should be much better on an equally spaced grid
+   r_exact = (/ ( 0.012_dp*REAL(i, dp), i = 0,size(r_exact)-1 ) /)
+   y_exact = exp(-alpha * r_exact**2)
+
+   errors = 0._dp
+   do i=1,size(errors)
+      call derivative_point(r=r_exact, y=y_exact, r0=r_appr(i), y1=y1_appr(i))
+      y1_exact = -2.0_dp * alpha * r_appr(i) * exp(-alpha * r_appr(i)**2)
+      if (y1_exact .ne. 0._dp) then
+         errors(i) = abs((y1_exact-y1_appr(i))/y1_exact)
+      endif
+      ! print *, r_appr(i), y1_exact, y1_appr(i), errors(i)
+   enddo
+
+   if (sum(errors)/size(errors) .lt. 0.1_dp) then
+      print *, '👌 test_derivative_point_off – equally spaced grid - passed '
+   else
+      print *, '💣 test_derivative_point_off – equally spaced grid - failed '
+      print *, sum(errors)/size(errors)
+   endif
+end subroutine test_derivative_point_off
+
+subroutine test_derivative_point_on()
    implicit none
    REAL(KIND=dp), DIMENSION(500) :: r, wr, y, y1_exact, y1_approx
    REAL(KIND=dp), DIMENSION(500-3) :: errors
@@ -33,12 +91,12 @@ subroutine test_derivative_point()
    enddo
 
    ! Oh my.
-   if ( count(errors>0.2)/REAL(size(errors), dp) < 0.2_dp&
-         .and. sum(errors)/size(errors) < 0.1_dp ) then
-      ! The test passes, if less than 20% of all derivatives are ~bad~ awful
-      print *, '👌 test_derivative_point – radial grid - passed'
+   if ( count(errors>0.2)/REAL(size(errors), dp) < 0.25_dp&
+         .and. sum(errors)/size(errors) < 0.15_dp ) then
+      ! The test passes, if less than 25% of all derivatives are ~bad~ awful
+      print *, '👌 test_derivative_point_on – radial grid - passed'
    else
-      print *, '💣 test_derivative_point – radial grid - failed'
+      print *, '💣 test_derivative_point_on – radial grid - failed'
       print *, count(errors>0.2)/REAL(size(errors), dp)
       print *, sum(errors)/size(errors)
    endif
@@ -56,74 +114,205 @@ subroutine test_derivative_point()
       endif
    enddo
    if (sum(errors)/size(errors) .lt. 0.01) then
-      print *, '👌 test_derivative_point – equally spaced grid - passed '
+      print *, '👌 test_derivative_point_on – equally spaced grid - passed '
    else
-      print *, '💣 test_derivative_point – equally spaced grid - failed '
+      print *, '💣 test_derivative_point_on – equally spaced grid - failed '
       print *, count(errors>0.2)/REAL(size(errors), dp)
       print *, sum(errors)/size(errors)
    endif
-end subroutine test_derivative_point
+end subroutine test_derivative_point_on
 
-subroutine test_derivative(ntests, loud)
+subroutine test_derivative_on(ntests)
    implicit none
    ! Input
    INTEGER, intent(in) :: ntests
-   LOGICAL, intent(in) :: loud
    ! Local variables
-   REAL(KIND=dp), DIMENSION(100) :: r, wr, y, ys, y1_s, y2_s, y1_ex, y2_ex
-   REAL(KIND=dp) :: alpha
-   INTEGER :: i
+   REAL(KIND=dp), DIMENSION(250) :: r, wr, y, ys, y1_s, y2_s, y1_ex, errors
    REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
-
-   ! Set up the gaussian function and its derivatives analytically
-   call RANDOM_NUMBER(alpha)
-   alpha = alpha * 5
+   REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
+   REAL(KIND=dp) :: alpha, abs_error, error_cutoff
+   INTEGER :: i, t
 
    call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
-   ! r = (/ ( 0.1_dp*i**2, i = 1,size(r) ) /)
 
-   y = exp(-alpha * r**2)
-   y1_ex = -2.0_dp * alpha * r * y
-   y2_ex = (4.0_dp * alpha**2 * r**2 - 2.0_dp * alpha)*y
+   tot_errors = 0.0_dp
+   do t=1,ntests
+      ! Set up the gaussian function and its derivatives analytically
+      call RANDOM_NUMBER(alpha); alpha = alpha * 5.0_dp + 0.1_dp
 
-   ! Get the derivatives via spline interpolation
-   call spline(r, y, size(r), y2_s)
-   do i=1,size(r)
-      call interpolation(gr=r, gy=y, spline=y2_s, r=r(i), y=ys(i), yprime=y1_s(i))
-      print *, 'r:' , r(i)
-      print *, 'y_exact, y_spline:', y(i), ys(i), y(i)-ys(i)
-      print *, 'y1_exact, y1_spline:', y1_ex(i), y1_s(i), abs(1.-y1_s(i)/y1_ex(i))/r(i)
-      print *,
+      y = exp(-alpha * r**2)
+      y1_ex = -2.0_dp * alpha * r * y
+
+      error_cutoff = maxval(abs(y1_ex))*1.e-10_dp
+      errors = 0._dp
+
+      ! Get the derivatives via spline interpolation
+      call spline(r, y, size(r), y2_s)
+      ! print '(A21, A21, A23, A21)', 'r', 'y1 exact', 'y1 appr', 'error'
+      do i=1,size(r)
+         call interpolation(gr=r, gy=y, spline=y2_s, r=r(i), y=ys(i), yprime=y1_s(i))
+         abs_error = abs(y1_s(i)-y1_ex(i))
+         if (y1_ex(i) .ne. 0.0_dp .and. abs_error .gt. error_cutoff) then
+            errors(i) = abs_error/abs(y1_ex(i))
+         endif     
+         ! print *, r(i), y1_ex(i), y1_s(i), abs_error, (abs_error .gt. error_cutoff), errors(i)
+      enddo
+
+      tot_errors(t) = sum(errors)/size(errors)
    enddo
-   print *, alpha
 
-   open(unit=100, file='poly')
-   do i=1,size(r)
-      write(100, *) r(i), y(i), y1_ex(i), y1_s(i), y2_ex(i), y2_s(i)
-   enddo
-   close(100)
-end subroutine test_derivative
+   if (maxval(tot_errors) .lt. 1e-1_dp .and. sum(tot_errors)/ntests .lt. 1e-1_dp) then
+      print *, '⚠️  test_derivative - on grid - passed'
+      print *, 'max. error: ', maxval(tot_errors)
+      print *, 'mean error: ', sum(tot_errors)/ntests
+   else
+      print *, '💣 test_derivative - on grid - failed'
+      print *, 'max. error: ', maxval(tot_errors)
+      print *, 'mean error: ', sum(tot_errors)/ntests
+   endif
+end subroutine test_derivative_on
 
-subroutine test_spline()
+subroutine test_derivative_off(ntests)
    implicit none
+   ! Input
+   INTEGER, intent(in) :: ntests
    ! Local variables
-   REAL(KIND=dp), DIMENSION(30) :: r, wr, y, y1_exact, y2_exact, y2_spline
-   REAL(KIND=dp) :: alpha
-   INTEGER :: i
+   REAL(KIND=dp), DIMENSION(1000) :: r, wr, y, ys, y2_s
+   REAL(KIND=dp), DIMENSION(200) :: r_interp, wr_interp, y1_s, y1_ex, errors
+   REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
+   REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
+   REAL(KIND=dp) :: alpha, abs_error, error_cutoff
+   INTEGER :: i, t
 
-   call RANDOM_NUMBER(alpha)
-   alpha = alpha * 5
-   call radial_grid(r=r, wr=wr, n=size(r), addr2=.FALSE., quadr=1)
-   y = exp(-alpha * r**2)
-   y1_exact = -2.0_dp * alpha * r * y
-   y2_exact = (4.0_dp * alpha**2 * r**2 - 2.0_dp * alpha)*y
+   call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
+   call radial_grid(r=r_interp, wr=wr_interp, n=size(r_interp), addr2=.TRUE., quadr=1)
 
-   call spline(r=r, y=y, n=size(r), yspline=y2_spline)
-   print *, 'alpha=', alpha
-   do i=1,size(r)
-      print *, r(i), y2_exact(i), y2_spline(i), abs(1-y2_exact(i)/y2_spline(i))
+   tot_errors = 0.0_dp
+   do t=1,ntests
+      ! Set up the gaussian function and its derivatives analytically
+      call RANDOM_NUMBER(alpha); alpha = alpha * 5.0_dp + 0.1_dp
+
+      y = exp(-alpha * r**2)
+
+      y1_ex = -2.0_dp * alpha * r_interp * exp(-alpha * r_interp**2)
+
+      error_cutoff = maxval(abs(y1_ex))*1.e-14_dp
+      errors = 0._dp
+
+      ! Get the derivatives via spline interpolation
+      call spline(r, y, size(r), y2_s)
+      ! print '(A21, A21, A23, A21)', 'r', 'y1 exact', 'y1 appr', 'error'
+      do i=1,size(r_interp)
+         call interpolation(gr=r, gy=y, spline=y2_s, r=r_interp(i), y=ys(i), yprime=y1_s(i))
+         abs_error = abs(y1_s(i)-y1_ex(i))
+         if (y1_ex(i) .ne. 0.0_dp .and. abs_error .gt. error_cutoff) then
+            errors(i) = abs_error/abs(y1_ex(i))
+         endif     
+         ! print *, r_interp(i), y1_ex(i), y1_s(i), abs_error, (abs_error .gt. error_cutoff), errors(i)
+      enddo
+
+      tot_errors(t) = sum(errors)/size(errors)
    enddo
+
+   if (maxval(tot_errors) .lt. 1e-1_dp .and. sum(tot_errors)/ntests .lt. 1e-4_dp) then
+      print *, '⚠️  test_derivative - off grid - passed'
+      print *, 'max. error: ', maxval(tot_errors)
+      print *, 'mean error: ', sum(tot_errors)/ntests
+   else
+      print *, '💣 test_derivative - off grid - failed'
+      print *, 'max. error: ', maxval(tot_errors)
+      print *, 'mean error: ', sum(tot_errors)/ntests
+   endif
+end subroutine test_derivative_off
+
+subroutine test_spline(ntests)
+   implicit none
+   INTEGER, intent(in) :: ntests
+   ! Local variables
+   REAL(KIND=dp), DIMENSION(300) :: r, wr, y, y2_exact, y2_spline, errors
+   REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
+   REAL(KIND=dp) :: alpha, error_cutoff, abs_error
+   INTEGER :: i, t
+
+   call radial_grid(r=r, wr=wr, n=size(r), addr2=.FALSE., quadr=1)
+   do t=1,ntests
+      call RANDOM_NUMBER(alpha)
+      alpha = alpha * 5._dp + 0.1_dp
+      y = exp(-alpha * r**2)
+      y2_exact = (4.0_dp * alpha**2 * r**2 - 2.0_dp * alpha)*y
+
+      error_cutoff = maxval(abs(y2_exact))*1.e-16_dp
+
+      call spline(r=r, y=y, n=size(r), yspline=y2_spline)
+      ! print '(A21, A21, A23, A21)', 'r', 'y2 exact', 'spline', 'error'
+      errors = 0._dp
+      do i=1,size(r)
+         abs_error = abs(y2_spline(i)-y2_exact(i))
+         if (y2_exact(i) .ne. 0._dp .and. abs_error .gt. error_cutoff) then
+            errors(i) = abs_error/y2_exact(i)
+         endif
+         ! print *, r(i), y2_exact(i), y2_spline(i), errors(i)
+      enddo
+      tot_errors(t) = sum(errors)/size(errors)
+      if (tot_errors(t) .gt. 1._dp) then
+         print *, 'alpha', alpha
+         print *, 'error', tot_errors(t)
+      endif
+   enddo
+
+   if (maxval(tot_errors) .lt. 1._dp .and. sum(tot_errors)/ntests .lt. 0.01_dp) then
+      print *, '👌 test_spline - passed'
+   else
+      print *, '💣 test_spline - failed'
+      print *, 'max. error: ', maxval(tot_errors)
+      print *, 'mean error: ', sum(tot_errors)/ntests
+   endif
 end subroutine test_spline
+
+subroutine test_interpolation(ntests)
+   implicit none
+   REAL(KIND=dp), DIMENSION(100) :: r_orig, wr, y_orig, s_orig
+   REAL(KIND=dp), DIMENSION(200) :: r_interp, y_exact, wr2, errors
+   REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
+   REAL(KIND=dp) :: alpha, y_interp, error_cutoff, abs_error
+   INTEGER :: i, ntests, t
+
+   call radial_grid(r=r_orig, wr=wr, n=size(r_orig), addr2=.FALSE., quadr=1)
+   call radial_grid(r=r_interp, wr=wr2, n=size(r_interp), addr2=.FALSE., quadr=1)
+
+   do t=1,ntests
+      call RANDOM_NUMBER(alpha); alpha = alpha * 5 + 0.2_dp
+      y_orig = exp(-alpha * r_orig**2)
+      y_exact = exp(-alpha * r_interp**2)
+
+      error_cutoff = maxval(abs(y_exact))*1.e-10_dp
+      call spline(r=r_orig, y=y_orig, n=size(r_orig), yspline=s_orig)
+
+      errors = 0._dp
+
+      ! open(unit=100, file='testinterp')
+      do i=1,size(r_interp)
+         call interpolation(gr=r_orig, gy=y_orig, spline=s_orig, r=r_interp(i), y=y_interp)
+         abs_error = abs(y_interp-y_exact(i))
+         if (y_exact(i) .ne. 0._dp .and. abs_error .gt. error_cutoff) then
+            errors(i) = abs_error/y_exact(i)
+         endif
+         ! print *, '=>', r_interp(i), y_interp, y_exact(i), abs_error, errors(i)
+         ! write(100, *) r_interp(i), y_interp, y_exact(i), errors(i)
+      enddo
+      ! close(100)
+      tot_errors(t) = sum(errors)/size(errors)
+      if (tot_errors(t) .gt. 1._dp) print *, 'alpha ', alpha
+   enddo
+
+   if (maxval(tot_errors) .lt. 0.1_dp .and. sum(tot_errors)/ntests .lt. 0.01_dp) then
+      print *, '👌 test_interpolation - passed'
+   else
+      print *, '💣 test_interpolation - failed'
+      print *, 'max. error: ', maxval(tot_errors)
+      print *, 'mean error: ', sum(tot_errors)/ntests
+   endif
+end subroutine test_interpolation
 
 subroutine test_forward_deriv_coeff()
    implicit none
@@ -141,18 +330,14 @@ subroutine test_forward_deriv_coeff()
    failed = failed .or. all(c(2,1,1:4) .ne. (/1._dp, -2._dp, 1._dp, 0._dp/))
    failed = failed .or. all(c(2,2,1:4) .ne. (/2._dp, -5._dp, 4._dp, -1._dp/))
    if (failed .eqv. .TRUE.) then
-      print *, 'test forward derivative coefficients - failed 💣'
+      print *, '💣 test forward derivative coefficients - failed'
       print *, c(1,1,:)
       print *, c(1,2,:)
       print *, c(2,1,:)
       print *, c(2,2,:)
    else
-      print *, 'test forward derivative coefficients - passed 👌'
+      print *, '👌 test forward derivative coefficients - passed'
    endif
-
-   print *, REPEAT('-', 20) // ' BACKWARDS ' // REPEAT('-', 20)
-   call forward_derivative_weights(order=2, x0=6._dp, r=tr(7:1:-1), coeff=c)
-   print *, c(1,1,:)
 end subroutine test_forward_deriv_coeff
 
 subroutine test_onecenter(ntests, loud)
@@ -223,7 +408,7 @@ subroutine test_twocenter(ntests, loud)
    INTEGER :: j, ntests, ngrid
 
    print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
-   ngrid = 5000
+   ngrid = 2500
 
    ! Prepare the grid
    allocate(r(ngrid))
@@ -389,7 +574,7 @@ subroutine test_kinetic(ntests, loud)
    INTEGER :: j, ntests, ngrid
 
    print *, REPEAT('-', 30) // ' Testing Kinetic energy ' // REPEAT('-', 30)
-   ngrid = 25000
+   ngrid = 2500
 
    allocate(r(ngrid))
    allocate(wr(ngrid))
@@ -563,9 +748,9 @@ subroutine test_radial_weight_pos(ntests)
       deallocate(wr)
    enddo
    if (.not. failed) then
-      print *, 'test_radial - all weights positive - passed 👌'
+      print *, '👌 test_radial - all weights positive - passed'
    else
-      print *, 'test_radial - all weights positive - failed 💣'
+      print *, '💣 test_radial - all weights positive - failed'
    endif
 end subroutine test_radial_weight_pos
 
@@ -578,8 +763,7 @@ subroutine test_radial_chebyherm(ntests, loud)
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r_c, r_h, y, spline1, wr
    INTEGER :: j, ntests, ngrid
 
-   print *, REPEAT('-', 26) // ' Testing Hermite-Chebyshev ' // REPEAT('-', 26)
-   ngrid = 40
+   ngrid = 100
 
    ! Prepare the grid
    allocate(r_c(ngrid))
@@ -593,7 +777,6 @@ subroutine test_radial_chebyherm(ntests, loud)
 
    ! Perform the tests
    do j=1,ntests
-      print *, j
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand)
       rand = rand * 5.0_dp + 0.1_dp
@@ -601,12 +784,12 @@ subroutine test_radial_chebyherm(ntests, loud)
       ! Prepare grids
       y = exp(-rand * r_c**2 )
       call spline(r_c, y, size(r_c), spline1)
-      call integration_onecenter(nang=50, nshell=ngrid, r=r_c, y=y,&
+      call integration_onecenter(nang=1, nshell=ngrid, r=r_c, y=y,&
                                  spline=spline1, quadr=1, integral=integral_c)
 
       y = exp(-rand * r_h**2 )
       call spline(r_h, y, size(r_h), spline1)
-      call integration_onecenter(nang=50, nshell=ngrid, r=r_h, y=y,&
+      call integration_onecenter(nang=1, nshell=ngrid, r=r_h, y=y,&
                                  spline=spline1, quadr=2, integral=integral_h)
 
       ri = 4.0_dp*pi**1.5_dp/(4.0_dp*rand**(1.5_dp))
@@ -624,11 +807,14 @@ subroutine test_radial_chebyherm(ntests, loud)
       endif
    enddo
 
-   err = sum(errors)/REAL(ntests, dp)
-   print *, 'Mean rel. difference: ', err
-   print *, REPEAT('-', 24) // ' End Testing Hermite-Chebyshev ' // REPEAT('-', 24)
-   print *, ''
-
+   err = sum(errors)/ntests
+   if (maxval(errors) .lt. 1e-7_dp .and. sum(errors)/ntests .lt. 1e-7_dp) then
+      print *, '👌 test_radial - cheby.herm - passed'
+   else
+      print *, '💣 test_radial - cheby.herm - failed'
+      print *, 'max. error: ', maxval(errors)
+      print *, 'mean error: ', sum(errors)/ntests
+   endif
    deallocate(r_c)
    deallocate(r_h)
    deallocate(wr)
@@ -665,9 +851,9 @@ subroutine test_radial_weight_asc(ntests)
       deallocate(wr)
    enddo
    if (.not. failed) then
-      print *, 'test_radial - radii ascending order - passed 👌'
+      print *, '👌 test_radial - radii ascending order - passed'
    else
-      print *, 'test_radial - radii ascending order - failed 💣'
+      print *, '💣 test_radial - radii ascending order - failed'
    endif
 end subroutine test_radial_weight_asc
 

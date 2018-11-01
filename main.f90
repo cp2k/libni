@@ -10,7 +10,10 @@ USE grid, ONLY: grid_parameters, radial_grid, gauher
 USE nao_unit, ONLY: test_onecenter, test_twocenter, test_threecenter, test_kinetic, &
                     test_coulomb,&
                     test_radial_weight_pos, test_radial_chebyherm, test_radial_weight_asc, &
-                    test_forward_deriv_coeff, test_spline, test_derivative, test_derivative_point
+                    test_forward_deriv_coeff, test_spline,&
+                    test_derivative_point_on, test_derivative_point_off,&
+                    test_interpolation,&
+                    test_derivative_on, test_derivative_off
 implicit none
 
 CHARACTER(len=*), PARAMETER :: fn1 = 'gaussian.grid'
@@ -25,17 +28,20 @@ INTEGER :: i, nang, nshell, ngrid
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 ! call test_radial_weight_pos(ntests=9)
 ! call test_radial_weight_asc(ntests=9)
+! call test_radial_chebyherm(ntests=25, loud=.FALSE.)
 ! call test_forward_deriv_coeff()
+! call test_interpolation(ntests=100)
+! call test_spline(ntests=100)
+! call test_derivative_point_on()
+! call test_derivative_point_off()
+
 ! call test_onecenter(ntests=100, loud=.FALSE.)
 ! call test_twocenter(ntests=100, loud=.FALSE.)
 ! call test_threecenter(ntests=100 , loud=.FALSE.)
 ! call test_kinetic(ntests=100, loud=.FALSE.)
 ! call test_coulomb(ntests=50, loud=.FALSE.)
-! call test_radial_chebyherm(ntests=50, loud=.FALSE.)
-! call test_spline()
-! return
-! call test_derivative_point()
-call test_derivative(ntests=1, loud=.TRUE.)
+call test_derivative_on(ntests=100)
+call test_derivative_off(ntests=100)
 return
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 

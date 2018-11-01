@@ -657,7 +657,7 @@ subroutine bisection(r, r0, low, upper)
 
    low = 1
    upper = size(r)
-   do while (upper .gt. low)
+   do while (upper .gt. low+1)
       mid = NINT((low+upper)/2.0_dp)
       if (r(mid) .gt. r0) then
          upper = mid
@@ -693,7 +693,6 @@ end subroutine bisection
          y = gy(low)
          if (present(yprime)) call derivative_point(r=gr, y=gy, r0=r, y1=yprime)
       else if ((gr(upper) .gt. r) .and. (gr(low) .lt. r)) then
-         ! SPLINE INTERPOLATION
          h = gr(upper)-gr(low)
          A = (gr(upper)-r)/h
          B = (r-gr(low))/h
@@ -703,14 +702,21 @@ end subroutine bisection
          if (present(yprime)) then
          yprime = ( gy(upper)-gy(low) )/h - (3._dp*A**2-1._dp)*h/6._dp*spline(low)&
                                           + (3._dp*B**2-1._dp)*h/6._dp*spline(upper)
-         print *, 'prime', yprime
          endif
+         ! print *, '--'
+         ! print *, 'r ', gr(low), r, gr(upper)
+         ! print *, 'y ', gy(low), y, gy(upper)
+         ! print *, '---'
       else if (gr(upper) .lt. r) then
+         ! If the supplied r is higher than maxval(gr)
          y = gy(upper)
-         ! print *, 'Extrapolation!'
+         if (present(yprime)) yprime = 0.0_dp
+         ! print *, 'Extrapolation up!'
          ! print *, upper, gr(upper), r, y
       else if (gr(low) .gt. r) then
+         ! If the supplied r is lower than minval(gr)
          y = gy(low)
+         if (present(yprime)) call derivative_point(r=gr, y=gy, r0=r, y1=yprime)
          ! print *, 'Extrapolation!'
       endif
    end subroutine interpolation
@@ -781,48 +787,5 @@ recursive subroutine qsort_sim2(arr, brr)
    if (first .lt. (i-1)) call qsort_sim2( arr(first:i-1), brr(first:i-1) )
    if ((j+1) .lt. last) call qsort_sim2( arr(j+1:last), brr(j+1:last) )
 end subroutine qsort_sim2
-
-subroutine spherical_harmonic(l, m, r, ylm)
-   implicit none
-   ! Input
-   INTEGER, intent(in) :: l, m
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: r
-   ! Output
-   REAL(KIND=dp) :: ylm
-   ! Local variables
-   REAL(kind=dp) :: x, y, z, rad, n
-   rad = sqrt(sum(r**2))
-   x = r(1); y = r(2); z = r(3)
-
-   if (l .eq. 0) then
-      ylm = 1.0_dp/sqrt(4*pi)
-   else if (l .eq. 1) then
-      n = sqrt(0.75_dp/pi)
-      select case (m)
-         case (-1)
-            ylm = n * y/rad
-         case (0) 
-            ylm = n * z/rad
-         case (1) 
-            ylm = n * x/rad
-      end select
-   else if (l .eq. 2) then
-      n = 0.5_dp * sqrt(15.0_dp/pi)
-      select case (m)
-         case (-2)
-            ylm = n * x*y
-         case (-1)
-            ylm = n * y*z
-         case (0) 
-            ylm = 0.25_dp*sqrt(5.0_dp/pi)*(2.0_dp*z*z-x*x-y*y)
-         case (1) 
-            ylm = n * x*z
-         case (2) 
-            ylm = n * 0.5_dp * (x*x-y*y)
-      end select
-   else
-      stop 'NotImplemented - l>2'
-   endif
-end subroutine spherical_harmonic
 
 end module eddi
