@@ -299,6 +299,8 @@ subroutine test_spline(ntests)
 
    if (maxval(tot_errors) .lt. 1._dp .and. sum(tot_errors)/ntests .lt. 0.01_dp) then
       print *, '👌 test_spline - passed'
+      print *, 'max. error: ', maxval(tot_errors)
+      print *, 'mean error: ', sum(tot_errors)/ntests
    else
       print *, '💣 test_spline - failed'
       print *, 'max. error: ', maxval(tot_errors)

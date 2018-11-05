@@ -386,6 +386,7 @@ end function s3
       enddo 
    end subroutine print_grid
 
+! Compute the `n`th Hermite polynomial y=H_n(x).
 recursive subroutine hermite(n, x, y)
    implicit none
    INTEGER, intent(in) :: n

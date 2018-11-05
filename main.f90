@@ -5,7 +5,7 @@ USE eddi, ONLY: type_atom, integration_twocenter, &
                 integration_threecenter, kinetic_energy, &
                 integration_onecenter, coulomb_integral, coulomb_integral_grid, &
                 radial_integration, pp_projector, pp_nonloc,&
-                forward_derivative_weights
+                forward_derivative_weights, jacobian
 USE grid, ONLY: grid_parameters, radial_grid, gauher
 USE nao_unit, ONLY: test_onecenter, test_twocenter, test_threecenter, test_kinetic, &
                     test_coulomb,&
@@ -25,15 +25,27 @@ REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r1, wr1, y1, s1
 REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: projector1, projector2
 INTEGER :: i, nang, nshell, ngrid
 
+! Local variables (Jacobian)
+REAL(KIND=dp), DIMENSION(3,3) :: jac
+REAL(KIND=dp), DIMENSION(3) :: vec = (/ 4._dp, 5._dp, 6._dp /)
+
+jac = jacobian(r=1._dp, theta=0._dp, phi=0._dp)
+print *, jac(1,:), vec(1)
+print *, jac(2,:), vec(2)
+print *, jac(3,:), vec(3)
+print *,
+print *, matmul(jac, vec)
+
+return
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
-! call test_radial_weight_pos(ntests=9)
-! call test_radial_weight_asc(ntests=9)
-! call test_radial_chebyherm(ntests=25, loud=.FALSE.)
-! call test_forward_deriv_coeff()
-! call test_interpolation(ntests=100)
-! call test_spline(ntests=100)
-! call test_derivative_point_on()
-! call test_derivative_point_off()
+call test_radial_weight_pos(ntests=9)
+call test_radial_weight_asc(ntests=9)
+call test_radial_chebyherm(ntests=25, loud=.FALSE.)
+call test_forward_deriv_coeff()
+call test_interpolation(ntests=100)
+call test_spline(ntests=100)
+call test_derivative_point_on()
+call test_derivative_point_off()
 
 call test_derivative_on(ntests=100)
 call test_derivative_off(ntests=100)

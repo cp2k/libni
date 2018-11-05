@@ -783,4 +783,24 @@ recursive subroutine qsort_sim2(arr, brr)
    if ((j+1) .lt. last) call qsort_sim2( arr(j+1:last), brr(j+1:last) )
 end subroutine qsort_sim2
 
+function jacobian(r, theta, phi)
+   implicit none
+   REAL(KIND=dp), intent(in) :: r, theta, phi
+   REAL(KIND=dp), DIMENSION(3,3) :: jacobian
+   ! jacobian(1,:) = 1st column     1  1  1
+   ! jacobian(2,:) = 2nd column     2  2  2
+   ! jacobian(3,:) = 3rd column     3  3  3
+   jacobian(1,1) = sin(theta)*cos(phi)
+   jacobian(1,2) = r*cos(theta)*cos(phi)
+   jacobian(1,3) = -r*sin(theta)*sin(phi)
+
+   jacobian(2,1) = sin(theta)*sin(phi)
+   jacobian(2,2) = r*cos(theta)*sin(phi)
+   jacobian(2,3) = r*sin(theta)*cos(phi)
+
+   jacobian(3,1) = cos(theta)
+   jacobian(3,2) = -r*sin(theta)
+   jacobian(3,3) = 0._dp
+end function jacobian
+
 end module eddi
