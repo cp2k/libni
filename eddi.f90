@@ -626,6 +626,53 @@ subroutine spline(r, y, n, yspline)
    enddo
 end subroutine spline
 
+! Given a function `gy` on a grid `gr` and a requested
+! function value y(r) interpolates the function value `y` using `spline`
+subroutine interpolation(gr, gy, spline, r, y, yprime)
+   ! Input
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: gr, gy
+   REAL(KIND=dp), DIMENSION(size(gr)), intent(in) :: spline
+   REAL(KIND=dp), intent(in) :: r
+   ! Output
+   REAL(KIND=dp) :: y
+   REAL(KIND=dp), OPTIONAL :: yprime
+   ! Local variables
+   INTEGER :: low, upper
+   REAL(KIND=dp) :: A, B, C, D, h
+
+   ! find the closest grid point by bisection
+   call bisection(r=gr, r0=r, low=low, upper=upper)
+
+   if (gr(upper) .eq. r) then
+      y = gy(upper)
+      if (present(yprime)) call derivative_point(r=gr, y=gy, r0=r, y1=yprime)
+   else if (gr(low) .eq. r) then
+      y = gy(low)
+      if (present(yprime)) call derivative_point(r=gr, y=gy, r0=r, y1=yprime)
+   else if ((gr(upper) .gt. r) .and. (gr(low) .lt. r)) then
+      h = gr(upper)-gr(low)
+      A = (gr(upper)-r)/h
+      B = (r-gr(low))/h
+      C = (A**3.0_dp-A) * (h**2.0_dp)/6.0_dp
+      D = (B**3.0_dp-B) * (h**2.0_dp)/6.0_dp
+      y = A*gy(low) + B*gy(upper) + C*spline(low) + D*spline(upper)
+      if (present(yprime)) then
+      yprime = ( gy(upper)-gy(low) )/h - (3._dp*A**2-1._dp)*h/6._dp*spline(low)&
+                                       + (3._dp*B**2-1._dp)*h/6._dp*spline(upper)
+      endif
+   else if (gr(upper) .lt. r) then
+      ! If the supplied r is higher than maxval(gr)
+      y = gy(upper)
+      if (present(yprime)) yprime = 0.0_dp
+      ! print *, 'Extrapolation up!'
+   else if (gr(low) .gt. r) then
+      ! If the supplied r is lower than minval(gr)
+      y = gy(low)
+      if (present(yprime)) call derivative_point(r=gr, y=gy, r0=r, y1=yprime)
+      ! print *, 'Extrapolation!'
+   endif
+end subroutine interpolation
+
    subroutine read_nfun(fn, gridax, gridf)
       CHARACTER(len=*) :: fn
       REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gridax, gridf
@@ -668,58 +715,6 @@ subroutine bisection(r, r0, low, upper)
       if (r(upper) .eq. r0) low = upper 
    enddo
 end subroutine bisection
-
-   ! Given a function `gy` on a grid `gr` and a requested
-   ! function value y(r) interpolates the function value `y` using `spline`
-   subroutine interpolation(gr, gy, spline, r, y, yprime)
-      ! Input
-      REAL(KIND=dp), DIMENSION(:), intent(in) :: gr, gy
-      REAL(KIND=dp), DIMENSION(size(gr)), intent(in) :: spline
-      REAL(KIND=dp), intent(in) :: r
-      ! Output
-      REAL(KIND=dp) :: y
-      REAL(KIND=dp), OPTIONAL :: yprime
-      ! Local variables
-      INTEGER :: low, upper
-      REAL(KIND=dp) :: A, B, C, D, h
-
-      ! find the closest grid point by bisection
-      call bisection(r=gr, r0=r, low=low, upper=upper)
-
-      if (gr(upper) .eq. r) then
-         y = gy(upper)
-         if (present(yprime)) call derivative_point(r=gr, y=gy, r0=r, y1=yprime)
-      else if (gr(low) .eq. r) then
-         y = gy(low)
-         if (present(yprime)) call derivative_point(r=gr, y=gy, r0=r, y1=yprime)
-      else if ((gr(upper) .gt. r) .and. (gr(low) .lt. r)) then
-         h = gr(upper)-gr(low)
-         A = (gr(upper)-r)/h
-         B = (r-gr(low))/h
-         C = (A**3.0_dp-A) * (h**2.0_dp)/6.0_dp
-         D = (B**3.0_dp-B) * (h**2.0_dp)/6.0_dp
-         y = A*gy(low) + B*gy(upper) + C*spline(low) + D*spline(upper)
-         if (present(yprime)) then
-         yprime = ( gy(upper)-gy(low) )/h - (3._dp*A**2-1._dp)*h/6._dp*spline(low)&
-                                          + (3._dp*B**2-1._dp)*h/6._dp*spline(upper)
-         endif
-         ! print *, '--'
-         ! print *, 'r ', gr(low), r, gr(upper)
-         ! print *, 'y ', gy(low), y, gy(upper)
-         ! print *, '---'
-      else if (gr(upper) .lt. r) then
-         ! If the supplied r is higher than maxval(gr)
-         y = gy(upper)
-         if (present(yprime)) yprime = 0.0_dp
-         ! print *, 'Extrapolation up!'
-         ! print *, upper, gr(upper), r, y
-      else if (gr(low) .gt. r) then
-         ! If the supplied r is lower than minval(gr)
-         y = gy(low)
-         if (present(yprime)) call derivative_point(r=gr, y=gy, r0=r, y1=yprime)
-         ! print *, 'Extrapolation!'
-      endif
-   end subroutine interpolation
 
 recursive subroutine qsort(arr)!, brr)
    implicit none

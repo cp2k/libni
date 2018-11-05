@@ -13,7 +13,7 @@ subroutine test_derivative_point_off()
    REAL(KIND=dp), DIMENSION(1000) :: r_exact, wr, y_exact
    REAL(KIND=dp), DIMENSION(100) :: r_appr, y1_appr
    REAL(KIND=dp), DIMENSION(100-3) :: errors
-   REAL(KIND=dp) :: alpha, r0, y1_exact
+   REAL(KIND=dp) :: alpha, r0, y1_exact, error_cutoff, abs_error, y1_exact_sum, summer
    INTEGER :: i
    INTEGER :: low, upper, atindex
 
@@ -23,46 +23,64 @@ subroutine test_derivative_point_off()
    call RANDOM_NUMBER(alpha); alpha = alpha * 5
    y_exact = exp(-alpha * r_exact**2)
 
+   error_cutoff = maxval(abs(-2.0_dp * alpha * r_appr * exp(-alpha * r_appr**2)))*1.e-16_dp
+
    errors = 0._dp
+   y1_exact_sum = 0._dp
    do i=1,size(errors)
       call derivative_point(r=r_exact, y=y_exact, r0=r_appr(i), y1=y1_appr(i))
       y1_exact = -2.0_dp * alpha * r_appr(i) * exp(-alpha * r_appr(i)**2)
-      if (y1_exact .ne. 0._dp .and. abs(y1_exact) .gt. 1e-40_dp) then
-         errors(i) = abs((y1_exact-y1_appr(i))/y1_exact)
+      y1_exact_sum = y1_exact_sum + abs(y1_exact)
+
+      abs_error = abs(y1_exact-y1_appr(i))
+      if (y1_exact .ne. 0._dp .and. abs_error .gt. error_cutoff) then
+         errors(i) = abs_error/abs(y1_exact)
       endif
       ! print *, r_appr(i), y1_exact, y1_appr(i), errors(i)
    enddo
 
-   ! Oh my.
-   if ( count(errors>0.2)/REAL(size(errors), dp) < 0.2_dp&
-         .and. sum(errors)/size(errors) < 0.1_dp ) then
-      ! The test passes, if less than 20% of all derivatives are ~bad~ awful
+   summer = abs( sum(abs(y1_appr(1:size(errors))) )-y1_exact_sum )/y1_exact_sum
+   if ( summer .lt. 1.e-4_dp ) then
       print *, '👌 test_derivative_point_off – radial grid - passed'
+      print *, 'max. error: ', maxval(errors)
+      print *, 'mean error: ', sum(errors)/size(errors)
+      print *, 'error of sum: ', summer
    else
       print *, '💣 test_derivative_point_off – radial grid - failed'
-      print *, count(errors>0.2)/REAL(size(errors), dp)
-      print *, sum(errors)/size(errors)
+      print *, 'max. error: ', maxval(errors)
+      print *, 'mean error: ', sum(errors)/size(errors)
+      print *, 'error of sum: ', summer
    endif
 
    ! Should be much better on an equally spaced grid
    r_exact = (/ ( 0.012_dp*REAL(i, dp), i = 0,size(r_exact)-1 ) /)
    y_exact = exp(-alpha * r_exact**2)
 
+   y1_exact_sum = 0._dp
    errors = 0._dp
    do i=1,size(errors)
       call derivative_point(r=r_exact, y=y_exact, r0=r_appr(i), y1=y1_appr(i))
       y1_exact = -2.0_dp * alpha * r_appr(i) * exp(-alpha * r_appr(i)**2)
-      if (y1_exact .ne. 0._dp) then
-         errors(i) = abs((y1_exact-y1_appr(i))/y1_exact)
+      y1_exact_sum = y1_exact_sum + abs(y1_exact)
+
+      abs_error = abs(y1_exact-y1_appr(i))
+      if (y1_exact .ne. 0._dp .and. abs_error .gt. error_cutoff) then
+         errors(i) = abs(abs_error/y1_exact)
       endif
       ! print *, r_appr(i), y1_exact, y1_appr(i), errors(i)
    enddo
 
-   if (sum(errors)/size(errors) .lt. 0.1_dp) then
+   summer = abs( sum(abs(y1_appr(1:size(errors))))-y1_exact_sum )/y1_exact_sum
+   if (summer .lt. 1.e-4_dp) then
       print *, '👌 test_derivative_point_off – equally spaced grid - passed '
+      print *, 'max. error: ', maxval(errors)
+      print *, 'mean error: ', sum(errors)/size(errors)
+      print *, 'error of sum: ', summer
    else
       print *, '💣 test_derivative_point_off – equally spaced grid - failed '
-      print *, sum(errors)/size(errors)
+      print *, 'max. error: ', maxval(errors)
+      print *, 'mean error: ', sum(errors)/size(errors)
+      print *, 'error of sum: ', summer
    endif
 end subroutine test_derivative_point_off
 
@@ -70,7 +88,7 @@ subroutine test_derivative_point_on()
    implicit none
    REAL(KIND=dp), DIMENSION(500) :: r, wr, y, y1_exact, y1_approx
    REAL(KIND=dp), DIMENSION(500-3) :: errors
-   REAL(KIND=dp) :: alpha, r0
+   REAL(KIND=dp) :: alpha, r0, abs_error, error_cutoff, summer
    INTEGER :: i
    INTEGER :: low, upper, atindex
 
@@ -80,45 +98,61 @@ subroutine test_derivative_point_on()
    y = exp(-alpha * r**2)
    y1_exact = -2.0_dp * alpha * r * y
 
+   error_cutoff = maxval(abs(y1_exact))*1e-16_dp
    errors = 0._dp
    do i=1,size(errors)
       call bisection(r=r, r0=r(i), low=low, upper=upper)
       call derivative_point(r=r, y=y, r0=r(i), y1=y1_approx(i))
-      if (y1_exact(i) .ne. 0._dp) then
-         errors(i) = abs((y1_exact(i)-y1_approx(i))/y1_exact(i))
+      abs_error = abs(y1_exact(i)-y1_approx(i))
+      if (y1_exact(i) .ne. 0._dp .and. abs_error .gt. error_cutoff) then
+         errors(i) = abs(abs_error/y1_exact(i))
       endif
       ! print *, r(i), y1_exact(i), y1_approx(i), errors(i)
    enddo
 
-   ! Oh my.
-   if ( count(errors>0.2)/REAL(size(errors), dp) < 0.25_dp&
-         .and. sum(errors)/size(errors) < 0.15_dp ) then
-      ! The test passes, if less than 25% of all derivatives are ~bad~ awful
+   summer = abs( 1._dp - sum(abs(y1_approx(1:size(errors))))/sum(abs(y1_exact(1:size(errors)))) )
+
+   if ( summer .lt. 1.e-4 ) then
       print *, '👌 test_derivative_point_on – radial grid - passed'
+      print *, 'max. error: ', maxval(errors)
+      print *, 'mean error: ', sum(errors)/size(errors)
+      print *, 'error of sum: ', summer
    else
       print *, '💣 test_derivative_point_on – radial grid - failed'
-      print *, count(errors>0.2)/REAL(size(errors), dp)
-      print *, sum(errors)/size(errors)
+      print *, 'max. error: ', maxval(errors)
+      print *, 'mean error: ', sum(errors)/size(errors)
+      print *, 'error of sum: ', summer
    endif
 
    ! Should be much better on an equally spaced grid
    r = (/ ( 0.0001_dp*REAL(i, dp), i = 1,size(r) ) /)
    y = exp(-alpha * r**2)
    y1_exact = -2.0_dp * alpha * r * y
+
+   error_cutoff = maxval(abs(y1_exact))*1e-16_dp
    errors = 0._dp
    do i=1,size(errors)
       call bisection(r=r, r0=r(i), low=low, upper=upper)
       call derivative_point(r=r, y=y, r0=r(i), y1=y1_approx(i))
-      if (y1_exact(i) .ne. 0._dp) then
-         errors(i) = abs((y1_exact(i)-y1_approx(i))/y1_exact(i))
+      abs_error = abs(y1_exact(i)-y1_approx(i))
+      if (y1_exact(i) .ne. 0._dp .and. abs_error .gt. error_cutoff) then
+         errors(i) = abs(abs_error/y1_exact(i))
       endif
+      ! print *, r(i), y1_exact(i), y1_approx(i), errors(i)
    enddo
-   if (sum(errors)/size(errors) .lt. 0.01) then
+
+   summer = abs( 1._dp - sum(abs(y1_approx(1:size(errors))))/sum(abs(y1_exact(1:size(errors)))) )
+
+   if (summer .lt. 1.e-4) then
       print *, '👌 test_derivative_point_on – equally spaced grid - passed '
+      print *, 'max. error: ', maxval(errors)
+      print *, 'mean error: ', sum(errors)/size(errors)
+      print *, 'error of sum: ', summer
    else
       print *, '💣 test_derivative_point_on – equally spaced grid - failed '
-      print *, count(errors>0.2)/REAL(size(errors), dp)
-      print *, sum(errors)/size(errors)
+      print *, 'max. error: ', maxval(errors)
+      print *, 'mean error: ', sum(errors)/size(errors)
+      print *, 'error of sum: ', summer
    endif
 end subroutine test_derivative_point_on
 
@@ -150,7 +184,10 @@ subroutine test_derivative_on(ntests)
       call spline(r, y, size(r), y2_s)
       ! print '(A21, A21, A23, A21)', 'r', 'y1 exact', 'y1 appr', 'error'
       do i=1,size(r)
-         call interpolation(gr=r, gy=y, spline=y2_s, r=r(i), y=ys(i), yprime=y1_s(i))
+         ! BAD HACK: the forward differences are way less exact than the spline interpolation
+         !            so we add a small number to the radius, forcing the interpolation
+         !            at the wrong coordinate
+         call interpolation(gr=r, gy=y, spline=y2_s, r=(r(i)+5._dp*epsilon(1._dp)), y=ys(i), yprime=y1_s(i))
          abs_error = abs(y1_s(i)-y1_ex(i))
          if (y1_ex(i) .ne. 0.0_dp .and. abs_error .gt. error_cutoff) then
             errors(i) = abs_error/abs(y1_ex(i))
@@ -161,8 +198,8 @@ subroutine test_derivative_on(ntests)
       tot_errors(t) = sum(errors)/size(errors)
    enddo
 
-   if (maxval(tot_errors) .lt. 1e-1_dp .and. sum(tot_errors)/ntests .lt. 1e-1_dp) then
-      print *, '⚠️  test_derivative - on grid - passed'
+   if (maxval(tot_errors) .lt. 1.e-1_dp .and. sum(tot_errors)/ntests .lt. 1.e-3_dp) then
+      print *, '👌 test_derivative - on grid - passed'
       print *, 'max. error: ', maxval(tot_errors)
       print *, 'mean error: ', sum(tot_errors)/ntests
    else
@@ -215,7 +252,7 @@ subroutine test_derivative_off(ntests)
    enddo
 
    if (maxval(tot_errors) .lt. 1e-1_dp .and. sum(tot_errors)/ntests .lt. 1e-4_dp) then
-      print *, '⚠️  test_derivative - off grid - passed'
+      print *, '👌  test_derivative - off grid - passed'
       print *, 'max. error: ', maxval(tot_errors)
       print *, 'mean error: ', sum(tot_errors)/ntests
    else

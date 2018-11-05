@@ -35,13 +35,13 @@ INTEGER :: i, nang, nshell, ngrid
 ! call test_derivative_point_on()
 ! call test_derivative_point_off()
 
+call test_derivative_on(ntests=100)
+call test_derivative_off(ntests=100)
 ! call test_onecenter(ntests=100, loud=.FALSE.)
 ! call test_twocenter(ntests=100, loud=.FALSE.)
 ! call test_threecenter(ntests=100 , loud=.FALSE.)
 ! call test_kinetic(ntests=100, loud=.FALSE.)
 ! call test_coulomb(ntests=50, loud=.FALSE.)
-call test_derivative_on(ntests=100)
-call test_derivative_off(ntests=100)
 return
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 
