@@ -58,14 +58,18 @@ subroutine build_onecenter_grid(ileb, nshell, addr2, quadr, grid_r, grid_w)
    INTEGER, intent(in) :: ileb, nshell, quadr
    LOGICAL, OPTIONAL, intent(in) :: addr2
    ! Output
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
+   REAL(KIND=dp), DIMENSION(:, :) :: grid_r
+   REAL(KIND=dp), DIMENSION(:) :: grid_w
    ! Local variables
    INTEGER :: i, j, lower, upper
    REAL(KIND=dp), DIMENSION(nshell) :: radii, radii_w
+   LOGICAL :: aa
+
+   aa = .FALSE.
+   if (present(addr2)) aa = addr2
    call radial_grid(r=radii, &
                     wr=radii_w, &
-                    n=nshell, addr2=.TRUE., quadr=quadr)
+                    n=nshell, addr2=aa, quadr=quadr)
 
    do i=1, lebedev_grid(ileb)%n
       lower = 1+(i-1)*nshell
