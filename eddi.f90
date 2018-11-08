@@ -186,26 +186,26 @@ subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
    deallocate(int_i)
 end subroutine integration_onecenter
 
-subroutine integration_twocenter(nang, nshell, d12, r1, y1, r2, y2, &
+subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
                                  spline1, spline2, integral)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: nang, nshell
+   INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
    REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, r2, y2, &
-                                                           spline1, spline2
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2, &
+                                              spline1, spline2
    ! Output
    REAL(KIND=dp) :: integral
    ! Local variables
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: f1, f2
-   REAL(KIND=dp) :: norm
+   REAL(KIND=dp) :: norm, ylm
    INTEGER, DIMENSION(2) :: ileb
    INTEGER :: ngrid, i
 
-   ileb(1) = get_number_of_lebedev_grid(n=nang(1))
-   ileb(2) = get_number_of_lebedev_grid(n=nang(2))
+   ileb(1) = get_number_of_lebedev_grid(l=l(1))
+   ileb(2) = get_number_of_lebedev_grid(l=l(2))
 
    ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
            lebedev_grid(ileb(2))%n * nshell(2)
@@ -221,9 +221,13 @@ subroutine integration_twocenter(nang, nshell, d12, r1, y1, r2, y2, &
       if (grid_w(i) .eq. 0.0_dp) cycle         
       norm = sqrt(sum( grid_r(i, :)**2 ))
       call interpolation(r1, y1, spline1, norm, f1(i))
+      call rry_lm(l=l(1), m=m(1), r=grid_r(i, :), y=ylm)
+      f1(i) = f1(i) * ylm
 
       norm = sqrt(sum( (grid_r(i, :) - d12 )**2 ))
       call interpolation(r2, y2, spline2, norm, f2(i))
+      call rry_lm(l=l(2), m=m(2), r=grid_r(i, :), y=ylm)
+      f2(i) = f2(i) * ylm
    enddo
 
    integral = sum(grid_w * f1*f2 )
@@ -389,7 +393,7 @@ subroutine coulomb_integral(nang, nshell, coul_n, d12, r1, y1, r2, y2, s1, s2, i
    call spline(coul_r, pot, coul_n, pots)
 
    ! 2: Calculate the overlap of y2(r-d12) and the coulomb potential
-   call integration_twocenter(nang=nang, nshell=nshell, d12=d12, &
+   call integration_twocenter(l=(/0,0/), m=(/0,0/), nshell=nshell, d12=d12, &
                               r1=coul_r, y1=pot, r2=r2, y2=y2,&
                               spline1=pots, spline2=s2, integral=integral)
 

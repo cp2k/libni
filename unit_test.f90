@@ -476,7 +476,7 @@ subroutine test_twocenter(ntests, loud)
       call spline(r, y1, size(r), spline1)
       call spline(r, y2, size(r), spline2)
 
-      call integration_twocenter(nang=(/590, 590/), nshell=nshell, d12=rand_pos, &
+      call integration_twocenter(l=(/0, 0/), m=(/0, 0/), nshell=nshell, d12=rand_pos, &
                                  r1=r, y1=y1, r2=r, y2=y2,&
                                  spline1=spline1, spline2=spline2, integral=integral)
 

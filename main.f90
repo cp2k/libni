@@ -14,19 +14,26 @@ USE nao_unit, ONLY: test_onecenter, test_twocenter, test_threecenter, test_kinet
                     test_derivative_point_on, test_derivative_point_off,&
                     test_interpolation,&
                     test_derivative_on, test_derivative_off
-USE gradients, ONLY: jacobian, grad_onecenter
+USE gradients, ONLY: jacobian, grad_onecenter, grad_twocenter
+USE nao_grad_unit, ONLY: test_jacobian
 implicit none
 
-REAL(KIND=dp), DIMENSION(1000) :: r, y, wr
-REAL(KIND=dp), DIMENSION(3) :: grad
+REAL(KIND=dp), DIMENSION(1000) :: r, y1, wr, y2
+REAL(KIND=dp), DIMENSION(3) :: grad, d12
 INTEGER :: l, m, i
 
 call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
-y = exp(-r**2)
+y1 = exp(-r**2)
+y2 = exp(-0.2_dp * r**2)
 
 do l=0,3
    do m=-l,l
-      call grad_onecenter(r=r, y=y, l=l, m=m, nshell=50, grad=grad)
+      d12 = (/ 1._dp, 1._dp, -0.25_dp /)
+      call grad_twocenter(r1=r, y1=y1, r2=r, y2=y2, l=(/l,l/), m=(/m,m/),&
+                          nshell=(/100, 100/), d12=d12, grad=grad)
+      ! where(abs(grad) .lt. 1._dp*epsilon(1._dp)) grad = 0._dp
+      ! call grad_onecenter(r=r, y=y, l=l, m=m, nshell=50, grad=grad)
+      ! where(abs(grad) .lt. 10._dp*epsilon(1._dp)) grad = 0._dp
       print *, l, m, grad
    enddo
    print *,
