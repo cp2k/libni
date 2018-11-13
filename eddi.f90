@@ -204,8 +204,8 @@ subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
    INTEGER, DIMENSION(2) :: ileb
    INTEGER :: ngrid, i
 
-   ileb(1) = get_number_of_lebedev_grid(l=l(1))
-   ileb(2) = get_number_of_lebedev_grid(l=l(2))
+   ileb(1) = get_number_of_lebedev_grid(n=302)
+   ileb(2) = get_number_of_lebedev_grid(n=302)
 
    ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
            lebedev_grid(ileb(2))%n * nshell(2)

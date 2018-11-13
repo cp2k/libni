@@ -350,8 +350,19 @@ end subroutine build_threecenter_grid
 
 function s3(mu)
    implicit none
-   REAL(KIND=dp) :: mu, s3
-   s3 = 0.5_dp*(1 - h(h(h(mu))) )
+   REAL(KIND=dp) :: mu, a, a3, s3, mu3
+   s3 = 0.5_dp*(1._dp - h(h(h(mu))) )
+
+   mu3 = mu**3
+   a = mu3 - 3*mu
+   a3 = a**3
+
+   s3 = (a3 - 12._dp*mu3 + 36._dp*mu)**3/16384._dp -&
+         .046875_dp*a3 + 0.5626_dp*mu3 - 1.6875_dp*mu + 0.5_dp
+
+   ! s3 = 0.25_dp*(-0.5*a3 - 0.75_dp*mu3 + 2.25_dp*mu)**3 +&
+   !      0.375_dp*a3 + 0.5625_dp*mu3 - 1.6875_dp*mu + 0.5_dp
+
    ! s3 = 0.5_dp*(1-z(mu))
 end function s3
 

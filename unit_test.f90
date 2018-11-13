@@ -460,10 +460,11 @@ subroutine test_twocenter(ntests, loud)
    ! Discard wr
    call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE., quadr=1)
 
+   errors = 0._dp
    do j=1,ntests
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand2)
-      rand2 = rand2 * 5.0_dp + 0.5_dp
+      rand2 = rand2 * 4.5_dp + 0.5_dp
       ! Displacement
       CALL RANDOM_NUMBER(rand_pos)
       rand_pos = rand_pos * sqrt(5.0_dp)
@@ -482,8 +483,11 @@ subroutine test_twocenter(ntests, loud)
 
       ri = (pi/sum(rand2))**(1.5_dp)
       ri = ri * exp(-rand2(1)*rand2(2)*sum(rand_pos**2)/sum(rand2))
+      ri = ri / (4._dp * pi)
 
-      errors(j) = abs(1.0_dp-integral/ri)
+      if (abs(integral-ri) .gt. 1.e-13_dp) then
+         errors(j) = abs(1.0_dp-integral/ri)
+      endif
       if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.00001_dp)) then
          print *, 'Exponents: ', rand2
          print *, 'Distance: ', sqrt(sum(rand_pos**2))
@@ -496,7 +500,6 @@ subroutine test_twocenter(ntests, loud)
          print *, REPEAT('-', 80)
       endif
    enddo
-
    err = sum(errors)/REAL(ntests, dp)
    print *, 'Mean error: ', err
    print *, REPEAT('-', 28) // ' End Testing Two-Center ' // REPEAT('-', 28)
