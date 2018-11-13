@@ -424,7 +424,7 @@ contains
       INTEGER                                            :: il, im, mm
       REAL(KIND=dp)                                      :: fact, pll, pmm, pmmp1, somx2
 
-      IF (ABS(x) > 1.0_dp) stop ("x value > 1")
+      IF (ABS(x) > 1.0_dp) stop ("xa value > 1")
       SELECT CASE (l)
       CASE (:-1)
          stop ("Negative l value")
@@ -567,7 +567,7 @@ contains
 
       INTEGER                                            :: mm
 
-      IF (ABS(x) > 1.0_dp) stop ("x value > 1")
+      IF (ABS(x) > 1.0_dp) stop ("xb value > 1")
       SELECT CASE (l)
       CASE (0)
          dplm = 0.0_dp

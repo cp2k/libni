@@ -54,31 +54,34 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
       ! When taking the derivative wrt X, Y, Z - f1 and ylm1 won't change
       norm = sqrt( sum( grid_r(i, :)**2 ) )
       call interpolation(gr=r1, gy=y1, spline=s1, r=norm, y=f1)
-      call rry_lm(l=l(1), m=m(1), r=grid_r(i, :), y=ylm1)
+      call rry_lm(l=l(1), m=m(1), r=grid_r(i, :)/norm, y=ylm1)
 
       ! f2, ylm2 do have non-vanishing derivatives
       norm = sqrt( sum( (grid_r(i, :) - d12)**2 ) )
       x = grid_r(i, 1)-d12(1); y = grid_r(i, 2)-d12(2); z = grid_r(i, 3)-d12(3);
-      rho = x**2 + y**2
+      rho = x*x + y*y
       theta = acos(z/norm); phi = atan2(y, x);
 
       call interpolation(gr=r2, gy=y2, spline=s2, r=norm, y=f2, yprime=df2)
-      call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :) - d12), y=ylm2)
+      call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :) - d12)/norm, y=ylm2)
       call dry_lm(l=l(2), m=m(2), c=(/theta, phi/), dy=dylm2)
       ! dwdr2 = alpha*(7._dp*norm**(2.5_dp) + 5._dp*norm**(1.5_dp))
 
-      ! The partial derivatives dr/dxyz, dtheta/xyz, dphi/xyz
+      ! The partial derivatives dr/dXYZ, dtheta/XYZ, dphi/XYZ
       dr = -(grid_r(i, :) - d12)/norm
 
       dtheta = 0._dp
-      if (x*z .ne. 0._dp) dtheta(1) = x*z/( norm**3 * sqrt(1._dp - z**2/norm**2) )
-      if (x*y .ne. 0._dp) dtheta(2) = x*y/( norm**3 * sqrt(1._dp - z**2/norm**2) )
-      dtheta(3) = -sqrt(rho/norm**2)/norm
+      if (rho .ne. 0._dp) then
+         dtheta(1) = -x*z
+         dtheta(2) = -y*z
+         dtheta(3) = rho 
+         dtheta = dtheta / ( norm**3 * sqrt(1._dp - z**2/norm**2) )
+      endif
 
       dphi = 0._dp
       if (rho .ne. 0._dp) then
-         dphi(1) = -y
-         dphi(2) = x
+         dphi(1) = y
+         dphi(2) = -x
          dphi = dphi/rho
       endif
 
@@ -86,11 +89,17 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
       ! X: There will be 4 terms. For now we skip dw/dr, since it's nasty. TODO
       tmp_grad(i, 1) = grid_w(i) * df2 * dr(1) * ylm2 +&
                        grid_w(i) * f2 * dylm2(1) * dtheta(1) +&
-                       grid_w(i) * f2 * dylm2(2) * dphi(1)
-      if (isnan(tmp_grad(i, 1))) then
-         print *, x, y, z
-         print *, dphi(1), dtheta(1)
-      endif
+                       grid_w(i) * f2 * dylm2(2) * dphi(1)! +&
+                       ! grid_w(i) * 
+
+      ! Y: There will be 4 terms. For now we skip dw/dr, since it's nasty. TODO
+      tmp_grad(i, 2) = grid_w(i) * df2 * dr(2) * ylm2 +&
+                       grid_w(i) * f2 * dylm2(1) * dtheta(2) +&
+                       grid_w(i) * f2 * dylm2(2) * dphi(2)
+
+      ! Z: There will be 3 terms. For now we skip dw/dr, since it's nasty. TODO
+      tmp_grad(i, 3) = grid_w(i) * df2 * dr(3) * ylm2 +&
+                       grid_w(i) * f2 * dylm2(1) * dtheta(3)
 
       tmp_grad(i, :) = tmp_grad(i, :) * f1 * ylm1
    enddo
@@ -261,7 +270,7 @@ subroutine grad_onecenter(r, y, l, m, nshell, grad)
       call interpolation(gr=r, gy=y, spline=s, r=norm+5._dp*epsilon(1._dp), y=y_loc(i), yprime=dy(i))
       dwdr = alpha*(7._dp*norm**(2.5_dp) + 5._dp*norm**(1.5_dp))
       ! Ylm, dYlm/dtheta, dYlm/dphi
-      call rry_lm(l=l, m=m, r=grid_r(i, :), y=ylm(i))
+      call rry_lm(l=l, m=m, r=grid_r(i, :)/norm, y=ylm(i))
       call dry_lm(l=l, m=m, c=(/theta, phi/), dy=dylm(i, :))
 
       !                                                          T
@@ -351,7 +360,7 @@ subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
       call interpolation(gr=r, gy=y, spline=s, r=norm+5._dp*epsilon(1._dp), y=y_loc(i), yprime=dy(i))
       dwdr = alpha*(7._dp*norm**(2.5_dp) + 5._dp*norm**(1.5_dp))
       ! Ylm, dYlm/dtheta, dYlm/dphi
-      call rry_lm(l=l, m=m, r=grid_r(i, :), y=ylm(i))
+      call rry_lm(l=l, m=m, r=grid_r(i, :)/norm, y=ylm(i))
       call dry_lm(l=l, m=m, c=(/theta, phi/), dy=dylm(i, :))
 
       !                                                          T

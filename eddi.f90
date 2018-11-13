@@ -221,13 +221,14 @@ subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
       if (grid_w(i) .eq. 0.0_dp) cycle         
       norm = sqrt(sum( grid_r(i, :)**2 ))
       call interpolation(r1, y1, spline1, norm, f1(i))
-      call rry_lm(l=l(1), m=m(1), r=grid_r(i, :), y=ylm)
+      call rry_lm(l=l(1), m=m(1), r=grid_r(i, :)/norm, y=ylm)
       f1(i) = f1(i) * ylm
 
       norm = sqrt(sum( (grid_r(i, :) - d12 )**2 ))
       call interpolation(r2, y2, spline2, norm, f2(i))
-      call rry_lm(l=l(2), m=m(2), r=grid_r(i, :), y=ylm)
+      call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :)-d12)/norm, y=ylm)
       f2(i) = f2(i) * ylm
+
    enddo
 
    integral = sum(grid_w * f1*f2 )
