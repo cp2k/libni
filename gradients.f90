@@ -28,7 +28,7 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    REAL(KIND=dp), DIMENSION(size(r2)) :: s2
    REAL(KIND=dp), DIMENSION(3) :: dr, dtheta, dphi, dylm2
    REAL(KIND=dp) :: norm, x, y, z, theta, phi, rho,&
-                     f1, f2, ylm1, ylm2, df2, dwdr1, dwdr2
+                     f1, f2, ylm1, ylm2, df2, dwdr2
 
    ileb(1) = get_number_of_lebedev_grid(n=302)
    ileb(2) = get_number_of_lebedev_grid(n=302)
@@ -65,7 +65,7 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
       call interpolation(gr=r2, gy=y2, spline=s2, r=norm, y=f2, yprime=df2)
       call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :) - d12)/norm, y=ylm2)
       call dry_lm(l=l(2), m=m(2), c=(/theta, phi/), dy=dylm2)
-      ! dwdr2 = alpha*(7._dp*norm**(2.5_dp) + 5._dp*norm**(1.5_dp))
+      dwdr2 = alpha*(7._dp*norm**(2.5_dp) + 5._dp*norm**(1.5_dp))
 
       ! The partial derivatives dr/dXYZ, dtheta/XYZ, dphi/XYZ
       dr = -(grid_r(i, :) - d12)/norm
@@ -89,7 +89,7 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
       ! X: There will be 4 terms. For now we skip dw/dr, since it's nasty. TODO
       tmp_grad(i, 1) = grid_w(i) * df2 * dr(1) * ylm2 +&
                        grid_w(i) * f2 * dylm2(1) * dtheta(1) +&
-                       grid_w(i) * f2 * dylm2(2) * dphi(1)! +&
+                       grid_w(i) * f2 * dylm2(2) * dphi(1) +&
                        ! grid_w(i) * 
 
       ! Y: There will be 4 terms. For now we skip dw/dr, since it's nasty. TODO

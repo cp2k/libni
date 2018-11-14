@@ -228,7 +228,6 @@ subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
       call interpolation(r2, y2, spline2, norm, f2(i))
       call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :)-d12)/norm, y=ylm)
       f2(i) = f2(i) * ylm
-
    enddo
 
    integral = sum(grid_w * f1*f2 )
