@@ -83,12 +83,13 @@ subroutine build_onecenter_grid(ileb, nshell, addr2, quadr, grid_r, grid_w)
 end subroutine build_onecenter_grid
 
 
-subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w)
+subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_dw)
    implicit none
    ! Input
    INTEGER, DIMENSION(2), intent(in) :: ileb, nshell
    REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
    LOGICAL, OPTIONAL, intent(in) :: addr2
+   REAL(KIND=dp), DIMENSION(:, :), OPTIONAL, intent(in) :: grid_dw
    ! Output
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
@@ -96,7 +97,7 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w)
    REAL(KIND=dp), DIMENSION(nshell(1)) :: radii1, radii_w1
    REAL(KIND=dp), DIMENSION(nshell(2)) :: radii2, radii_w2
    INTEGER :: i, j, lower, upper, offset
-   REAL(KIND=dp) :: R, r1, r2, mu, s1, s2
+   REAL(KIND=dp) :: R, r1, r2, mu, s1, s2, norm
 
    R = sqrt(sum(d12**2))
    if (R .eq. 0.0_dp) then
@@ -152,6 +153,11 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w)
 
       if (s1+s2 .ne. 1.0_dp) stop 'Two-center nuclear partition'
 
+      ! dw/dX = w_rad * ds1/dX
+      if (present(grid_dw)) then
+         ! grid_dw(i, :) = grid_w(i) * 
+      endif
+
       grid_w(i) = grid_w(i) * s1!/(s1+s2)
    enddo
 
@@ -165,6 +171,13 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w)
       if (s1+s2 .ne. 1.0_dp) stop 'Two-center nuclear partition'
       
       grid_w(i) = grid_w(i) * s2!/(s1+s2)
+      ! if (present(grid_dw)) then
+      !    norm = sqrt( sum( grid_r(i, :)**2 ) )
+      !    ! grad r = x/r, y/r, z/r
+      !    ! grad w = dw/dr * grad r
+      !    grid_dw(lower+j-1, :) = alpha*(7._dp*norm**(2.5_dp) + 5._dp*norm**(1.5_dp))&
+      !                             * grid_r(i, :)/norm
+      ! endif
    enddo
 end subroutine build_twocenter_grid
 
@@ -351,20 +364,26 @@ end subroutine build_threecenter_grid
 function s3(mu)
    implicit none
    REAL(KIND=dp) :: mu, a, a3, s3, mu3
-   s3 = 0.5_dp*(1._dp - h(h(h(mu))) )
-
+   ! s3 = 0.5_dp*(1._dp - h(h(h(mu))) )
    mu3 = mu**3
    a = mu3 - 3*mu
    a3 = a**3
 
    s3 = (a3 - 12._dp*mu3 + 36._dp*mu)**3/16384._dp -&
-         .046875_dp*a3 + 0.5626_dp*mu3 - 1.6875_dp*mu + 0.5_dp
-
-   ! s3 = 0.25_dp*(-0.5*a3 - 0.75_dp*mu3 + 2.25_dp*mu)**3 +&
-   !      0.375_dp*a3 + 0.5625_dp*mu3 - 1.6875_dp*mu + 0.5_dp
-
-   ! s3 = 0.5_dp*(1-z(mu))
+         .046875_dp*a3 + 0.5625_dp*mu3 - 1.6875_dp*mu + 0.5_dp
 end function s3
+
+function ds3dmu(mu)
+   implicit none
+   REAL(KIND=dp) :: mu, mu2, mu3, a, a2, a3, ds3dmu
+   mu2 = mu*mu; mu3 = mu2*mu
+   a = mu3 - 3._dp*mu
+   a2 = a*a; a3 = a2*a
+
+   ds3dmu = 27._dp/16384._dp * ( a3 - 12._dp*mu3 + 36._dp*mu )**2&
+             * (a2*(mu2-1._dp) - 4._dp*mu2 + 4._dp) &
+             - 27._dp/64._dp * a2*(mu2-1._dp) + 27._dp/16._dp * mu2 - 27._dp/16._dp
+end function ds3dmu
 
    subroutine grid_parameters(atom, nleb, nshell)
       implicit none
