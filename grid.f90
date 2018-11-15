@@ -89,17 +89,20 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_d
    INTEGER, DIMENSION(2), intent(in) :: ileb, nshell
    REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
    LOGICAL, OPTIONAL, intent(in) :: addr2
-   REAL(KIND=dp), DIMENSION(:, :), OPTIONAL, intent(in) :: grid_dw
    ! Output
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
+   REAL(KIND=dp), DIMENSION(:, :), OPTIONAL :: grid_dw
    ! Local variables
    REAL(KIND=dp), DIMENSION(nshell(1)) :: radii1, radii_w1
    REAL(KIND=dp), DIMENSION(nshell(2)) :: radii2, radii_w2
+   REAL(KIND=dp), DIMENSION(2) :: alpha
    INTEGER :: i, j, lower, upper, offset
    REAL(KIND=dp) :: R, r1, r2, mu, s1, s2, norm
 
-   R = sqrt(sum(d12**2))
+   alpha(1) = pi/REAL(nshell(1)+1, dp)
+   alpha(2) = pi/REAL(nshell(2)+1, dp)
+   R = sqrt( sum( d12**2 ) )
    if (R .eq. 0.0_dp) then
       call build_onecenter_grid(ileb=ileb(1), nshell=nshell(1), addr2=addr2,&
                                 grid_r=grid_r, grid_w=grid_w, quadr=1)
@@ -151,11 +154,15 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_d
       s1 = s3(mu)
       s2 = s3(-mu)
 
-      if (s1+s2 .ne. 1.0_dp) stop 'Two-center nuclear partition'
+      if (abs(s1+s2-1._dp) .ge. epsilon(1._dp)) stop 'Two-center nuclear partition'
 
       ! dw/dX = w_rad * ds1/dX
       if (present(grid_dw)) then
-         ! grid_dw(i, :) = grid_w(i) * 
+         ! dw/dX = w_rad * ds_3/dmu * dmu/dX
+         grid_dw(i, 1) = (d12(1)*(r2-r1)/R**3 + (grid_r(i, 1)-d12(1))/(R*r2) )
+         grid_dw(i, 2) = (d12(2)*(r2-r1)/R**3 + (grid_r(i, 2)-d12(2))/(R*r2) )
+         grid_dw(i, 3) = (d12(3)*(r2-r1)/R**3 + (grid_r(i, 3)-d12(3))/(R*r2) )
+         grid_dw(i, :) = grid_dw(i, :) * grid_w(i) * ds3dmu(mu)
       endif
 
       grid_w(i) = grid_w(i) * s1!/(s1+s2)
@@ -168,16 +175,23 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_d
       s1 = s3(mu)
       s2 = s3(-mu)
 
-      if (s1+s2 .ne. 1.0_dp) stop 'Two-center nuclear partition'
+      if (abs(s1+s2-1._dp) .ge. epsilon(1._dp)) stop 'Two-center nuclear partition'
+
+      if (present(grid_dw)) then
+         ! dw/dX = (1)w_rad * ds_3/dmu*dmu/dX + (2) dw_rad/dr * dr/dX * wpart
+         ! (1): w_rad * ds_3/dmu*dmu/dX
+         grid_dw(i, 1) = (d12(1)*(r2-r1)/R**3 + (grid_r(i, 1)-d12(1))/(R*r2) )
+         grid_dw(i, 2) = (d12(2)*(r2-r1)/R**3 + (grid_r(i, 2)-d12(2))/(R*r2) )
+         grid_dw(i, 3) = (d12(3)*(r2-r1)/R**3 + (grid_r(i, 3)-d12(3))/(R*r2) )
+         grid_dw(i, :) = -grid_dw(i, :) * grid_w(i) * ds3dmu(-mu)
+
+         ! ! (2): dw_rad/dr * dr/dX * wpart
+         ! grid_dw(i, 1) = grid_dw(i, 1)&
+         !    + alpha(2)*(7._dp*r2**(2.5_dp) + 5._dp*r2**(1.5_dp)) &
+         !    * (d12(1) - grid_r(i, 1))/r2 * s2
+      endif
       
       grid_w(i) = grid_w(i) * s2!/(s1+s2)
-      ! if (present(grid_dw)) then
-      !    norm = sqrt( sum( grid_r(i, :)**2 ) )
-      !    ! grad r = x/r, y/r, z/r
-      !    ! grad w = dw/dr * grad r
-      !    grid_dw(lower+j-1, :) = alpha*(7._dp*norm**(2.5_dp) + 5._dp*norm**(1.5_dp))&
-      !                             * grid_r(i, :)/norm
-      ! endif
    enddo
 end subroutine build_twocenter_grid
 
@@ -382,7 +396,7 @@ function ds3dmu(mu)
 
    ds3dmu = 27._dp/16384._dp * ( a3 - 12._dp*mu3 + 36._dp*mu )**2&
              * (a2*(mu2-1._dp) - 4._dp*mu2 + 4._dp) &
-             - 27._dp/64._dp * a2*(mu2-1._dp) + 27._dp/16._dp * mu2 - 27._dp/16._dp
+             - 27._dp/64._dp * a2*(mu2-1._dp) + 27._dp/16._dp * (mu2 - 1)
 end function ds3dmu
 
    subroutine grid_parameters(atom, nleb, nshell)
@@ -411,15 +425,6 @@ end function ds3dmu
       END SELECT
    end subroutine grid_parameters
 
-   subroutine print_grid(thegrid)
-      implicit none
-      TYPE(type_grid_point), DIMENSION(:), ALLOCATABLE :: thegrid
-      INTEGER :: i
-      do i=1,size(thegrid)
-         print *, thegrid(i)%r, thegrid(i)%weight
-      enddo 
-   end subroutine print_grid
-
 ! Compute the `n`th Hermite polynomial y=H_n(x).
 recursive subroutine hermite(n, x, y)
    implicit none
@@ -437,7 +442,7 @@ recursive subroutine hermite(n, x, y)
 
    call hermite(n=n-1, x=x, y=a)
    call hermite(n=n-2, x=x, y=b)
-   y = 2.0_dp * (x*a - (n-1)*b)
+   y = 2.0_dp * (x*a - (n-1._dp)*b)
 end subroutine hermite
 
 ! Return the nodes `r` and weights `wr` of Gauss-Hermite quadratures of order n

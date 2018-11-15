@@ -1,4 +1,5 @@
 *mod
+*.grid
 out
 test
 ipynb/

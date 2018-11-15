@@ -40,8 +40,11 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    allocate(grid_w(ngrid))
    allocate(grid_dw(ngrid, 3))
 
+   grid_dw = 0._dp
+
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.TRUE., grid_r=grid_r, grid_w=grid_w)
+                             addr2=.TRUE., grid_r=grid_r, grid_w=grid_w, &
+                             grid_dw=grid_dw)
    grad = 0._dp
    tmp_grad = 0._dp
    do i=1,ngrid
@@ -87,19 +90,23 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
       endif
 
       ! On to the actual calculation
-      ! X: There will be 4 terms. For now we skip dw/dr, since it's nasty. TODO
-      tmp_grad(i, 1) = grid_w(i) * df2 * dr(1) * ylm2 +&
-                       grid_w(i) * f2 * dylm2(1) * dtheta(1) +&
-                       grid_w(i) * f2 * dylm2(2) * dphi(1)
+      ! X: There will be 4 terms. ~For now we skip dw/dr, since it's nasty.~
+      !     UNSKIPPING dw/dr:    
+      tmp_grad(i, 1) = grid_w(i) * df2*dr(1) * ylm2 +&
+                       grid_w(i) * f2 * dylm2(1)*dtheta(1) +&
+                       grid_w(i) * f2 * dylm2(2)*dphi(1) +&
+                       grid_dw(i, 1) * f2 * ylm2
 
       ! Y: There will be 4 terms. For now we skip dw/dr, since it's nasty. TODO
       tmp_grad(i, 2) = grid_w(i) * df2 * dr(2) * ylm2 +&
                        grid_w(i) * f2 * dylm2(1) * dtheta(2) +&
-                       grid_w(i) * f2 * dylm2(2) * dphi(2)
+                       grid_w(i) * f2 * dylm2(2) * dphi(2) +&
+                       grid_dw(i, 2) * f2 * ylm2
 
       ! Z: There will be 3 terms. For now we skip dw/dr, since it's nasty. TODO
       tmp_grad(i, 3) = grid_w(i) * df2 * dr(3) * ylm2 +&
-                       grid_w(i) * f2 * dylm2(1) * dtheta(3)
+                       grid_w(i) * f2 * dylm2(1) * dtheta(3) +&
+                       grid_dw(i, 3) * f2 * ylm2
 
       tmp_grad(i, :) = tmp_grad(i, :) * f1 * ylm1
    enddo
