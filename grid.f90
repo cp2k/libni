@@ -103,6 +103,7 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_d
    alpha(1) = pi/REAL(nshell(1)+1, dp)
    alpha(2) = pi/REAL(nshell(2)+1, dp)
    R = sqrt( sum( d12**2 ) )
+   grid_w = 0._dp
    if (R .eq. 0.0_dp) then
       call build_onecenter_grid(ileb=ileb(1), nshell=nshell(1), addr2=addr2,&
                                 grid_r=grid_r, grid_w=grid_w, quadr=1)
@@ -185,6 +186,7 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_d
          grid_dw(i, 3) = (d12(3)*(r2-r1)/R**3 + (grid_r(i, 3)-d12(3))/(R*r2) )
          grid_dw(i, :) = -grid_dw(i, :) * grid_w(i) * ds3dmu(-mu)
 
+         ! TODO
          ! ! (2): dw_rad/dr * dr/dX * wpart
          ! grid_dw(i, 1) = grid_dw(i, 1)&
          !    + alpha(2)*(7._dp*r2**(2.5_dp) + 5._dp*r2**(1.5_dp)) &

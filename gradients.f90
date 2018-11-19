@@ -90,20 +90,19 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
       endif
 
       ! On to the actual calculation
-      ! X: There will be 4 terms. ~For now we skip dw/dr, since it's nasty.~
-      !     UNSKIPPING dw/dr:    
+      ! X  
       tmp_grad(i, 1) = grid_w(i) * df2*dr(1) * ylm2 +&
                        grid_w(i) * f2 * dylm2(1)*dtheta(1) +&
                        grid_w(i) * f2 * dylm2(2)*dphi(1) +&
                        grid_dw(i, 1) * f2 * ylm2
 
-      ! Y: There will be 4 terms. For now we skip dw/dr, since it's nasty. TODO
+      ! Y
       tmp_grad(i, 2) = grid_w(i) * df2 * dr(2) * ylm2 +&
                        grid_w(i) * f2 * dylm2(1) * dtheta(2) +&
                        grid_w(i) * f2 * dylm2(2) * dphi(2) +&
                        grid_dw(i, 2) * f2 * ylm2
 
-      ! Z: There will be 3 terms. For now we skip dw/dr, since it's nasty. TODO
+      ! Z
       tmp_grad(i, 3) = grid_w(i) * df2 * dr(3) * ylm2 +&
                        grid_w(i) * f2 * dylm2(1) * dtheta(3) +&
                        grid_dw(i, 3) * f2 * ylm2
@@ -217,14 +216,6 @@ subroutine grad_twocenter_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
    grad(2) = -findiff(2,1) + 8._dp*findiff(2,2) - 8._dp*findiff(2,3) + findiff(2,4)
    grad(3) = -findiff(3,1) + 8._dp*findiff(3,2) - 8._dp*findiff(3,3) + findiff(3,4)
    grad = grad/(12._dp*h)
-
-   ! print *, sum(findiff(1,:))/4._dp/findiff(1,1)
-
-   ! print *, findiff(2,:)
-   ! print *, sum(findiff(2,:))/4._dp/findiff(2,1)
-
-   ! print *, findiff(3,:)
-   ! print *, sum(findiff(3,:))/4._dp/findiff(3,1)
 end subroutine grad_twocenter_fd
 
 subroutine grad_onecenter(r, y, l, m, nshell, grad)

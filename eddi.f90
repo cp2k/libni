@@ -294,25 +294,31 @@ subroutine integration_threecenter(nang, nshell, d12, d13, &
    deallocate(f3)
 end subroutine integration_threecenter
 
-subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
+subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
                           spline1, spline2, integral)
    implicit none
    ! Input
-   INTEGER, intent(in) :: nang, nshell
+   INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, &
                       r2, y2, spline1, spline2
+   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
    ! Output
    REAL(KIND=dp) :: integral
-
    ! Local variables
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: rf2, d2rf2, d2rf2_spline, f1, f2
-   REAL(KIND=dp) :: norm
-   INTEGER :: ngrid, ileb, i
+   REAL(KIND=dp) :: norm, ylm
+   INTEGER, DIMENSION(2) :: ileb
+   INTEGER :: ngrid, i
 
-   ileb = get_number_of_lebedev_grid(n=nang)
-   ngrid = lebedev_grid(ileb)%n * nshell
+   ileb = get_number_of_lebedev_grid(n=590)  ! TODO
+   if (all(d12 .eq. (/0._dp, 0._dp, 0._dp/))) then
+      ngrid = lebedev_grid(ileb(1))%n * nshell(1)
+   else
+      ngrid = lebedev_grid(ileb(1))%n * nshell(1) &
+               + lebedev_grid(ileb(2))%n * nshell(2)
+   endif
 
    allocate(grid_r(ngrid, 3))
    allocate(grid_w(ngrid))
@@ -321,8 +327,8 @@ subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
    allocate(d2rf2(size(r2)))
    allocate(d2rf2_spline(size(r2)))
 
-   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
-                             grid_r=grid_r, grid_w=grid_w, quadr=1)
+   call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, addr2=.TRUE.,&
+                             grid_r=grid_r, grid_w=grid_w)
    ! < f1 | -0.5*🔺 | f2 >
    rf2 = -0.5_dp*r2*y2
    ! Get the 2nd derivative d_r^2(r*f2) as well as its spline
@@ -336,7 +342,13 @@ subroutine kinetic_energy(nang, nshell, r1, y1, r2, y2,&
    do i=1,ngrid
       norm = sqrt(sum( grid_r(i, :)**2 ))
       call interpolation(r1, y1, spline1, norm, f1(i))
+      call rry_lm(l=l(1), m=m(1), r=grid_r(i, :)/norm, y=ylm)
+      f1(i) = f1(i) * ylm
+
+      norm = sqrt(sum( (grid_r(i, :) - d12)**2 ))
       call interpolation(r2, d2rf2, d2rf2_spline, norm, f2(i))
+      call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :) - d12)/norm, y=ylm)
+      f2(i) = f2(i) * ylm
    enddo
 
    integral = sum(grid_w * f1*f2)

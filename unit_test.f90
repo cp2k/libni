@@ -640,14 +640,14 @@ subroutine test_kinetic(ntests, loud)
       call spline(r, y2, size(r), spline2)
 
       ! The result we get from subroutine kinetic_energy
-      call kinetic_energy(nang=1, nshell=100,&
-                          r1=r, y1=y1, r2=r, y2=y2,&
+      call kinetic_energy(l=(/0, 0/), m=(/0, 0/), nshell=(/100,100/),&
+                          r1=r, y1=y1, r2=r, y2=y2, d12=(/0._dp, 0._dp, 0._dp/),&
                           spline1=spline1, spline2=spline2, integral=integral)
 
       ! The result we want to have
       ri = 3.0_dp*rand2(2)*(pi/(sum(rand2)))**1.5_dp&
            - 3.0_dp*rand2(2)**2*sqrt(pi**3/(sum(rand2)**5))
-
+      ri = ri/(4._dp*pi)
       ! ! The result we want to have by one-center integration, analytically
       ! y1 = exp(-sum(rand2) * r**2)
       ! y1 = y1 * (3.0_dp*rand2(2) - 2.0_dp*rand2(2)**2 * r**2)
@@ -656,7 +656,8 @@ subroutine test_kinetic(ntests, loud)
       ! ! 2.9644830114845719
 
       errors(j) = abs(1.0_dp-integral/ri)
-      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.000001_dp)) then
+      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 1.e-5_dp)) then
+         print *, j
          print *, 'Exponents: ', rand2
          print *, 'Is: ', integral
          print *, 'Should:', ri
@@ -736,7 +737,7 @@ subroutine test_coulomb(ntests, loud)
       if (norm .eq. 0.0_dp) then
       ri = ri * 2.0_dp*sqrt(alpha/pi) ! lim x->0 : erf(a*x)/x = 2a/sqrt(pi)
       else
-      ri = ri * erf( sqrt(alpha)*norm )/norm 
+      ri = ri * erf( sqrt(alpha)*norm )/norm / (4._dp*pi)
       endif
 
       errors(j) = abs(1.0_dp-integral/ri)
