@@ -376,7 +376,7 @@ subroutine coulomb_integral(nang, nshell, coul_n, d12, r1, y1, r2, y2, s1, s2, i
    REAL(KIND=dp), DIMENSION(coul_n) :: f, gi, hi, G, H, coul_w
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: coul_r, pot, pots
 
-   l = 0 ! Quantum number
+   l = 0 ! Quantum number TODO
 
    ! 1: Evaluate the Coulomb potential on a radial grid around A
    ! ! the integral is purely radial => addr2=False
@@ -405,7 +405,7 @@ subroutine coulomb_integral(nang, nshell, coul_n, d12, r1, y1, r2, y2, s1, s2, i
    call spline(coul_r, pot, coul_n, pots)
 
    ! 2: Calculate the overlap of y2(r-d12) and the coulomb potential
-   call integration_twocenter(l=(/0,0/), m=(/0,0/), nshell=nshell, d12=d12, &
+   call integration_twocenter(l=(/l,l/), m=(/0,0/), nshell=nshell, d12=d12, &
                               r1=coul_r, y1=pot, r2=r2, y2=y2,&
                               spline1=pots, spline2=s2, integral=integral)
 

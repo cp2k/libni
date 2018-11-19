@@ -144,8 +144,8 @@ subroutine grad_twocenter_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
    ! INTEGER :: i
 
    ! Get the one-center grid
-   ileb(1) = get_number_of_lebedev_grid(l=l(1)+5)
-   ileb(2) = get_number_of_lebedev_grid(l=l(2)+5)
+   ileb(1) = get_number_of_lebedev_grid(n=302)
+   ileb(2) = get_number_of_lebedev_grid(n=302)
    nleb(1) = lebedev_grid(ileb(1))%n
    nleb(2) = lebedev_grid(ileb(2))%n
 

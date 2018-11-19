@@ -19,6 +19,6 @@ USE gradients, ONLY: jacobian, grad_onecenter, grad_onecenter_cart, grad_twocent
 USE nao_grad_unit, ONLY: test_jacobian, test_twocenter_grad
 implicit none
 
-call test_twocenter_grad()
+! call test_twocenter_grad()
 
 end program hallo
