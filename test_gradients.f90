@@ -2,9 +2,58 @@ module nao_grad_unit
 USE eddi, ONLY: pi
 USE lebedev, ONLY: dp, lebedev_grid, get_number_of_lebedev_grid
 USE grid, ONLY: build_onecenter_grid, radial_grid
-USE gradients, ONLY: jacobian, grad_twocenter, grad_twocenter_fd
+USE gradients, ONLY: jacobian, grad_twocenter, grad_twocenter_fd,&
+                     grad_kinetic, grad_kinetic_fd
 implicit none
 contains
+
+subroutine test_kinetic_grad()
+   REAL(KIND=dp), DIMENSION(5000) :: r, y1, wr, y2
+   REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
+   REAL(KIND=dp), DIMENSION(1000,3) :: error
+   INTEGER :: l1, l2, m1, m2, i, c
+
+   call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
+
+   y1 = exp(-r**2)
+   y2 = exp(-0.5_dp * r**2)
+
+   c = 0
+   error = 0._dp
+   d12 = (/ .1_dp, -.5_dp, .1_dp /)
+   do l1=0,1
+   do l2=l1,1
+   do m1=-l1,l1
+   do m2=-l2,l2
+   ! print *, '   ', l1, m1, l2, m2
+         c = c+1
+         call grad_kinetic(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
+                           nshell=(/100, 100/), d12=d12, grad=grad1)
+
+
+         call grad_kinetic_fd(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
+                              nshell=(/100, 100/), d12=d12, grad=grad2)
+
+         error(c, :) = abs(grad1-grad2)
+         if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
+         if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
+         if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
+         ! if ( all( error(c, :)  .gt. 0.1_dp  )) then
+            print *, '   ', l1, m1, l2, m2
+            print *, 'e  ', grad1
+            print *, 'fd ', grad2
+            print *, 'ra ', error(c, :)
+            print *,
+         ! endif
+   enddo
+   enddo
+   enddo
+   print *,
+   enddo
+   print *, 'mean error', sum(error, 1)/c
+   print *, 'min error', minval(error(1:c, :), 1)
+   print *, 'max error', maxval(error(1:c, :), 1)
+end subroutine test_kinetic_grad
 
 subroutine test_twocenter_grad()
    REAL(KIND=dp), DIMENSION(1000) :: r, y1, wr, y2

@@ -17,6 +17,25 @@ public :: integration_twocenter, integration_onecenter, integration_threecenter,
            radial_integration, qsort
 
 contains
+! Get the derivatives of a function by finite differences
+subroutine derivatives(r, y, y1, y2, y3)
+   implicit none
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, y
+   REAL(KIND=dp), DIMENSION(size(r)), intent(out) :: y1, y2, y3
+   ! Local variables
+   REAL(KIND=dp), DIMENSION(3,3,5) :: c
+   INTEGER :: ir
+
+   y1 = 0._dp; y2 = 0._dp; y3 = 0._dp
+   do ir=1, size(r)-5
+      ! [...] where coeff[derivative, accuracy, coefficients]
+      call forward_derivative_weights(order=3, x0=r(ir), r=r(ir:), coeff=c)
+      y1(ir) = sum( c(1,2,1:3) * y(ir:ir+2) )
+      y2(ir) = sum( c(2,2,1:4) * y(ir:ir+3) )
+      y3(ir) = sum( c(3,2,1:5) * y(ir:ir+4) )
+   enddo
+end subroutine derivatives
+
 ! **********************************************
 !> \brief Computes the radial integral of f(r)
 !> \param f(n): The tabulated function at n grid points
@@ -299,8 +318,8 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
    implicit none
    ! Input
    INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, &
-                      r2, y2, spline1, spline2
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, &
+                                              r2, y2, spline1, spline2
    REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
    ! Output
    REAL(KIND=dp) :: integral
@@ -308,7 +327,7 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: rf2, d2rf2, d2rf2_spline, f1, f2
-   REAL(KIND=dp) :: norm, ylm
+   REAL(KIND=dp) :: norm, ylm, df2
    INTEGER, DIMENSION(2) :: ileb
    INTEGER :: ngrid, i
 
@@ -327,31 +346,34 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
    allocate(d2rf2(size(r2)))
    allocate(d2rf2_spline(size(r2)))
 
-   call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, addr2=.TRUE.,&
+   call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, addr2=.FALSE.,&
                              grid_r=grid_r, grid_w=grid_w)
    ! < f1 | -0.5*🔺 | f2 >
-   rf2 = -0.5_dp*r2*y2
+   ! Laplace_r = 1/r * d_r^2(r*f2)
+   rf2 = r2*y2
    ! Get the 2nd derivative d_r^2(r*f2) as well as its spline
    call spline(r2, rf2, size(r2), d2rf2)
    call spline(r2, d2rf2, size(r2), d2rf2_spline)
-
-   ! Divide by r
    d2rf2 = d2rf2/r2
-   ! Laplace = 1/r * d_r^2(r*f2) ✓
 
    do i=1,ngrid
+      ! T = -0.5 * ∫f1*Ylm * (D_r f2(r) - l'(l'+1)*f2/r^2 ) * Yl'm'
       norm = sqrt(sum( grid_r(i, :)**2 ))
       call interpolation(r1, y1, spline1, norm, f1(i))
       call rry_lm(l=l(1), m=m(1), r=grid_r(i, :)/norm, y=ylm)
-      f1(i) = f1(i) * ylm
+      f1(i) = f1(i) * ylm * norm**2
 
       norm = sqrt(sum( (grid_r(i, :) - d12)**2 ))
-      call interpolation(r2, d2rf2, d2rf2_spline, norm, f2(i))
+      call interpolation(r2, d2rf2, d2rf2_spline, norm, df2)  ! D_r f2
+      call interpolation(r2, y2, spline2, norm, f2(i))        ! f2
       call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :) - d12)/norm, y=ylm)
+
+      ! (D_r f2(r) - l'(l'+1)*f2/r^2 ) * Yl'm'
+      f2(i) = df2 - REAL(l(2)*(l(2)+1), dp)*f2(i)/norm**2
       f2(i) = f2(i) * ylm
    enddo
 
-   integral = sum(grid_w * f1*f2)
+   integral = -0.5_dp*sum(grid_w * f1*f2)
 
    deallocate(grid_r)
    deallocate(grid_w)
@@ -540,7 +562,7 @@ subroutine forward_derivative_weights(order, x0, r, coeff)
    REAL(KIND=dp), intent(in) :: x0
    REAL(KIND=dp), DIMENSION(:), intent(in) :: r
    ! Output
-   REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
+   REAL(KIND=dp), DIMENSION(3,3,5) :: coeff
    ! Local variables
    INTEGER :: points, n, nu, m
    REAL(KIND=dp) :: c1, c2, c3
@@ -577,12 +599,18 @@ subroutine forward_derivative_weights(order, x0, r, coeff)
    ! d contains way more information than we need it to.
    ! instead we construct a smaller field `coeff`
    ! where coeff[derivative, accuracy, coefficients]
+   ! First derivative
    coeff(1,1,:) = d(1,1,0:4)
    coeff(1,2,:) = d(1,2,0:4)
    coeff(1,3,:) = d(1,3,0:4)
+   ! Second derivative
    coeff(2,1,:) = d(2,2,0:4)
    coeff(2,2,:) = d(2,3,0:4)
    coeff(2,3,:) = d(2,4,0:4)
+   ! Third derivative
+   coeff(3,1,:) = d(3,3,0:4)
+   coeff(3,2,:) = d(3,4,0:4)
+   ! coeff(3,3,:) = d(3,5,0:4) ! this one has 6 coefficients
 end subroutine forward_derivative_weights
 
 subroutine derivative_point(r, y, r0, y1)
@@ -593,7 +621,7 @@ subroutine derivative_point(r, y, r0, y1)
    ! Output
    REAL(KIND=dp) :: y1
    ! Local variables
-   REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
+   REAL(KIND=dp), DIMENSION(3,3,5) :: coeff
    INTEGER :: low, upper
 
    call bisection(r=r, r0=r0, low=low, upper=upper)
@@ -611,7 +639,7 @@ subroutine spline(r, y, n, yspline)
    REAL(KIND=dp), DIMENSION(n) :: yspline
    ! Local variables
    REAL(KIND=dp), DIMENSION(n) :: u
-   REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
+   REAL(KIND=dp), DIMENSION(3,3,5) :: coeff
    INTEGER :: i
    REAL(KIND=dp) :: sig, p, un, qn, der1, dern, h
 

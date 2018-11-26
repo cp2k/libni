@@ -1,12 +1,55 @@
 module nao_unit
 USE eddi, ONLY: integration_onecenter, integration_twocenter, integration_threecenter, &
                 kinetic_energy, coulomb_integral, spline, interpolation,&
-                forward_derivative_weights, bisection, derivative_point
+                forward_derivative_weights, bisection, derivative_point,&
+                derivatives
 USE lebedev, ONLY: dp
 USE grid, ONLY: radial_grid
 implicit none
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 contains
+
+subroutine test_derivatives()
+   implicit none
+   REAL(KIND=dp), DIMENSION(300) :: r, wr, y, yy1, y1, yy2, y2, yy3, y3
+   REAL(KIND=dp), DIMENSION(3,295) :: errors
+   INTEGER :: i
+   
+   call radial_grid(r=r, wr=wr, n=size(r), addr2=.FALSE., quadr=1)
+   y = exp(-0.5_dp * r**2)
+   yy1 = -r * y
+   yy2 = y * ( r**2 - 1._dp )
+   yy3 = y * ( 3._dp * r - r**3 )
+
+   errors = 0._dp
+
+   call derivatives(r=r, y=y, y1=y1, y2=y2, y3=y3)
+   do i=1,size(r)-5
+      errors(1, i) = abs(y1(i)-yy1(i))
+      if (yy1(i) .ne. 0._dp) errors(1, i) = errors(1, i)/abs(yy1(i))
+
+      errors(2, i) = abs(y2(i)-yy2(i))
+      if (yy2(i) .ne. 0._dp) errors(2, i) = errors(2, i)/abs(yy2(i))
+
+      errors(3, i) = abs(y3(i)-yy3(i))
+      if (yy3(i) .ne. 0._dp) errors(3, i) = errors(3, i)/abs(yy3(i))
+      if (errors(3, i) .gt. 0.01_dp) then
+         print*, i, r(i), yy3(i), y3(i), errors(3, i)
+      endif
+   enddo
+   print *, sum( errors(1, :) )/295._dp
+   print *, maxval( errors(1, :) )
+   print *, minval( errors(1, :) )
+   print *,
+   print *, sum( errors(2, :) )/295._dp
+   print *, maxval( errors(2, :) )
+   print *, minval( errors(2, :) )
+   print *,
+   print *, sum( errors(3, :) )/295._dp
+   print *, maxval( errors(3, :) )
+   print *, minval( errors(3, :) )
+   print *,
+end subroutine test_derivatives
 
 subroutine test_derivative_point_off()
    implicit none
@@ -162,7 +205,7 @@ subroutine test_derivative_on(ntests)
    INTEGER, intent(in) :: ntests
    ! Local variables
    REAL(KIND=dp), DIMENSION(250) :: r, wr, y, ys, y1_s, y2_s, y1_ex, errors
-   REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
+   REAL(KIND=dp), DIMENSION(3,3,5) :: coeff
    REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
    REAL(KIND=dp) :: alpha, abs_error, error_cutoff
    INTEGER :: i, t
@@ -216,7 +259,7 @@ subroutine test_derivative_off(ntests)
    ! Local variables
    REAL(KIND=dp), DIMENSION(1000) :: r, wr, y, ys, y2_s
    REAL(KIND=dp), DIMENSION(200) :: r_interp, wr_interp, y1_s, y1_ex, errors
-   REAL(KIND=dp), DIMENSION(2,3,5) :: coeff
+   REAL(KIND=dp), DIMENSION(3,3,5) :: coeff
    REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
    REAL(KIND=dp) :: alpha, abs_error, error_cutoff
    INTEGER :: i, t
@@ -355,7 +398,7 @@ end subroutine test_interpolation
 
 subroutine test_forward_deriv_coeff()
    implicit none
-   REAL(KIND=dp), DIMENSION(2,3,5) :: c
+   REAL(KIND=dp), DIMENSION(3,3,5) :: c
    REAL(KIND=dp), DIMENSION(7) :: tr
    INTEGER :: i
    LOGICAL :: failed = .FALSE.
@@ -640,7 +683,7 @@ subroutine test_kinetic(ntests, loud)
       call spline(r, y2, size(r), spline2)
 
       ! The result we get from subroutine kinetic_energy
-      call kinetic_energy(l=(/0, 0/), m=(/0, 0/), nshell=(/100,100/),&
+      call kinetic_energy(l=(/0, 0/), m=(/0, 0/), nshell=(/125,125/),&
                           r1=r, y1=y1, r2=r, y2=y2, d12=(/0._dp, 0._dp, 0._dp/),&
                           spline1=spline1, spline2=spline2, integral=integral)
 

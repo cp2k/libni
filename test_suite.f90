@@ -13,14 +13,15 @@ USE nao_unit, ONLY: test_onecenter, test_twocenter, test_threecenter, test_kinet
                     test_forward_deriv_coeff, test_spline,&
                     test_derivative_point_on, test_derivative_point_off,&
                     test_interpolation,&
-                    test_derivative_on, test_derivative_off
-USE nao_grad_unit, ONLY: test_jacobian, test_twocenter_grad
+                    test_derivative_on, test_derivative_off,&
+                    test_derivatives
+USE nao_grad_unit, ONLY: test_jacobian, test_twocenter_grad, test_kinetic_grad
 implicit none
-
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
+call test_kinetic_grad()
+return
 call test_twocenter_grad()
 call test_jacobian()
-return
 
 call test_radial_weight_pos(ntests=9)
 call test_radial_weight_asc(ntests=9)
@@ -28,9 +29,10 @@ call test_radial_chebyherm(ntests=25, loud=.FALSE.)
 call test_forward_deriv_coeff()
 call test_interpolation(ntests=100)
 call test_spline(ntests=100)
+
+call test_derivatives()
 call test_derivative_point_on()
 call test_derivative_point_off()
-
 
 call test_derivative_on(ntests=100)
 call test_derivative_off(ntests=100)

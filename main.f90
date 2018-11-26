@@ -18,7 +18,8 @@ USE gradients, ONLY: jacobian, grad_onecenter, grad_onecenter_cart, grad_twocent
                      grad_twocenter
 USE nao_grad_unit, ONLY: test_jacobian, test_twocenter_grad
 implicit none
+REAL(KIND=dp), DIMENSION(1000) :: grid_r, grid_w
+INTEGER :: i
 
-! call test_twocenter_grad()
 
 end program hallo
