@@ -96,12 +96,10 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_d
    ! Local variables
    REAL(KIND=dp), DIMENSION(nshell(1)) :: radii1, radii_w1
    REAL(KIND=dp), DIMENSION(nshell(2)) :: radii2, radii_w2
-   REAL(KIND=dp), DIMENSION(2) :: alpha
-   INTEGER :: i, j, lower, upper, offset
-   REAL(KIND=dp) :: R, r1, r2, mu, s1, s2, norm
+   INTEGER :: i, j, c, lower, upper, offset
+   REAL(KIND=dp) :: R, r1, r2, mu, s1, s2, norm, alpha
 
-   alpha(1) = pi/REAL(nshell(1)+1, dp)
-   alpha(2) = pi/REAL(nshell(2)+1, dp)
+   alpha = pi/(2._dp*REAL(nshell(2)+1, dp))
    R = sqrt( sum( d12**2 ) )
    grid_w = 0._dp
    if (R .eq. 0.0_dp) then
@@ -126,8 +124,7 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_d
       do j=1,nshell(1)
          grid_r(lower+j-1, :) = radii1(j) * lebedev_grid(ileb(1))%r(:, i)
       enddo
-
-      grid_w(lower:upper) = 4.0_dp*pi * radii_w1 * lebedev_grid(ileb(1))%w(i)
+      grid_w(lower:upper) = radii_w1 * 4.0_dp*pi * lebedev_grid(ileb(1))%w(i)
    enddo
 
    offset = lebedev_grid(ileb(1))%n * nshell(1)
@@ -141,7 +138,7 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_d
          grid_r(lower+j-1,:) = radii2(j) * lebedev_grid(ileb(2))%r(:, i) + d12
       enddo
 
-      grid_w(lower:upper) = 4.0_dp*pi * radii_w2 * lebedev_grid(ileb(2))%w(i)
+      grid_w(lower:upper) = radii_w2 * 4.0_dp*pi *  lebedev_grid(ileb(2))%w(i)
    enddo
 
    ! nuclear partition
@@ -155,16 +152,7 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_d
       s1 = s3(mu)
       s2 = s3(-mu)
 
-      if (abs(s1+s2-1._dp) .ge. epsilon(1._dp)) stop 'Two-center nuclear partition'
-
-      ! dw/dX = w_rad * ds1/dX
-      if (present(grid_dw)) then
-         ! dw/dX = w_rad * ds_3/dmu * dmu/dX
-         grid_dw(i, 1) = (d12(1)*(r2-r1)/R**3 + (grid_r(i, 1)-d12(1))/(R*r2) )
-         grid_dw(i, 2) = (d12(2)*(r2-r1)/R**3 + (grid_r(i, 2)-d12(2))/(R*r2) )
-         grid_dw(i, 3) = (d12(3)*(r2-r1)/R**3 + (grid_r(i, 3)-d12(3))/(R*r2) )
-         grid_dw(i, :) = grid_dw(i, :) * grid_w(i) * ds3dmu(mu)
-      endif
+      if (abs(s1+s2-1._dp) .gt. epsilon(1._dp)) stop 'Two-center nuclear partition'
 
       grid_w(i) = grid_w(i) * s1!/(s1+s2)
    enddo
@@ -176,25 +164,61 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_d
       s1 = s3(mu)
       s2 = s3(-mu)
 
-      if (abs(s1+s2-1._dp) .ge. epsilon(1._dp)) stop 'Two-center nuclear partition'
-
-      if (present(grid_dw)) then
-         ! dw/dX = (1)w_rad * ds_3/dmu*dmu/dX + (2) dw_rad/dr * dr/dX * wpart
-         ! (1): w_rad * ds_3/dmu*dmu/dX
-         grid_dw(i, 1) = (d12(1)*(r2-r1)/R**3 + (grid_r(i, 1)-d12(1))/(R*r2) )
-         grid_dw(i, 2) = (d12(2)*(r2-r1)/R**3 + (grid_r(i, 2)-d12(2))/(R*r2) )
-         grid_dw(i, 3) = (d12(3)*(r2-r1)/R**3 + (grid_r(i, 3)-d12(3))/(R*r2) )
-         grid_dw(i, :) = -grid_dw(i, :) * grid_w(i) * ds3dmu(-mu)
-
-         ! TODO
-         ! ! (2): dw_rad/dr * dr/dX * wpart
-         ! grid_dw(i, 1) = grid_dw(i, 1)&
-         !    + alpha(2)*(7._dp*r2**(2.5_dp) + 5._dp*r2**(1.5_dp)) &
-         !    * (d12(1) - grid_r(i, 1))/r2 * s2
-      endif
+      if (abs(s1+s2-1._dp) .gt. epsilon(1._dp)) stop 'Two-center nuclear partition'
       
       grid_w(i) = grid_w(i) * s2!/(s1+s2)
    enddo
+
+   if (present(grid_dw)) then
+   c = 0
+   do i=1, lebedev_grid(ileb(1))%n
+   do j=1, nshell(1)
+      c = c+1
+      r1 = sqrt(sum( grid_r(c, :)**2 ))
+      r2 = sqrt(sum( (grid_r(c, :) - d12)**2 ))
+      mu = (r1-r2)/R
+      s1 = s3(mu); s2 = s3(-mu)
+      ! dw/dX = (1)w_rad * ds_3/dmu*dmu/dX + (2) dw_rad/dr * dr/dX * wpart
+      ! (1):
+      grid_dw(c, 1) = radii_w1(j) * ds3dmu(mu)&
+         * (d12(1)/R**3*(r2-r1) + (grid_r(c, 1) - d12(1)))/(R*r2)
+
+      grid_dw(c, 2) = radii_w1(j) * ds3dmu(mu)&
+         * (d12(2)/R**3*(r2-r1) + (grid_r(c, 2) - d12(2)))/(R*r2)
+
+      grid_dw(c, 3) = radii_w1(j) * ds3dmu(mu)&
+         * (d12(3)/R**3*(r2-r1) + (grid_r(c, 3) - d12(3)))/(R*r2)
+
+      grid_dw(c, :) = grid_dw(c, :) * 4._dp*pi*lebedev_grid(ileb(1))%w(i)
+   enddo
+   enddo
+
+   do i=1, lebedev_grid(ileb(2))%n
+   do j=1, nshell(2)
+      c = c+1
+      r1 = sqrt(sum( grid_r(c, :)**2 ))
+      r2 = sqrt(sum( (grid_r(c, :) - d12)**2 ))
+      mu = (r1-r2)/R
+      s1 = s3(mu); s2 = s3(-mu)
+      ! dw/dX = (1)w_rad * ds_3/dmu*dmu/dX + (2) dw_rad/dr * dr/dX * wpart
+      ! (1):
+      grid_dw(c, 1) = radii_w1(j) * ds3dmu(mu)&
+         * (d12(1)/R**3*(r2-r1) + (grid_r(c, 1) - d12(1)))/(R*r2)& ! (2)
+         - (grid_r(c, 1) - d12(1)) * alpha * (7._dp*r2**1.5_dp + 5._dp*sqrt(r2))*s2
+
+      grid_dw(c, 2) = radii_w1(j) * ds3dmu(mu)&
+         * (d12(2)/R**3*(r2-r1) + (grid_r(c, 2) - d12(2)))/(R*r2)&
+         - (grid_r(c, 2) - d12(2)) * alpha * (7._dp*r2**1.5_dp + 5._dp*sqrt(r2))*s2
+
+      grid_dw(c, 3) = radii_w1(j) * ds3dmu(mu)&
+         * (d12(3)/R**3*(r2-r1) + (grid_r(c, 3) - d12(3)))/(R*r2)&
+         - (grid_r(c, 3) - d12(3)) * alpha * (7._dp*r2**1.5_dp + 5._dp*sqrt(r2))*s2
+
+      grid_dw(c, :) = grid_dw(c, :) * 4._dp*pi*lebedev_grid(ileb(2))%w(i)
+   enddo
+   enddo
+
+   endif
 end subroutine build_twocenter_grid
 
 subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid_r, grid_w)

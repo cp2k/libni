@@ -29,7 +29,7 @@ subroutine derivatives(r, y, y1, y2, y3)
    y1 = 0._dp; y2 = 0._dp; y3 = 0._dp
    do ir=1, size(r)-5
       ! [...] where coeff[derivative, accuracy, coefficients]
-      call forward_derivative_weights(order=3, x0=r(ir), r=r(ir:), coeff=c)
+      call forward_derivative_weights(order=3, x0=r(ir), r=r(ir:ir+6), coeff=c)
       y1(ir) = sum( c(1,2,1:3) * y(ir:ir+2) )
       y2(ir) = sum( c(2,2,1:4) * y(ir:ir+3) )
       y3(ir) = sum( c(3,2,1:5) * y(ir:ir+4) )
@@ -688,7 +688,9 @@ subroutine interpolation(gr, gy, spline, r, y, yprime)
    ! find the closest grid point by bisection
    call bisection(r=gr, r0=r, low=low, upper=upper)
 
-   if (gr(upper) .eq. r) then
+   if (gy(low).eq.0._dp .and. gy(upper).eq.0._dp) then
+      y = 0._dp
+   elseif (gr(upper) .eq. r) then
       y = gy(upper)
       if (present(yprime)) call derivative_point(r=gr, y=gy, r0=r, y1=yprime)
    else if (gr(low) .eq. r) then

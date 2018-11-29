@@ -8,10 +8,10 @@ implicit none
 contains
 
 subroutine test_kinetic_grad()
-   REAL(KIND=dp), DIMENSION(5000) :: r, y1, wr, y2
+   REAL(KIND=dp), DIMENSION(100) :: r, y1, wr, y2
    REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
    REAL(KIND=dp), DIMENSION(1000,3) :: error
-   INTEGER :: l1, l2, m1, m2, i, c
+   INTEGER :: l1, l2, m1, m2, i, c, n
 
    call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
 
@@ -20,36 +20,42 @@ subroutine test_kinetic_grad()
 
    c = 0
    error = 0._dp
-   d12 = (/ .1_dp, -.5_dp, .1_dp /)
-   do l1=0,1
-   do l2=l1,1
-   do m1=-l1,l1
-   do m2=-l2,l2
+   d12 = (/ 1._dp, 0._dp, 4._dp /)
+   ! do l1=0,1
+   ! do l2=l1,1
+   ! do m1=-l1,l1
+   ! do m2=-l2,l2
    ! print *, '   ', l1, m1, l2, m2
-         c = c+1
-         call grad_kinetic(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
-                           nshell=(/100, 100/), d12=d12, grad=grad1)
+   l1 = 0; m1 = 0; l2 = 1; m2 = 0;
+   open(unit=111, file='ipynb/llmm0010_nvar')
+   do n = 10, 400, 30
+      print *, n
+      c = c+1
+      call grad_kinetic(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
+                        nshell=(/n, n/), d12=d12, grad=grad1)
 
+      call grad_kinetic_fd(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
+                           nshell=(/n, n/), d12=d12, grad=grad2)
 
-         call grad_kinetic_fd(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
-                              nshell=(/100, 100/), d12=d12, grad=grad2)
-
-         error(c, :) = abs(grad1-grad2)
-         if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
-         if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
-         if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-         ! if ( all( error(c, :)  .gt. 0.1_dp  )) then
-            print *, '   ', l1, m1, l2, m2
-            print *, 'e  ', grad1
-            print *, 'fd ', grad2
-            print *, 'ra ', error(c, :)
-            print *,
-         ! endif
+      error(c, :) = abs(grad1-grad2)
+      if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
+      if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
+      if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
+      ! if ( all( error(c, :)  .gt. 0.1_dp  )) then
+         print *, '   ', l1, m1, l2, m2
+         print *, 'e  ', grad1
+         print *, 'fd ', grad2
+         print *, 'ra ', error(c, :)
+         print *, achar(7)  ! beep, boop
+      ! endif
+      write (111, *) n, grad1, grad2, sum( error(c,:) )/3._dp
    enddo
-   enddo
-   enddo
+   close(111)
+   ! enddo
+   ! enddo
+   ! enddo
    print *,
-   enddo
+   ! enddo
    print *, 'mean error', sum(error, 1)/c
    print *, 'min error', minval(error(1:c, :), 1)
    print *, 'max error', maxval(error(1:c, :), 1)
@@ -59,7 +65,7 @@ subroutine test_twocenter_grad()
    REAL(KIND=dp), DIMENSION(1000) :: r, y1, wr, y2
    REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
    REAL(KIND=dp), DIMENSION(1000,3) :: error
-   INTEGER :: l1, l2, m1, m2, i, c
+   INTEGER :: l1, l2, m1, m2, i, c, nshell1, nshell2, n
 
    call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
 
@@ -69,34 +75,39 @@ subroutine test_twocenter_grad()
    c = 0
    error = 0._dp
    d12 = (/ .1_dp, -.5_dp, .1_dp /)
-   do l1=0,5
-   do l2=l1,5
-   do m1=-l1,l1
-   do m2=-l2,l2
+   ! l2 = 0; m1 = 0; l1 = 0; m2 = 0; ! n = 80
+   ! l2 = 1; m1 = -1; l1 = 1; m2 = 0; ! n = 90 or 130
+   l1 = 1; m1 = -1; l2 = 1; m2 = 0;
+   n = 90
+   print *, n
+   ! do l1=0,1
+   ! do l2=l1,1
+   ! do m1=-l1,l1
+   ! do m2=-l2,l2
    ! print *, '   ', l1, m1, l2, m2
          c = c+1
          call grad_twocenter(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
-                             nshell=(/100, 100/), d12=d12, grad=grad1)
+                             nshell=(/n, n/), d12=d12, grad=grad1)
 
-         call grad_twocenter_fd(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
-                                nshell=(/100, 100/), d12=d12, grad=grad2)
-
+         ! call grad_twocenter_fd(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
+                                ! nshell=(/n, n/), d12=d12, grad=grad2)
+         grad2 = (/-2.4329713535409104E-003_dp, -1.2946568370649482E-002_dp, 0.12312415676550773_dp/)
          error(c, :) = abs(grad1-grad2)
          if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
          if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
          if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-         if ( all( error(c, :)  .gt. 0.1_dp  )) then
+         ! if ( any( error(c, :)  .gt. 0.1_dp  )) then
             print *, '   ', l1, m1, l2, m2
             print *, 'e  ', grad1
             print *, 'fd ', grad2
-            print *, 'ra ', error(c, :)
+            print *, 'ra ', error(c, :), '/3 = ', sum(error(c, :))/3._dp
             print *,
-         endif
-   enddo
-   enddo
-   enddo
+         ! endif
+   ! enddo
+   ! enddo
+   ! enddo
    print *,
-   enddo
+   ! enddo
    print *, 'error', sum(error, 1)/c
 end subroutine test_twocenter_grad
 
