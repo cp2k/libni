@@ -770,9 +770,9 @@ subroutine test_coulomb(ntests, loud)
       call spline(r, y1, size(r), spline1)
       call spline(r, y2, size(r), spline2)
 
-      call coulomb_integral(nang=(/590, 590/), nshell=nshell, coul_n=coul_n, d12=rand_pos,&
+      call coulomb_integral(nshell=nshell, coul_n=coul_n, d12=rand_pos,&
                             r1=r, y1=y1, r2=r, y2=y2, s1=spline1, s2=spline2,&
-                            integral=integral)
+                            l=(/0,0/), m=(/0,0/), integral=integral)
 
       alpha = product(rand2)/sum(rand2)
       norm = sqrt(sum(rand_pos**2))

@@ -21,18 +21,17 @@ contains
 subroutine derivatives(r, y, y1, y2, y3)
    implicit none
    REAL(KIND=dp), DIMENSION(:), intent(in) :: r, y
-   REAL(KIND=dp), DIMENSION(size(r)), intent(out) :: y1, y2, y3
+   REAL(KIND=dp), DIMENSION(size(r)), OPTIONAL, intent(out) :: y1, y2, y3
    ! Local variables
    REAL(KIND=dp), DIMENSION(3,3,5) :: c
    INTEGER :: ir
 
-   y1 = 0._dp; y2 = 0._dp; y3 = 0._dp
    do ir=1, size(r)-5
       ! [...] where coeff[derivative, accuracy, coefficients]
       call forward_derivative_weights(order=3, x0=r(ir), r=r(ir:ir+6), coeff=c)
-      y1(ir) = sum( c(1,2,1:3) * y(ir:ir+2) )
-      y2(ir) = sum( c(2,2,1:4) * y(ir:ir+3) )
-      y3(ir) = sum( c(3,2,1:5) * y(ir:ir+4) )
+      if(present(y1)) y1(ir) = sum( c(1,2,1:3) * y(ir:ir+2) )
+      if(present(y2)) y2(ir) = sum( c(2,2,1:4) * y(ir:ir+3) )
+      if(present(y3)) y3(ir) = sum( c(3,2,1:5) * y(ir:ir+4) )
    enddo
 end subroutine derivatives
 
@@ -383,22 +382,22 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
    deallocate(d2rf2_spline)
 end subroutine kinetic_energy
 
-subroutine coulomb_integral(nang, nshell, coul_n, d12, r1, y1, r2, y2, s1, s2, integral)
+subroutine coulomb_integral(nshell, coul_n, d12, l, m,&
+                            r1, y1, r2, y2, s1, s2, integral)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: nang, nshell
+   INTEGER, DIMENSION(2), intent(in) :: nshell, l, m
    INTEGER, intent(in) :: coul_n
    REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, r2, y2, s1, s2
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2, s1, s2
    ! Output
    REAL(KIND=dp) :: integral
    ! Local variables
-   INTEGER :: i, j, l
+   INTEGER :: i, j
    ! Local variables (potential)
    REAL(KIND=dp), DIMENSION(coul_n) :: f, gi, hi, G, H, coul_w
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: coul_r, pot, pots
-
-   l = 0 ! Quantum number TODO
+   REAL(KIND=dp) :: ylm
 
    ! 1: Evaluate the Coulomb potential on a radial grid around A
    ! ! the integral is purely radial => addr2=False
@@ -412,22 +411,22 @@ subroutine coulomb_integral(nang, nshell, coul_n, d12, r1, y1, r2, y2, s1, s2, i
    do i=1,coul_n
       call interpolation(r1, y1, s1, coul_r(i), f(i))
    enddo
-   gi = coul_w * coul_r**(l+2) * f
-   hi = coul_w * coul_r**(1-l) * f
+   gi = coul_w * coul_r**(l(1)+2) * f
+   hi = coul_w * coul_r**(1-l(1)) * f
 
    G(coul_n) = sum(gi)
    H(coul_n) = 0.0_dp
    do j=coul_n,1,-1
-      pot(j) = coul_r(j)**(-l-1) * G(j) + coul_r(j)**l * H(j)
+      pot(j) = coul_r(j)**(-l(1)-1) * G(j) + coul_r(j)**l(1) * H(j)
       G(j-1) = G(j) - gi(j)
       H(j-1) = H(j) + hi(j)
    enddo
 
-   pot = pot * 4.0_dp*pi/(2.0_dp*l+1.0_dp)
+   pot = pot * 4.0_dp*pi/(2.0_dp*l(1)+1.0_dp)
    call spline(coul_r, pot, coul_n, pots)
 
    ! 2: Calculate the overlap of y2(r-d12) and the coulomb potential
-   call integration_twocenter(l=(/l,l/), m=(/0,0/), nshell=nshell, d12=d12, &
+   call integration_twocenter(l=l, m=m, nshell=nshell, d12=d12, &
                               r1=coul_r, y1=pot, r2=r2, y2=y2,&
                               spline1=pots, spline2=s2, integral=integral)
 

@@ -1,8 +1,8 @@
 module gradients
 USE lebedev, ONLY: dp, get_number_of_lebedev_grid, lebedev_grid
 USE eddi, ONLY: pi, spline, interpolation, integration_twocenter,&
-                kinetic_energy, derivatives
-USE grid, ONLY: build_onecenter_grid, build_twocenter_grid
+                kinetic_energy, derivatives, coulomb_integral
+USE grid, ONLY: radial_grid, build_onecenter_grid, build_twocenter_grid
 USE spherical_harmonics, ONLY: rry_lm, dry_lm
 
 implicit none
@@ -10,6 +10,240 @@ REAL(KIND=dp), DIMENSION(3), PARAMETER :: ex = (/ 1._dp, 0._dp, 0._dp /)
 REAL(KIND=dp), DIMENSION(3), PARAMETER :: ey = (/ 0._dp, 1._dp, 0._dp /)
 REAL(KIND=dp), DIMENSION(3), PARAMETER :: ez = (/ 0._dp, 0._dp, 1._dp /)
 contains
+
+subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
+                        r1, y1, r2, y2, s1, s2, grad)
+   implicit none
+   ! Input
+   INTEGER, DIMENSION(2), intent(in) :: nshell, l, m
+   INTEGER, intent(in) :: coul_n
+   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2, s1, s2
+   ! Output
+   REAL(KIND=dp), DIMENSION(3) :: grad
+   ! Local variables
+   INTEGER :: i, j
+   ! Local variables (integration)
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r, grid_dw, tmp_grad
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w, d2y, d2ys
+   REAL(KIND=dp), DIMENSION(3) :: dylm2, dr, dtheta, dphi
+   REAL(KIND=dp) :: ylm, d2, norm, x, y, z, rho, theta, phi, dylm, df2, f1, f2
+   INTEGER, DIMENSION(2) :: ileb
+   INTEGER :: ngrid
+   ! Local variables (potential)
+   REAL(KIND=dp), DIMENSION(coul_n) :: f, gi, hi, G, H, coul_w
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: coul_r, pot, pots
+
+   ! 1: Evaluate the Coulomb potential on a radial grid around A, f1
+   ! ! the integral is purely radial and ≠F(R) => addr2=False
+   allocate(coul_r(coul_n))
+   allocate(pot(coul_n))
+   allocate(pots(coul_n))
+   call radial_grid(r=coul_r, &
+                    wr=coul_w, &
+                    n=coul_n, addr2=.FALSE., quadr=1)
+
+   do i=1,coul_n
+      call interpolation(r1, y1, s1, coul_r(i), f(i))
+   enddo
+   gi = coul_w * coul_r**(l(1)+2) * f
+   hi = coul_w * coul_r**(1-l(1)) * f
+
+   G(coul_n) = sum(gi)
+   H(coul_n) = 0.0_dp
+   do j=coul_n,1,-1
+      pot(j) = coul_r(j)**(-l(1)-1) * G(j) + coul_r(j)**l(1) * H(j)
+      G(j-1) = G(j) - gi(j)
+      H(j-1) = H(j) + hi(j)
+   enddo
+
+   pot = pot * 4.0_dp*pi/(2.0_dp*l(1)+1.0_dp)  ! Here we have V_C
+   call spline(coul_r, pot, coul_n, pots)      ! and its spline.
+
+   ! 2: Calculate the overlap of the coulomb potential and D(y2)
+   !! Build the two-center grid and integrate over it
+   ileb(1) = get_number_of_lebedev_grid(n=302)
+   ileb(2) = get_number_of_lebedev_grid(n=302)
+
+   ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
+           lebedev_grid(ileb(2))%n * nshell(2)
+   allocate(grid_r(ngrid, 3))
+   allocate(grid_w(ngrid))
+   allocate(grid_dw(ngrid, 3))
+   allocate(tmp_grad(ngrid, 3))
+
+   grid_dw = 0._dp
+   call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
+                             addr2=.FALSE., grid_r=grid_r, grid_w=grid_w, &
+                             grid_dw=grid_dw)
+
+   allocate(d2y(size(r2)))
+   allocate(d2ys(size(r2)))
+   call derivatives(r=r2, y=y2, y1=d2y)
+   call spline(r2, d2y, size(r2), d2ys)
+
+   do i=1,ngrid
+      ! d CI = (dw * f2*Y2 + w * df2 * Y2 + w*f2 * dY2) * Vc*Y1 = d2 * Vc*Y1
+      !! we start with Vc*Y1
+      norm = sqrt(sum( grid_r(i, :)**2 ))
+      call interpolation(coul_r, pot, pots, norm, f1)
+      call rry_lm(l=l(1), m=m(1), r=grid_r(i, :)/norm, y=ylm)
+      f1 = f1 * ylm
+
+      !!! Helpers
+      norm = sqrt( sum( (grid_r(i, :) - d12)**2 ) )
+      x = grid_r(i, 1)-d12(1); y = grid_r(i, 2)-d12(2); z = grid_r(i, 3)-d12(3);
+      rho = x*x + y*y
+      theta = acos(z/norm); phi = atan2(y, x);
+      !!! The partial derivatives dr/dXYZ, dtheta/XYZ, dphi/XYZ
+      dr = -(grid_r(i, :) - d12)/norm
+
+      dtheta = 0._dp
+      if (rho .ne. 0._dp) then
+         dtheta(1) = -x*z
+         dtheta(2) = -y*z
+         dtheta(3) = rho 
+         dtheta = dtheta / ( norm**3 * sqrt(1._dp - (z/norm)**2) )
+      endif
+
+      dphi = 0._dp
+      if (rho .ne. 0._dp) then
+         dphi(1) = y
+         dphi(2) = -x
+         dphi = dphi/rho
+      endif
+
+      !!! Lets-a-go
+      call interpolation(r2, y2, s2, norm, f2)
+      call interpolation(r2, d2y, d2ys, norm, df2)
+      call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :)-d12)/norm, y=ylm)
+      call dry_lm(l=l(2), m=m(2), c=(/theta, phi/), dy=dylm2)
+
+      !!! d2 = f2 * (dw * Y + w * dY) + w * df2 * Y
+      dylm = dylm2(1)*dtheta(1) + dylm2(2)*dphi(1)
+      tmp_grad(i, 1) = f2 * ( grid_dw(i, 1) * ylm + grid_w(i) * dylm )&
+                       + grid_w(i) * df2*dr(1) * ylm
+
+      dylm = dylm2(1)*dtheta(2) + dylm2(2)*dphi(2)
+      tmp_grad(i, 2) = f2 * ( grid_dw(i, 2) * ylm + grid_w(i) * dylm )&
+                       + grid_w(i) * df2*dr(2) * ylm
+
+      dylm = dylm2(1)*dtheta(3) + dylm2(2)*dphi(3)
+      tmp_grad(i, 3) = f2 * ( grid_dw(i, 3) * ylm + grid_w(i) * dylm )&
+                       + grid_w(i) * df2*dr(3) * ylm
+
+      ! Concluding...
+      tmp_grad(i, :) = tmp_grad(i, :) * f1
+   enddo
+
+   grad = 0._dp
+   grad(1) = sum(tmp_grad(:, 1))
+   grad(2) = sum(tmp_grad(:, 2))
+   grad(3) = sum(tmp_grad(:, 3))
+
+   deallocate(d2y)
+   deallocate(d2ys)
+   deallocate(grid_r)
+   deallocate(grid_w)
+   deallocate(grid_dw)
+
+   deallocate(coul_r)
+   deallocate(pot)
+   deallocate(pots)
+end subroutine grad_coulomb
+
+subroutine grad_coulomb_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
+   implicit none
+   ! Input
+   INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2
+   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
+   ! Output
+   REAL(KIND=dp), DIMENSION(3) :: grad
+   ! Local variables
+   INTEGER, DIMENSION(2) :: ileb, nleb
+   INTEGER :: ngrid, i, coul_n
+   REAL(KIND=dp), DIMENSION(size(r1)) :: s1
+   REAL(KIND=dp), DIMENSION(size(r2)) :: s2
+   REAL(KIND=dp), DIMENSION(3, 4) :: findiff
+   REAL(KIND=dp), DIMENSION(3) :: d12t
+   REAL(KIND=dp) :: integral, h
+
+   ileb(1) = get_number_of_lebedev_grid(n=590)
+   ileb(2) = get_number_of_lebedev_grid(n=590)
+   nleb(1) = lebedev_grid(ileb(1))%n
+   nleb(2) = lebedev_grid(ileb(2))%n
+   ngrid = sum(nleb*nshell)
+
+   call spline(r=r1, y=y1, n=size(r1), yspline=s1)
+   call spline(r=r2, y=y2, n=size(r2), yspline=s2)
+
+   h = 1.0e-7_dp
+   coul_n = 1000
+
+   d12t = d12 + 2._dp*ex*h
+   call coulomb_integral(l=l, m=m, nshell=nshell, coul_n=coul_n, d12=d12t, &
+                         r1=r1, y1=y1, r2=r2, y2=y2,&
+                         s1=s1, s2=s2, integral=findiff(1,1))
+
+   d12t = d12 + h*ex
+   call coulomb_integral(l=l, m=m, nshell=nshell, coul_n=coul_n, d12=d12t, &
+                         r1=r1, y1=y1, r2=r2, y2=y2,&
+                         s1=s1, s2=s2, integral=findiff(1,2))
+   d12t = d12 - h*ex
+   call coulomb_integral(l=l, m=m, nshell=nshell, coul_n=coul_n, d12=d12t, &
+                         r1=r1, y1=y1, r2=r2, y2=y2,&
+                         s1=s1, s2=s2, integral=findiff(1,3))
+   d12t = d12 - 2._dp*ex*h
+   call coulomb_integral(l=l, m=m, nshell=nshell, coul_n=coul_n, d12=d12t, &
+                         r1=r1, y1=y1, r2=r2, y2=y2,&
+                         s1=s1, s2=s2, integral=findiff(1,4))
+
+
+   d12t = d12 + 2._dp*ey*h
+   call coulomb_integral(l=l, m=m, nshell=nshell, coul_n=coul_n, d12=d12t, &
+                         r1=r1, y1=y1, r2=r2, y2=y2,&
+                         s1=s1, s2=s2, integral=findiff(2,1))
+
+   d12t = d12 + h*ey
+   call coulomb_integral(l=l, m=m, nshell=nshell, coul_n=coul_n, d12=d12t, &
+                         r1=r1, y1=y1, r2=r2, y2=y2,&
+                         s1=s1, s2=s2, integral=findiff(2,2))
+   d12t = d12 - h*ey
+   call coulomb_integral(l=l, m=m, nshell=nshell, coul_n=coul_n, d12=d12t, &
+                         r1=r1, y1=y1, r2=r2, y2=y2,&
+                         s1=s1, s2=s2, integral=findiff(2,3))
+   d12t = d12 - 2._dp*ey*h
+   call coulomb_integral(l=l, m=m, nshell=nshell, coul_n=coul_n, d12=d12t, &
+                         r1=r1, y1=y1, r2=r2, y2=y2,&
+                         s1=s1, s2=s2, integral=findiff(2,4))
+
+
+   d12t = d12 + 2._dp*ez*h
+   call coulomb_integral(l=l, m=m, nshell=nshell, coul_n=coul_n, d12=d12t, &
+                         r1=r1, y1=y1, r2=r2, y2=y2,&
+                         s1=s1, s2=s2, integral=findiff(3,1))
+
+   d12t = d12 + h*ez
+   call coulomb_integral(l=l, m=m, nshell=nshell, coul_n=coul_n, d12=d12t, &
+                         r1=r1, y1=y1, r2=r2, y2=y2,&
+                         s1=s1, s2=s2, integral=findiff(3,2))
+   d12t = d12 - h*ez
+   call coulomb_integral(l=l, m=m, nshell=nshell, coul_n=coul_n, d12=d12t, &
+                         r1=r1, y1=y1, r2=r2, y2=y2,&
+                         s1=s1, s2=s2, integral=findiff(3,3))
+   d12t = d12 - 2._dp*ez*h
+   call coulomb_integral(l=l, m=m, nshell=nshell, coul_n=coul_n, d12=d12t, &
+                         r1=r1, y1=y1, r2=r2, y2=y2,&
+                         s1=s1, s2=s2, integral=findiff(3,4))
+
+
+   grad(1) = -findiff(1,1) + 8._dp*findiff(1,2) - 8._dp*findiff(1,3) + findiff(1,4)
+   grad(2) = -findiff(2,1) + 8._dp*findiff(2,2) - 8._dp*findiff(2,3) + findiff(2,4)
+   grad(3) = -findiff(3,1) + 8._dp*findiff(3,2) - 8._dp*findiff(3,3) + findiff(3,4)
+   grad = grad/(12._dp*h)
+end subroutine grad_coulomb_fd
+
 
 subroutine grad_kinetic(r1, y1, r2, y2, l, m, nshell, d12, grad)
    implicit none
@@ -155,18 +389,18 @@ subroutine grad_kinetic(r1, y1, r2, y2, l, m, nshell, d12, grad)
                        term1  * grid_dw(i, 3) * ylm2 +&
                        term1  * grid_w(i)     * dylm
 
-      if(abs(tmp_grad(i, 3)) .gt. 1000) then
-         print *, REPEAT('-', 80)
-         print *, i, tmp_grad(i, 3)
-         print *, 'norm', norm
-         print *, 'x', term1  * grid_dw(i, 1) * ylm2
-         print *, 'x', term1, grid_dw(i, 1), ylm2
-         print *, 'y', term1  * grid_dw(i, 2) * ylm2
-         print *, 'y', term1, grid_dw(i, 2), ylm2
-         print *, 'z', term1  * grid_dw(i, 3) * ylm2
-         print *, 'z', term1, grid_dw(i, 3), ylm2
-         stop (' ')
-      endif
+      ! if(abs(tmp_grad(i, 3)) .gt. 1000) then
+      !    print *, REPEAT('-', 80)
+      !    print *, i, tmp_grad(i, 3)
+      !    print *, 'norm', norm
+      !    print *, 'x', term1  * grid_dw(i, 1) * ylm2
+      !    print *, 'x', term1, grid_dw(i, 1), ylm2
+      !    print *, 'y', term1  * grid_dw(i, 2) * ylm2
+      !    print *, 'y', term1, grid_dw(i, 2), ylm2
+      !    print *, 'z', term1  * grid_dw(i, 3) * ylm2
+      !    print *, 'z', term1, grid_dw(i, 3), ylm2
+      !    stop (' ')
+      ! endif
 
       ! Concluding...
       tmp_grad(i, :) = tmp_grad(i, :) * f1 * ylm1
