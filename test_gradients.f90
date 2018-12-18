@@ -166,12 +166,11 @@ subroutine test_twocenter_grad()
    d12 = (/ .1_dp, -.5_dp, .1_dp /)
    n = 130
    l1 = 0; m1 = 0; l2 = 1; m2 = 1;
-   ! do l1=0,1
-   ! do l2=l1,1
-   ! do m1=0,l1
-   ! do m2=0,l2
-   do n=100,750,10
-      print *, 'n', n
+   do l1=0,1
+   do l2=l1,2
+   do m1=0,l1
+   do m2=0,l2
+      ! print *, 'n', n
       c = c+1
       call grad_twocenter(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
                           nshell=(/n, n/), d12=d12, grad=grad1)
@@ -192,10 +191,9 @@ subroutine test_twocenter_grad()
          ! print *, '👌  ', l1, m1, l2, m2
       ! endif
    enddo
-   ! enddo
-   ! enddo
-   ! enddo
-   ! enddo
+   enddo
+   enddo
+   enddo
    if(all(sum(error, 1)/c .lt. 0.1_dp)) then
    print *, '👌 test_twocenter_grad - passed'
    print *, 'error', sum(error, 1)/c
