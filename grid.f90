@@ -33,8 +33,8 @@ subroutine radial_grid(r, wr, n, addr2, quadr)
       do i=1,n
          t = REAL(i, dp)*alpha
          x = COS(t)
-         r(i) = (1.0_dp+x)/(1.0_dp-x)
-         wr(i) = alpha*2.0_dp*SIN(t)/(1.0_dp-x)**2
+         r(i) = 100._dp*(1.0_dp+x)/(1.0_dp-x)
+         wr(i) = 100._dp*alpha*2.0_dp*SIN(t)/(1.0_dp-x)**2
       enddo
    else if (quadr .eq. 2) then
       call gauher(r=her_r, wr=her_wr, n=n)
@@ -97,7 +97,7 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_d
    REAL(KIND=dp), DIMENSION(nshell(1)) :: radii1, radii_w1
    REAL(KIND=dp), DIMENSION(nshell(2)) :: radii2, radii_w2
    INTEGER :: i, j, c, lower, upper, offset
-   REAL(KIND=dp) :: R, r1, r2, mu, s1, s2, norm, alpha
+   REAL(KIND=dp) :: R, r1, r2, mu, s1, s2, alpha
 
    alpha = pi/(2._dp*REAL(nshell(2)+1, dp))
    R = sqrt( sum( d12**2 ) )
@@ -239,18 +239,21 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid_r, grid_w)
                     mu12, mu13, mu23, s12, s13, s23, s21, s31, s32
 
    REAL(KIND=dp) :: tP1, tP2, tP3, sP, p1, p2, p3
+   LOGICAL :: myaddr2 = .TRUE.
+
+   if(present(addr2)) myaddr2 = addr2
 
    call radial_grid(r=radii1, &
                     wr=radii_w1, &
-                    n=nshell(1), addr2=.TRUE., quadr=1)
+                    n=nshell(1), addr2=myaddr2, quadr=1)
 
    call radial_grid(r=radii2, &
                     wr=radii_w2, &
-                    n=nshell(2), addr2=.TRUE., quadr=1)
+                    n=nshell(2), addr2=myaddr2, quadr=1)
 
    call radial_grid(r=radii3, &
                     wr=radii_w3, &
-                    n=nshell(3), addr2=.TRUE., quadr=1)
+                    n=nshell(3), addr2=myaddr2, quadr=1)
 
    R12 = sqrt(sum(d12**2))
    R13 = sqrt(sum(d13**2))
@@ -480,7 +483,7 @@ subroutine gauher(r, wr, n)
    REAL(KIND=dp), DIMENSION(n) :: r, wr
    ! Local variables
    INTEGER :: i, j, k, m, maxit
-   REAL(KIND=dp) :: u, pim4, p1, p2, p3, p4, pp, z, z1
+   REAL(KIND=dp) :: pim4, p1, p2, p3, pp, z, z1
 
    ! Only find n/2 zeros
    m = (n+1)/2

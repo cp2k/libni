@@ -1,7 +1,8 @@
 module gradients
 USE lebedev, ONLY: dp, get_number_of_lebedev_grid, lebedev_grid
 USE eddi, ONLY: pi, spline, interpolation, integration_twocenter,&
-                kinetic_energy, derivatives, coulomb_integral
+                kinetic_energy, derivatives, coulomb_integral,&
+                kah_sum
 USE grid, ONLY: radial_grid, build_onecenter_grid, build_twocenter_grid
 USE spherical_harmonics, ONLY: rry_lm, dry_lm
 
@@ -20,14 +21,14 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
    REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
    REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2, s1, s2
    ! Output
-   REAL(KIND=dp), DIMENSION(3) :: grad
+   REAL(KIND=dp), DIMENSION(3), intent(out) :: grad
    ! Local variables
    INTEGER :: i, j
    ! Local variables (integration)
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r, grid_dw, tmp_grad
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w, d2y, d2ys
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w, dy2, dy2s
    REAL(KIND=dp), DIMENSION(3) :: dylm2, dr, dtheta, dphi
-   REAL(KIND=dp) :: ylm, d2, norm, x, y, z, rho, theta, phi, dylm, df2, f1, f2
+   REAL(KIND=dp) :: ylm, norm, x, y, z, rho, theta, phi, dylm, df2, f1, f2
    INTEGER, DIMENSION(2) :: ileb
    INTEGER :: ngrid
    ! Local variables (potential)
@@ -77,10 +78,11 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
                              addr2=.FALSE., grid_r=grid_r, grid_w=grid_w, &
                              grid_dw=grid_dw)
 
-   allocate(d2y(size(r2)))
-   allocate(d2ys(size(r2)))
-   call derivatives(r=r2, y=y2, y1=d2y)
-   call spline(r2, d2y, size(r2), d2ys)
+   allocate(dy2(size(r2)))
+   allocate(dy2s(size(r2)))
+   dy2 = 0._dp; dy2s = 0._dp;
+   call derivatives(r=r2, y=y2, y1=dy2)
+   call spline(r2, dy2, size(r2), dy2s)
 
    do i=1,ngrid
       ! d CI = (dw * f2*Y2 + w * df2 * Y2 + w*f2 * dY2) * Vc*Y1 = d2 * Vc*Y1
@@ -115,7 +117,7 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
 
       !!! Lets-a-go
       call interpolation(r2, y2, s2, norm, f2)
-      call interpolation(r2, d2y, d2ys, norm, df2)
+      call interpolation(r2, dy2, dy2s, norm, df2)
       call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :)-d12)/norm, y=ylm)
       call dry_lm(l=l(2), m=m(2), c=(/theta, phi/), dy=dylm2)
 
@@ -134,6 +136,16 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
 
       ! Concluding...
       tmp_grad(i, :) = tmp_grad(i, :) * f1
+
+      if(tmp_grad(i, 1) .gt. 10.0e10_dp) then
+         print *, 'happened', i
+         print *, 'df2', df2
+         print *, 'df2', dr(1)
+         print *, 'df2*', df2*dr(1)
+         print *, 'grid_r', grid_r(i, :)
+         print *, 'xyz', x, y, z
+         print *, 'norm', norm
+      endif
    enddo
 
    grad = 0._dp
@@ -141,8 +153,8 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
    grad(2) = sum(tmp_grad(:, 2))
    grad(3) = sum(tmp_grad(:, 3))
 
-   deallocate(d2y)
-   deallocate(d2ys)
+   deallocate(dy2)
+   deallocate(dy2s)
    deallocate(grid_r)
    deallocate(grid_w)
    deallocate(grid_dw)
@@ -162,12 +174,12 @@ subroutine grad_coulomb_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
    REAL(KIND=dp), DIMENSION(3) :: grad
    ! Local variables
    INTEGER, DIMENSION(2) :: ileb, nleb
-   INTEGER :: ngrid, i, coul_n
+   INTEGER :: ngrid, coul_n
    REAL(KIND=dp), DIMENSION(size(r1)) :: s1
    REAL(KIND=dp), DIMENSION(size(r2)) :: s2
    REAL(KIND=dp), DIMENSION(3, 4) :: findiff
    REAL(KIND=dp), DIMENSION(3) :: d12t
-   REAL(KIND=dp) :: integral, h
+   REAL(KIND=dp) :: h
 
    ileb(1) = get_number_of_lebedev_grid(n=590)
    ileb(2) = get_number_of_lebedev_grid(n=590)
@@ -245,30 +257,29 @@ subroutine grad_coulomb_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
 end subroutine grad_coulomb_fd
 
 
-subroutine grad_kinetic(r1, y1, r2, y2, l, m, nshell, d12, grad)
+subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
    implicit none
    ! Input
    INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2, d1y, d2y, d3y
    REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
    ! Output
    REAL(KIND=dp), DIMENSION(3) :: grad
    ! Local variables
-   INTEGER, DIMENSION(2) :: ileb, nleb
-   INTEGER :: ngrid, i
+   INTEGER, DIMENSION(2) :: ileb
+   INTEGER :: i, ngrid
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r, grid_dw, tmp_grad
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
    REAL(KIND=dp), DIMENSION(size(r1)) :: s1
-   REAL(KIND=dp), DIMENSION(size(r2)) :: s2, rf2, ddf2_spline, d2rf2, d2rf2_spline
+   REAL(KIND=dp), DIMENSION(size(r2)) :: s2, ddf2_spline
    REAL(KIND=dp), DIMENSION(3) :: dr, dtheta, dphi, dylm2
-   REAL(KIND=dp) :: norm, x, y, z, theta, phi, rho, gamma,&
-                    f1, f2, ylm1, ylm2, df2, ddf2, dddf2, dwdr2, a, b, c, d,&
-                    ll1, dd
+   REAL(KIND=dp) :: norm, x, y, z, theta, phi, rho,&
+                    f1, f2, ylm1, ylm2, df2, ddf2, dddf2, ll1
 
    ! Newer, better derivatives
-   REAL(KIND=dp), DIMENSION(size(r2)) :: d1y, d2y, d3y, sd1y, sd2y, sd3y
+   REAL(KIND=dp), DIMENSION(size(d1y)) :: sd1y, sd2y, sd3y
    REAL(KIND=dp) :: term1, dterm1, dylm
-   call derivatives(r=r2, y=y2, y1=d1y, y2=d2y, y3=d3y)
+   ! call derivatives(r=r2, y=y2, y1=d1y, y2=d2y, y3=d3y)
    call spline(r=r2, y=d1y, n=size(r2), yspline=sd1y)
    call spline(r=r2, y=d2y, n=size(r2), yspline=sd2y)
    call spline(r=r2, y=d3y, n=size(r2), yspline=sd3y)
@@ -286,7 +297,7 @@ subroutine grad_kinetic(r1, y1, r2, y2, l, m, nshell, d12, grad)
    grid_dw = 0._dp
 
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.TRUE., grid_r=grid_r, grid_w=grid_w, &
+                             addr2=.FALSE., grid_r=grid_r, grid_w=grid_w, &
                              grid_dw=grid_dw)
    !  N                        ~      ~
    !  Σ  w  * f(r) * Y(r)  Δ f(r) * Y(r) ,
@@ -294,13 +305,6 @@ subroutine grad_kinetic(r1, y1, r2, y2, l, m, nshell, d12, grad)
 
    !       ~    ––>     ––>                  T
    ! where r = grid_r - d12 = (x-X, y-Y, z-Z)
-
-   ! Df2
-   rf2 = r2*y2
-   call spline(r2, rf2, size(r2), d2rf2)
-   call spline(r2, d2rf2, size(r2), d2rf2_spline)
-   d2rf2 = d2rf2/r2
-   ! Laplace_r = 1/r * d_r^2(r*f2)
 
    call spline(r=r2, y=s2, n=size(r2), yspline=ddf2_spline)
 
@@ -353,41 +357,69 @@ subroutine grad_kinetic(r1, y1, r2, y2, l, m, nshell, d12, grad)
       endif
 
       ! On to the actual calculation
-      call interpolation(r2, d2rf2, d2rf2_spline, norm, dd)
-      ! dd = dd - ll1 * f2/norm**2
       ! X
       term1 = ddf2 + 2._dp/norm * df2 - ll1/norm**2 * f2
-      ! print *, term1
-      ! term1 = dd - ll1/norm**2 * f2
-      ! print *, term1
-      ! print *,
 
-      dterm1 = x/norm**2 * ( -dddf2 + ddf2*(1._dp-2._dp/norm)&
-                            + df2/norm * ( 2._dp + 2._dp/norm + ll1 )&
-                            + f2 * norm**2 * ll1 )
+      dterm1 = dr(1) * (dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2) +&
+                2._dp*x*( df2/norm**3 + ll1*f2 )
       dylm = dylm2(1)*dtheta(1) + dylm2(2)*dphi(1)
       tmp_grad(i, 1) = dterm1 * grid_w(i)     * ylm2 +&
                        term1  * grid_dw(i, 1) * ylm2 +&
                        term1  * grid_w(i)     * dylm
 
       ! Y
-      term1 = ddf2 + 2._dp/norm * df2 - ll1/norm**2 * f2
-      dterm1 = y/norm**2 * ( -dddf2 + ddf2*(1._dp-2._dp/norm)&
-                            + df2/norm * ( 2._dp + 2._dp/norm + ll1 )&
-                            + f2 * norm**2 * ll1 )
-      dylm = dylm2(1)*dtheta(1) + dylm2(2)*dphi(1)
+      dterm1 = dr(2) * (dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2) +&
+                2._dp*y*( df2/norm**3 + ll1*f2 )
+      dylm = dylm2(1)*dtheta(2) + dylm2(2)*dphi(2)
       tmp_grad(i, 2) = dterm1 * grid_w(i)     * ylm2 +&
                        term1  * grid_dw(i, 2) * ylm2 +&
                        term1  * grid_w(i)     * dylm
 
+      ! if (any(tmp_grad(i, :) .gt. 10._dp)) then
+      !    print *, i
+      !    print *, 'x, y, z',x, y, z
+      !    print *, 'ddf2, df2, f2', ddf2, df2, f2
+      !    print *, 2._dp/norm * df2
+      !    print *, ll1/norm**2 * f2
+      !    print *, 'A', sum(tmp_grad(:,1)), sum(tmp_grad(:,2)), sum(tmp_grad(:,3))
+      !    print *, 
+      !    ! stop ''
+      ! endif
       ! Z
-      dterm1 = z/norm**2 * ( -dddf2 + ddf2*(1._dp-2._dp/norm)&
-                            + df2/norm * ( 2._dp + 2._dp/norm + ll1 )&
-                            + f2 * norm**2 * ll1 )
+      dterm1 = dr(3) * (dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2) +&
+                2._dp*z*( df2/norm**3 + ll1*f2 )
       dylm = dylm2(1)*dtheta(3)
       tmp_grad(i, 3) = dterm1 * grid_w(i)     * ylm2 +&
                        term1  * grid_dw(i, 3) * ylm2 +&
                        term1  * grid_w(i)     * dylm
+
+      ! if (i .eq. 36300) then
+      !    print *, 'ngrid', ngrid
+      !    print *, i, norm
+      !    print *, 'd12', d12
+      !    print *, 'x, y, z', x, y, z
+      !    print *, 'theta, phi', theta, phi
+      !    print *, 'f2', f2
+      !    print *, 'df2', df2
+      !    print *, 'ddf2', ddf2
+      !    print *, 'dddf2', dddf2
+      !    print *, '–---------- tmp_grad(i,3) –----------'
+      !    print *, 'term1, grid_w(i), ylm2', term1, grid_w(i), ylm2
+      !    print *,
+      !    print *, 'dterm1', dterm1
+      !    print *, 'dr(3),', dr(3)
+      !    print *, '(dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2)', (dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2)
+      !    print *, '2._dp*z*( df2/norm**3 + ll1*f2 )', 2._dp*z*( df2/norm**3 + ll1*f2 )
+      !    print *, 
+      !    print *, 'grid_dw(i, 3)', grid_dw(i, 3)
+      !    print *,
+      !    print *, 'dylm', dylm
+      !    print *, 'dylm2(1)*dtheta(3)', dylm2(1)*dtheta(3)
+      !    print *, 'dylm2(1)', dylm2(1)
+      !    print *, 'dtheta(3)', dtheta(3)
+      !    print *, 
+      !    print *, 'tmp_grad(i, 3)', tmp_grad(i, 3)
+      ! endif
 
       ! if(abs(tmp_grad(i, 3)) .gt. 1000) then
       !    print *, REPEAT('-', 80)
@@ -417,22 +449,23 @@ subroutine grad_kinetic(r1, y1, r2, y2, l, m, nshell, d12, grad)
    deallocate(grid_dw)
 end subroutine grad_kinetic
 
-subroutine grad_kinetic_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
+subroutine grad_kinetic_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
    implicit none
    ! Input
    INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
    REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2
    REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
+   REAL(KIND=dp), intent(in), optional :: step
    ! Output
    REAL(KIND=dp), DIMENSION(3) :: grad
    ! Local variables
    INTEGER, DIMENSION(2) :: ileb, nleb
-   INTEGER :: ngrid, i
+   INTEGER :: ngrid
    REAL(KIND=dp), DIMENSION(size(r1)) :: s1
    REAL(KIND=dp), DIMENSION(size(r2)) :: s2
    REAL(KIND=dp), DIMENSION(3, 4) :: findiff
    REAL(KIND=dp), DIMENSION(3) :: d12t
-   REAL(KIND=dp) :: integral, h
+   REAL(KIND=dp) :: h
 
    ileb(1) = get_number_of_lebedev_grid(n=590)
    ileb(2) = get_number_of_lebedev_grid(n=590)
@@ -443,8 +476,11 @@ subroutine grad_kinetic_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
    call spline(r=r1, y=y1, n=size(r1), yspline=s1)
    call spline(r=r2, y=y2, n=size(r2), yspline=s2)
 
-   h = 1.0e-7_dp
-   ! h = 1.0e-8_dp
+   if (present(step)) then
+      h = step
+   else
+      h = 1.0e-7_dp
+   endif
 
    d12t = d12 + 2._dp*ex*h
    call kinetic_energy(l=l, m=m, nshell=nshell, d12=d12t, &
@@ -518,7 +554,7 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    ! Output
    REAL(KIND=dp), DIMENSION(3) :: grad
    ! Local variables
-   INTEGER, DIMENSION(2) :: ileb, nleb
+   INTEGER, DIMENSION(2) :: ileb
    INTEGER :: ngrid, i
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r, grid_dw, tmp_grad
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
@@ -526,10 +562,10 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    REAL(KIND=dp), DIMENSION(size(r2)) :: s2
    REAL(KIND=dp), DIMENSION(3) :: dr, dtheta, dphi, dylm2
    REAL(KIND=dp) :: norm, x, y, z, theta, phi, rho,&
-                     f1, f2, ylm1, ylm2, df2, dwdr2
+                     f1, f2, ylm1, ylm2, df2
 
-   ileb(1) = get_number_of_lebedev_grid(n = 146)
-   ileb(2) = get_number_of_lebedev_grid(n = 146)
+   ileb(1) = get_number_of_lebedev_grid(n=590)
+   ileb(2) = get_number_of_lebedev_grid(n=590)
 
    ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
            lebedev_grid(ileb(2))%n * nshell(2)
@@ -543,6 +579,10 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
                              addr2=.TRUE., grid_r=grid_r, grid_w=grid_w, &
                              grid_dw=grid_dw)
+   call spline(r=r1, y=y1, n=size(r1), yspline=s1)
+   call spline(r=r2, y=y2, n=size(r2), yspline=s2)
+   open(unit=222, file='term2.tmp')
+
    grad = 0._dp
    tmp_grad = 0._dp
    do i=1,ngrid
@@ -567,6 +607,8 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
       call interpolation(gr=r2, gy=y2, spline=s2, r=norm, y=f2, yprime=df2)
       call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :) - d12)/norm, y=ylm2)
       call dry_lm(l=l(2), m=m(2), c=(/theta, phi/), dy=dylm2)
+
+      write(222, *) x, y, z, f2, df2
       ! dwdr2 = alpha*(7._dp*norm**(2.5_dp) + 5._dp*norm**(1.5_dp))
 
       ! The partial derivatives dr/dXYZ, dtheta/XYZ, dphi/XYZ
@@ -607,11 +649,17 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
 
       tmp_grad(i, :) = tmp_grad(i, :) * f1 * ylm1
    enddo
+   open(unit=229, file='termall.tmp')
+   write(229, *) tmp_grad(:,1)
+   write(229, *) tmp_grad(:,2)
+   write(229, *) tmp_grad(:,3)
+   close(222)
+   close(229)
 
    grad = 0._dp
-   grad(1) = sum(tmp_grad(:,1))
-   grad(2) = sum(tmp_grad(:,2))
-   grad(3) = sum(tmp_grad(:,3))
+   grad(1) = kah_sum(tmp_grad(:,1))
+   grad(2) = kah_sum(tmp_grad(:,2))
+   grad(3) = kah_sum(tmp_grad(:,3))
 
    deallocate(grid_r)
    deallocate(tmp_grad)
@@ -619,22 +667,23 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    deallocate(grid_dw)
 end subroutine grad_twocenter
 
-subroutine grad_twocenter_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
+subroutine grad_twocenter_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
    implicit none
    ! Input
    INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
    REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2
    REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
+   REAL(KIND=dp), intent(in), optional :: step
    ! Output
    REAL(KIND=dp), DIMENSION(3) :: grad
    ! Local variables
    INTEGER, DIMENSION(2) :: ileb, nleb
-   INTEGER :: ngrid, i
+   INTEGER :: ngrid
    REAL(KIND=dp), DIMENSION(size(r1)) :: s1
    REAL(KIND=dp), DIMENSION(size(r2)) :: s2
    REAL(KIND=dp), DIMENSION(3, 4) :: findiff
    REAL(KIND=dp), DIMENSION(3) :: d12t
-   REAL(KIND=dp) :: integral, h
+   REAL(KIND=dp) :: h
 
    ileb(1) = get_number_of_lebedev_grid(n=302)
    ileb(2) = get_number_of_lebedev_grid(n=302)
@@ -646,6 +695,7 @@ subroutine grad_twocenter_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
    call spline(r=r2, y=y2, n=size(r2), yspline=s2)
 
    h = 6.5e-7_dp
+   if (present(step)) h = step
 
    d12t = d12 + 2._dp*ex*h
    call integration_twocenter(l=l, m=m, nshell=nshell, d12=d12t, &
@@ -722,7 +772,7 @@ subroutine grad_onecenter(r, y, l, m, nshell, grad)
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w, y_loc, dy, ylm
    REAL(KIND=dp), DIMENSION(size(r)) :: s
    REAL(KIND=dp), DIMENSION(3,3) :: jac
-   REAL(KIND=dp) :: theta, phi, integral, xx, yy, zz, dwdr, alpha, norm
+   REAL(KIND=dp) :: theta, phi, xx, yy, zz, dwdr, alpha, norm
    INTEGER :: i, ileb, nleb
 
 
@@ -811,8 +861,7 @@ subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r, dylm, tmp_grad
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w, y_loc, dy, ylm
    REAL(KIND=dp), DIMENSION(size(r)) :: s
-   REAL(KIND=dp), DIMENSION(3,3) :: jac
-   REAL(KIND=dp) :: theta, phi, integral, xx, yy, zz, dwdr, alpha, norm, rho
+   REAL(KIND=dp) :: theta, phi, xx, yy, zz, dwdr, alpha, norm, rho
    INTEGER :: i, ileb, nleb
 
    ! Get the one-center grid

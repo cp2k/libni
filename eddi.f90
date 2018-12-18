@@ -25,6 +25,9 @@ subroutine derivatives(r, y, y1, y2, y3)
    ! Local variables
    REAL(KIND=dp), DIMENSION(3,3,5) :: c
    INTEGER :: ir
+   if(present(y1)) y1 = 0._dp
+   if(present(y2)) y2 = 0._dp
+   if(present(y3)) y3 = 0._dp
 
    do ir=1, size(r)-5
       ! [...] where coeff[derivative, accuracy, coefficients]
@@ -69,7 +72,7 @@ subroutine radial_integration(f, r, n, addr2, integral)
    do i=1,n
       call interpolation(gr=r, gy=f, spline=d2f, r=rad(i), y=fun(i))
    enddo
-   integral = sum( wr * fun )
+   integral = kah_sum( wr * fun )
 
    deallocate(rad)
    deallocate(wr)
@@ -127,7 +130,7 @@ subroutine pp_nonloc(rv, v, rp1, p1, rp2, p2, d12, d13, lmax, nrad, integral)
    REAL(KIND=dp) :: integral
    ! Local variables
    REAL(KIND=dp), DIMENSION(nrad) :: r, wr, gv, gp1, gp2, gsv, gsp1, gsp2,&
-                                     v_pp, proj1, proj2
+                                     proj1, proj2
    REAL(KIND=dp), DIMENSION(size(rv)) :: sv
    REAL(KIND=dp), DIMENSION(size(rp1)) :: sp1
    REAL(KIND=dp), DIMENSION(size(rp2)) :: sp2
@@ -163,7 +166,7 @@ subroutine pp_nonloc(rv, v, rp1, p1, rp2, p2, d12, d13, lmax, nrad, integral)
          integral_sub(h) = sum(wr * gv * proj1 * proj2)
       enddo
    enddo
-   integral = sum(integral_sub)
+   integral = kah_sum(integral_sub)
 end subroutine pp_nonloc
 
 subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
@@ -197,12 +200,31 @@ subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
       call interpolation(r, y, spline, norm, int_i(i))
    enddo
 
-   integral = sum(grid_w*int_i)
+   integral = kah_sum(grid_w*int_i)
 
    deallocate(grid_r)
    deallocate(grid_w)
    deallocate(int_i)
 end subroutine integration_onecenter
+
+function kah_sum(arr)
+   implicit none
+   REAL(KIND=dp), DIMENSION(:) :: arr
+   REAL(KIND=dp) :: sum, c, t, kah_sum
+   INTEGER :: i
+   sum = arr(1)
+   c = 0._dp
+   do i=2, size(arr)
+      t = sum + arr(i)
+      if (abs(sum) .ge. abs(arr(i))) then
+         c = c + (sum-t) + arr(i)
+      else
+         c = c + (arr(i)-t) + sum
+      endif
+      sum = t
+   enddo
+   kah_sum = sum + c
+end function kah_sum
 
 subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
                                  spline1, spline2, integral)
@@ -248,7 +270,7 @@ subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
       f2(i) = f2(i) * ylm
    enddo
 
-   integral = sum(grid_w * f1*f2 )
+   integral = kah_sum(grid_w * f1*f2 )
 
    deallocate(grid_r)
    deallocate(grid_w)
@@ -303,7 +325,7 @@ subroutine integration_threecenter(nang, nshell, d12, d13, &
       norm = sqrt(sum( (grid_r(i, :) - d13 )**2 ))
       call interpolation(r3, y3, spline3, norm, f3(i))
    enddo
-   integral = sum(grid_w * f1*f2*f3 )
+   integral = kah_sum(grid_w * f1*f2*f3 )
 
    deallocate(grid_r)
    deallocate(grid_w)
@@ -397,7 +419,6 @@ subroutine coulomb_integral(nshell, coul_n, d12, l, m,&
    ! Local variables (potential)
    REAL(KIND=dp), DIMENSION(coul_n) :: f, gi, hi, G, H, coul_w
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: coul_r, pot, pots
-   REAL(KIND=dp) :: ylm
 
    ! 1: Evaluate the Coulomb potential on a radial grid around A
    ! ! the integral is purely radial => addr2=False
@@ -448,7 +469,7 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w, f, gi, hi, G, H
    REAL(KIND=dp) :: norm
    INTEGER, DIMENSION(2) :: ileb
-   INTEGER :: i, j, idx, l, ngrid
+   INTEGER :: i, j, l, ngrid
    ! Local variables (potential)
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: coul_r, coul_w, grid_r2, pot, f1, f2
    REAL(KIND=dp) :: temp
@@ -482,7 +503,7 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    enddo
    call qsort_sim2(grid_r2, grid_w)
 
-   coul_n = 0
+   coul_n = 0; temp = 0._dp
    do i=1,ngrid
       if (grid_r2(i) == temp) cycle
       coul_n = coul_n + 1
@@ -542,7 +563,7 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
       call interpolation(r2, y2, s2, norm, f2(i))
    enddo
 
-   integral = sum(grid_w * f1*f2 )
+   integral = kah_sum(grid_w * f1*f2 )
 
    deallocate(f1)
    deallocate(f2)
@@ -640,7 +661,7 @@ subroutine spline(r, y, n, yspline)
    REAL(KIND=dp), DIMENSION(n) :: u
    REAL(KIND=dp), DIMENSION(3,3,5) :: coeff
    INTEGER :: i
-   REAL(KIND=dp) :: sig, p, un, qn, der1, dern, h
+   REAL(KIND=dp) :: sig, p, un, qn, der1, dern
 
    ! der1 is the first derivative at r(1)
    yspline(1) = -0.5_dp
@@ -687,7 +708,7 @@ subroutine interpolation(gr, gy, spline, r, y, yprime)
    ! find the closest grid point by bisection
    call bisection(r=gr, r0=r, low=low, upper=upper)
 
-   if (gy(low).eq.0._dp .and. gy(upper).eq.0._dp) then
+   if (gy(low) .eq. 0._dp .and. gy(upper) .eq. 0._dp) then
       y = 0._dp
    elseif (gr(upper) .eq. r) then
       y = gy(upper)
@@ -702,6 +723,14 @@ subroutine interpolation(gr, gy, spline, r, y, yprime)
       C = (A**3.0_dp-A) * (h**2.0_dp)/6.0_dp
       D = (B**3.0_dp-B) * (h**2.0_dp)/6.0_dp
       y = A*gy(low) + B*gy(upper) + C*spline(low) + D*spline(upper)
+      if (abs(y) .gt. 1.e15_dp) then
+         print *, r
+         print *, y
+         print *, gr(upper), gr(low), gy(upper), gy(low)
+         print *, spline(low), spline(upper)
+         print *, A, B, C, D
+      endif
+      ! y = A*gy(low) + B*gy(upper)
       if (present(yprime)) then
       yprime = ( gy(upper)-gy(low) )/h - (3._dp*A**2-1._dp)*h/6._dp*spline(low)&
                                        + (3._dp*B**2-1._dp)*h/6._dp*spline(upper)
@@ -762,15 +791,15 @@ subroutine bisection(r, r0, low, upper)
    enddo
 end subroutine bisection
 
-recursive subroutine qsort(arr)!, brr)
+recursive subroutine qsort(arr)
    implicit none
    ! Input
    REAL(KIND=dp), DIMENSION(:) :: arr
    ! REAL(KIND=dp), DIMENSION(:, :) :: brr
    ! Local variables
-   INTEGER :: first, last, mid, i, j
+   INTEGER :: first, last, i, j
    ! REAL(KIND=dp), DIMENSION(3) :: temp_arr
-   REAL(KIND=dp) :: a, b, temp
+   REAL(KIND=dp) :: a, temp
 
    first = 1
    last = size(arr, 1)
@@ -802,8 +831,8 @@ recursive subroutine qsort_sim2(arr, brr)
    REAL(KIND=dp), DIMENSION(:) :: arr
    REAL(KIND=dp), DIMENSION(:) :: brr
    ! Local variables
-   INTEGER :: first, last, mid, i, j
-   REAL(KIND=dp) :: a, b, temp
+   INTEGER :: first, last, i, j
+   REAL(KIND=dp) :: a, temp
 
    first = 1
    last = size(arr, 1)

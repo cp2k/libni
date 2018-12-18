@@ -16,15 +16,15 @@ USE nao_unit, ONLY: test_onecenter, test_twocenter, test_threecenter, test_kinet
                     test_derivative_on, test_derivative_off,&
                     test_derivatives
 USE nao_grad_unit, ONLY: test_jacobian, test_twocenter_grad, test_kinetic_grad,&
-                         test_coulomb_grad
+                         test_kinetic_fd, test_twocenter_fd, test_coulomb_grad
 implicit none
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
-! print*, 'test_twocenter_grad'
-! call test_twocenter_grad()
+call test_twocenter_grad()
+return
 print*, 'test_kinetic_grad'
 call test_kinetic_grad()
 print*, 'test_coulomb_grad'
-call test_coulomb_grad()
+call test_coulomb_grad()    
 call test_jacobian()
 
 call test_radial_weight_pos(ntests=9)

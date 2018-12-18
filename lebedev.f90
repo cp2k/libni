@@ -346,7 +346,7 @@ CONTAINS
       CHARACTER(len=*), PARAMETER :: routineN = 'init_lebedev_grids', &
          routineP = moduleN//':'//routineN
 
-      INTEGER                                            :: handle, ilg
+      INTEGER                                            :: ilg
 
       ! CALL timeset(routineN, handle)
 
