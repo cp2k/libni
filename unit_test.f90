@@ -2,7 +2,7 @@ module nao_unit
 USE eddi, ONLY: integration_onecenter, integration_twocenter, integration_threecenter, &
                 kinetic_energy, coulomb_integral, spline, interpolation,&
                 forward_derivative_weights, bisection, derivative_point,&
-                derivatives
+                derivatives, kah_sum, fun_grid
 USE lebedev, ONLY: dp
 USE grid, ONLY: radial_grid
 implicit none
@@ -306,15 +306,15 @@ subroutine test_spline(ntests)
    implicit none
    INTEGER, intent(in) :: ntests
    ! Local variables
-   REAL(KIND=dp), DIMENSION(300) :: r, wr, y, y2_exact, y2_spline, errors
+   REAL(KIND=dp), DIMENSION(15000) :: r, y, y2_exact, y2_spline, errors
    REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
    REAL(KIND=dp) :: alpha, error_cutoff, abs_error
    INTEGER :: i, t
 
-   call radial_grid(r=r, wr=wr, n=size(r), addr2=.FALSE., quadr=1)
    do t=1,ntests
       call RANDOM_NUMBER(alpha)
       alpha = alpha * 5._dp + 0.1_dp
+      call fun_grid(r=r, max=sqrt(75._dp/alpha))
       y = exp(-alpha * r**2)
       y2_exact = (4.0_dp * alpha**2 * r**2 - 2.0_dp * alpha)*y
 
@@ -330,39 +330,39 @@ subroutine test_spline(ntests)
          endif
          ! print *, r(i), y2_exact(i), y2_spline(i), errors(i)
       enddo
-      tot_errors(t) = sum(errors)/size(errors)
-      if (tot_errors(t) .gt. 1._dp) then
+      tot_errors(t) = kah_sum(errors)/size(errors)
+      if (tot_errors(t) .gt. 1.e-5_dp) then
          print *, 'alpha', alpha
          print *, 'error', tot_errors(t)
       endif
    enddo
 
-   if (maxval(tot_errors) .lt. 1._dp .and. sum(tot_errors)/ntests .lt. 0.01_dp) then
+   if (maxval(tot_errors) .lt. 1._dp .and. kah_sum(tot_errors)/ntests .lt. 0.01_dp) then
       print *, '👌 test_spline - passed'
       print *, 'max. error: ', maxval(tot_errors)
-      print *, 'mean error: ', sum(tot_errors)/ntests
+      print *, 'mean error: ', kah_sum(tot_errors)/ntests
    else
       print *, '💣 test_spline - failed'
       print *, 'max. error: ', maxval(tot_errors)
-      print *, 'mean error: ', sum(tot_errors)/ntests
+      print *, 'mean error: ', kah_sum(tot_errors)/ntests
    endif
 end subroutine test_spline
 
 subroutine test_interpolation(ntests)
    implicit none
-   REAL(KIND=dp), DIMENSION(400) :: r_orig, wr, y_orig, s_orig
+   REAL(KIND=dp), DIMENSION(25000) :: r_orig, y_orig, s_orig
    REAL(KIND=dp), DIMENSION(500) :: r_interp, wr2, errors
    REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
    REAL(KIND=dp) :: alpha, y_interp, y_exact, abs_error
    INTEGER :: i, ntests, t
 
-   call radial_grid(r=r_orig, wr=wr, n=size(r_orig), addr2=.FALSE., quadr=1)
    call radial_grid(r=r_interp, wr=wr2, n=size(r_interp), addr2=.FALSE., quadr=1)
 
    do t=1,ntests
+      print*, t
       call RANDOM_NUMBER(alpha); alpha = alpha * 5._dp + 0.2_dp
       y_orig = exp(-alpha * r_orig**2)
-
+      call fun_grid(r=r_orig, max=(75._dp/alpha))
       call spline(r=r_orig, y=y_orig, n=size(r_orig), yspline=s_orig)
 
       errors = 0._dp
@@ -710,7 +710,7 @@ subroutine test_kinetic(ntests, loud)
       endif
    enddo
 
-   err = sum(errors)/REAL(ntests, dp)
+   err = kah_sum(errors)/REAL(ntests, dp)
    print *, 'Mean error: ', err
 
    print *, REPEAT('-', 28) // ' End Testing Kinetic energy ' // REPEAT('-', 28)

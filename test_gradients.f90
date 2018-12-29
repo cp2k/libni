@@ -63,15 +63,14 @@ subroutine test_coulomb_grad()
 end subroutine test_coulomb_grad
 
 subroutine test_kinetic_grad()
-   REAL(KIND=dp), DIMENSION(1000) :: r, y1, wr, y2, d1y, d2y, d3y
+   REAL(KIND=dp), DIMENSION(25000) :: r, y1, wr, y2, d1y, d2y, d3y
    REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
    REAL(KIND=dp), DIMENSION(1000,3) :: error
    INTEGER :: l1, l2, m1, m2, c, n
 
    call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
-   r = r*5._dp
 
-   y1 = 3._dp*exp(-0.2_dp*r**2)
+   y1 = exp(-r**2)
    y2 = exp(-r**2)
    d1y = -2._dp * r * y2
    d2y = (4._dp * r**2 - 2._dp) * y2
@@ -79,12 +78,13 @@ subroutine test_kinetic_grad()
 
    c = 0
    error = 0._dp
-   d12 = (/ -3._dp, 3._dp, 4._dp /)
-   n = 100
-   do l1=0,1
-   do l2=l1,1
-   do m1=-l1,l1
-   do m2=-l2,l2
+   d12 = (/ .25_dp, 0._dp, 0._dp /)
+   n = 150
+   l1 = 0; m1 = 0; l2 = 0; m2 = 0;
+   ! do l1=0,1
+   ! do l2=l1,1
+   ! do m1=-l1,l1
+   ! do m2=-l2,l2
    print *, '   ', l1, m1, l2, m2
    ! l1 = 0; m1 = 0; l2 = 1; m2 = 0;
    ! open(unit=111, file='ipynb/llmm0010_nvar')
@@ -95,6 +95,7 @@ subroutine test_kinetic_grad()
                         l=(/l1,l2/), m=(/m1,m2/),&
                         nshell=(/n, n/), d12=d12, grad=grad1)
 
+      print *, 'e  ', grad1
       call grad_kinetic_fd(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
                            nshell=(/n, n/), d12=d12, step=1.e-7_dp, grad=grad2)
 
@@ -105,19 +106,18 @@ subroutine test_kinetic_grad()
       if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
       if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
       if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-      if ( any( error(c, :)  .gt. 1.e-5_dp  )) then
+      ! if ( any( error(c, :)  .gt. 1.e-5_dp  )) then
          ! print *, '   ', l1, m1, l2, m2
-         print *, 'e  ', grad1
          print *, 'fd ', grad2
          print *, 'ra ', error(c, :)
          print *, achar(7)  ! beep, boop
-      endif
+      ! endif
       ! write (111, *) n, grad1, grad2, sum( error(c,:) )/3._dp
-   enddo
+   ! enddo
    ! close(111)
-   enddo
-   enddo
-   enddo
+   ! enddo
+   ! enddo
+   ! enddo
    ! print *,
    ! enddo
    print *, 'mean error', sum(error, 1)/c
@@ -138,7 +138,7 @@ subroutine test_kinetic_fd()
    y1 = exp(-r**2)
    y2 = exp(-0.5_dp * r**2)
    
-   d12 = (/ 1._dp, 1._dp, 4._dp /)
+   d12 = (/ 1._dp, 0._dp, 0._dp /)
    open(unit=111, file='ipynb/test_kinetic_fd')
    do i = 1,size(grad,1)
       step = 10._dp**(-i*0.5)

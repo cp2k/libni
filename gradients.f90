@@ -278,14 +278,14 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
 
    ! Newer, better derivatives
    REAL(KIND=dp), DIMENSION(size(d1y)) :: sd1y, sd2y, sd3y
-   REAL(KIND=dp) :: term1, dterm1, dylm
+   REAL(KIND=dp) :: dylm, flap, dflap
    ! call derivatives(r=r2, y=y2, y1=d1y, y2=d2y, y3=d3y)
    call spline(r=r2, y=d1y, n=size(r2), yspline=sd1y)
    call spline(r=r2, y=d2y, n=size(r2), yspline=sd2y)
    call spline(r=r2, y=d3y, n=size(r2), yspline=sd3y)
 
-   ileb(1) = get_number_of_lebedev_grid(n=302)
-   ileb(2) = get_number_of_lebedev_grid(n=302)
+   ileb(1) = get_number_of_lebedev_grid(n=590)
+   ileb(2) = get_number_of_lebedev_grid(n=590)
 
    ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
            lebedev_grid(ileb(2))%n * nshell(2)
@@ -316,6 +316,7 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
    call spline(r=r1, y=y1, n=size(r1), yspline=s1)
    call spline(r=r2, y=y2, n=size(r2), yspline=s2)
    do i=1,ngrid
+      if(mod(i, 10000) .eq. 0) print *, 'grad_kinetic i/ngrid', i, ngrid
       ! When taking the derivative wrt X, Y, Z - f1 and ylm1 won't change
       norm = sqrt( sum( grid_r(i, :)**2 ) )
       call interpolation(gr=r1, gy=y1, spline=s1, r=norm, y=f1)
@@ -325,8 +326,7 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
       !! Helpers
       norm = sqrt( sum( (grid_r(i, :) - d12)**2 ) )
       x = grid_r(i, 1)-d12(1); y = grid_r(i, 2)-d12(2); z = grid_r(i, 3)-d12(3);
-      rho = x*x + y*y
-      theta = acos(z/norm); phi = atan2(y, x);
+      rho = x*x + y*y; theta = acos(z/norm); phi = atan2(y, x);
 
       !! Derivatives and function values
       !!! f2, df2, ddf2, dddf2
@@ -337,9 +337,10 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
       !!! ylm2, dylm2
       call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :) - d12)/norm, y=ylm2)
       call dry_lm(l=l(2), m=m(2), c=(/theta, phi/), dy=dylm2)
+      if(sum(dylm2**2) .ne. 0._dp) print *, dylm2
 
       ! The partial derivatives dr/dXYZ, dtheta/XYZ, dphi/XYZ
-      dr = -(grid_r(i, :) - d12)/norm
+      dr = (grid_r(i, :) - d12)/norm
 
       dtheta = 0._dp
       if (rho .ne. 0._dp) then
@@ -358,90 +359,78 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
 
       ! On to the actual calculation
       ! X
-      term1 = ddf2 + 2._dp/norm * df2 - ll1/norm**2 * f2
 
-      dterm1 = dr(1) * (dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2) +&
-                2._dp*x*( df2/norm**3 + ll1*f2 )
+      flap = ddf2 + 2._dp/norm * df2 - ll1/norm**2 * f2
+      dflap =  -dddf2/norm - 2._dp/norm**2 * ddf2&
+               + (ll1 + 2._dp)/norm**3 * df2 - (2._dp * ll1)/norm**4 * f2
+
+
+      ! rel
+      ! flap   0.00000187787
+      ! xdflap 0.00000119142
       dylm = dylm2(1)*dtheta(1) + dylm2(2)*dphi(1)
-      tmp_grad(i, 1) = dterm1 * grid_w(i)     * ylm2 +&
-                       term1  * grid_dw(i, 1) * ylm2 +&
-                       term1  * grid_w(i)     * dylm
+      tmp_grad(i, 1) = grid_dw(i, 1) * flap     * ylm2 +&
+                       grid_w(i)     * x*dflap  * ylm2 +&
+                       grid_w(i)     * flap     * dylm   
 
       ! Y
-      dterm1 = dr(2) * (dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2) +&
-                2._dp*y*( df2/norm**3 + ll1*f2 )
       dylm = dylm2(1)*dtheta(2) + dylm2(2)*dphi(2)
-      tmp_grad(i, 2) = dterm1 * grid_w(i)     * ylm2 +&
-                       term1  * grid_dw(i, 2) * ylm2 +&
-                       term1  * grid_w(i)     * dylm
+      tmp_grad(i, 2) = grid_dw(i, 2) * flap     * ylm2 +&
+                       grid_w(i)     * y*dflap  * ylm2 +&
+                       grid_w(i)     * flap     * dylm   
 
-      ! if (any(tmp_grad(i, :) .gt. 10._dp)) then
-      !    print *, i
-      !    print *, 'x, y, z',x, y, z
-      !    print *, 'ddf2, df2, f2', ddf2, df2, f2
-      !    print *, 2._dp/norm * df2
-      !    print *, ll1/norm**2 * f2
-      !    print *, 'A', sum(tmp_grad(:,1)), sum(tmp_grad(:,2)), sum(tmp_grad(:,3))
-      !    print *, 
-      !    ! stop ''
-      ! endif
       ! Z
-      dterm1 = dr(3) * (dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2) +&
-                2._dp*z*( df2/norm**3 + ll1*f2 )
       dylm = dylm2(1)*dtheta(3)
-      tmp_grad(i, 3) = dterm1 * grid_w(i)     * ylm2 +&
-                       term1  * grid_dw(i, 3) * ylm2 +&
-                       term1  * grid_w(i)     * dylm
+      tmp_grad(i, 3) = grid_dw(i, 3) * flap     * ylm2 +&
+                       grid_w(i)     * z*dflap  * ylm2 +&
+                       grid_w(i)     * flap     * dylm
 
-      ! if (i .eq. 36300) then
-      !    print *, 'ngrid', ngrid
-      !    print *, i, norm
-      !    print *, 'd12', d12
-      !    print *, 'x, y, z', x, y, z
-      !    print *, 'theta, phi', theta, phi
-      !    print *, 'f2', f2
-      !    print *, 'df2', df2
-      !    print *, 'ddf2', ddf2
-      !    print *, 'dddf2', dddf2
-      !    print *, '–---------- tmp_grad(i,3) –----------'
-      !    print *, 'term1, grid_w(i), ylm2', term1, grid_w(i), ylm2
-      !    print *,
-      !    print *, 'dterm1', dterm1
-      !    print *, 'dr(3),', dr(3)
-      !    print *, '(dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2)', (dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2)
-      !    print *, '2._dp*z*( df2/norm**3 + ll1*f2 )', 2._dp*z*( df2/norm**3 + ll1*f2 )
-      !    print *, 
-      !    print *, 'grid_dw(i, 3)', grid_dw(i, 3)
-      !    print *,
-      !    print *, 'dylm', dylm
-      !    print *, 'dylm2(1)*dtheta(3)', dylm2(1)*dtheta(3)
-      !    print *, 'dylm2(1)', dylm2(1)
-      !    print *, 'dtheta(3)', dtheta(3)
-      !    print *, 
-      !    print *, 'tmp_grad(i, 3)', tmp_grad(i, 3)
-      ! endif
-
-      ! if(abs(tmp_grad(i, 3)) .gt. 1000) then
-      !    print *, REPEAT('-', 80)
-      !    print *, i, tmp_grad(i, 3)
-      !    print *, 'norm', norm
-      !    print *, 'x', term1  * grid_dw(i, 1) * ylm2
-      !    print *, 'x', term1, grid_dw(i, 1), ylm2
-      !    print *, 'y', term1  * grid_dw(i, 2) * ylm2
-      !    print *, 'y', term1, grid_dw(i, 2), ylm2
-      !    print *, 'z', term1  * grid_dw(i, 3) * ylm2
-      !    print *, 'z', term1, grid_dw(i, 3), ylm2
-      !    stop (' ')
-      ! endif
+      if (i .eq. 60306) then
+         print *, i, norm
+         print *, 'd12', d12
+         print *, 'norm1', sqrt( sum( grid_r(i, :)**2 ) )
+         print *, 'norm2', norm
+         print *, 'grid_r ', grid_r(i, :)
+         print *, 'x, y, z', x, y, z
+         print *, 'theta, phi, ll1', theta, phi, ll1
+         print *, 
+         print *, 'f2', f2
+         print *, 'df2', df2
+         print *, 'ddf2', ddf2
+         print *, 'dddf2', dddf2
+         print *, 'flap', flap
+         print *, 'x*dflap', x*dflap
+         print *,
+         print *, 'ylm1, ylm2', ylm1, ylm2
+         print *, '–---------- tmp_grad(i,3) –----------'
+         print *, 'grid_w(i)', grid_w(i)
+         print *,
+         print *, 'dr(1),', dr(1)
+         print *, '(dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2)', (dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2)
+         print *, '2._dp*z*( df2/norm**3 + ll1*f2 )', 2._dp*z*( df2/norm**3 + ll1*f2 )
+         print *, 
+         print *, 'grid_dw(i, 3)', grid_dw(i, 3)
+         print *,
+         print *, 'dylm', dylm
+         print *, 'dylm2(1)*dtheta(1)', dylm2(1)*dtheta(1)
+         print *, 'dylm2', dylm2
+         print *, 'dtheta(1)', dtheta(1)
+         print *, 
+         print *, 'tmp_grad(i, 1)', tmp_grad(i, 1)
+      endif
 
       ! Concluding...
-      tmp_grad(i, :) = tmp_grad(i, :) * f1 * ylm1
+      tmp_grad(i, :) = -0.5_dp * f1 * ylm1 * tmp_grad(i, :) 
    enddo
 
    grad = 0._dp
-   grad(1) = -0.5_dp * sum(tmp_grad(:,1))
-   grad(2) = -0.5_dp * sum(tmp_grad(:,2))
-   grad(3) = -0.5_dp * sum(tmp_grad(:,3))
+   print *, 'start first sum'
+   grad(1) = kah_sum(tmp_grad(:,1))
+   print *, 'start second sum'
+   grad(2) = kah_sum(tmp_grad(:,2))
+   print *, 'start third sum'
+   grad(3) = kah_sum(tmp_grad(:,3))
+   print *, 'start third sum'
 
    deallocate(grid_r)
    deallocate(tmp_grad)
@@ -482,6 +471,7 @@ subroutine grad_kinetic_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
       h = 1.0e-7_dp
    endif
 
+   print *, '1'
    d12t = d12 + 2._dp*ex*h
    call kinetic_energy(l=l, m=m, nshell=nshell, d12=d12t, &
                        r1=r1, y1=y1, r2=r2, y2=y2,&
@@ -500,6 +490,7 @@ subroutine grad_kinetic_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
                        r1=r1, y1=y1, r2=r2, y2=y2,&
                        spline1=s1, spline2=s2, integral=findiff(1,4))
 
+   print *, '2'
 
    d12t = d12 + 2._dp*ey*h
    call kinetic_energy(l=l, m=m, nshell=nshell, d12=d12t, &
@@ -519,6 +510,7 @@ subroutine grad_kinetic_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
                        r1=r1, y1=y1, r2=r2, y2=y2,&
                        spline1=s1, spline2=s2, integral=findiff(2,4))
 
+   print *, '3'
 
    d12t = d12 + 2._dp*ez*h
    call kinetic_energy(l=l, m=m, nshell=nshell, d12=d12t, &
@@ -581,7 +573,6 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
                              grid_dw=grid_dw)
    call spline(r=r1, y=y1, n=size(r1), yspline=s1)
    call spline(r=r2, y=y2, n=size(r2), yspline=s2)
-   open(unit=222, file='term2.tmp')
 
    grad = 0._dp
    tmp_grad = 0._dp
@@ -608,7 +599,6 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
       call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :) - d12)/norm, y=ylm2)
       call dry_lm(l=l(2), m=m(2), c=(/theta, phi/), dy=dylm2)
 
-      write(222, *) x, y, z, f2, df2
       ! dwdr2 = alpha*(7._dp*norm**(2.5_dp) + 5._dp*norm**(1.5_dp))
 
       ! The partial derivatives dr/dXYZ, dtheta/XYZ, dphi/XYZ
@@ -634,27 +624,21 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
       tmp_grad(i, 1) = grid_w(i) * df2*dr(1) * ylm2 +&
                        grid_w(i) * f2 * dylm2(1)*dtheta(1) +&
                        grid_w(i) * f2 * dylm2(2)*dphi(1)! +&
-!                       grid_dw(i, 1) * f2 * ylm2
+                       ! grid_dw(i, 1) * f2 * ylm2
 
       ! Y
       tmp_grad(i, 2) = grid_w(i) * df2 * dr(2) * ylm2 +&
                        grid_w(i) * f2 * dylm2(1) * dtheta(2) +&
                        grid_w(i) * f2 * dylm2(2) * dphi(2)! +&
-!                       grid_dw(i, 2) * f2 * ylm2
+                       ! grid_dw(i, 2) * f2 * ylm2
 
       ! Z
       tmp_grad(i, 3) = grid_w(i) * df2 * dr(3) * ylm2 +&
                        grid_w(i) * f2 * dylm2(1) * dtheta(3)! +&
-!                       grid_dw(i, 3) * f2 * ylm2
+                       ! grid_dw(i, 3) * f2 * ylm2
 
       tmp_grad(i, :) = tmp_grad(i, :) * f1 * ylm1
    enddo
-   open(unit=229, file='termall.tmp')
-   write(229, *) tmp_grad(:,1)
-   write(229, *) tmp_grad(:,2)
-   write(229, *) tmp_grad(:,3)
-   close(222)
-   close(229)
 
    grad = 0._dp
    grad(1) = kah_sum(tmp_grad(:,1))

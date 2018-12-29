@@ -17,6 +17,30 @@ public :: integration_twocenter, integration_onecenter, integration_threecenter,
            radial_integration, qsort
 
 contains
+subroutine gauss_der(r, alpha, y, y1, y2, y3, y4, y5)
+   implicit none
+   ! Input
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r
+   REAL(KIND=dp), intent(in) :: alpha
+   ! Output
+   REAL(KIND=dp), DIMENSION(size(r)) :: y, y1, y2, y3, y4, y5
+   y = exp(-alpha * r**2)
+   y1 = -2._dp * alpha * r * y
+   y2 = (4._dp * alpha * r**2 - 2._dp) * alpha * y
+   y3 = (12._dp * r - 8._dp * alpha * r**3) * alpha**2 * y
+   y4 = (16._dp * alpha**4 * r**4 - 48._dp * alpha**3 * r**2 + 12._dp*alpha**2) * y
+   y5 = -8._dp * (4_dp*alpha**5 * r**5 - 20._dp * alpha**4 * r**3 + 15._dp*alpha**3*r) * y
+end subroutine gauss_der
+
+subroutine fun_grid(r, max)
+   implicit none
+   REAL(KIND=dp), DIMENSION(:), intent(out) :: r
+   REAL(KIND=dp), intent(in) :: max
+   INTEGER :: i
+   r = (/(REAL(i-1, dp)*max/size(r), i=1,size(r))/)
+    
+end subroutine fun_grid
+
 ! Get the derivatives of a function by finite differences
 subroutine derivatives(r, y, y1, y2, y3)
    implicit none

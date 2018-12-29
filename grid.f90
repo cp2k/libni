@@ -170,6 +170,7 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid_r, grid_w, grid_d
    enddo
 
    if (present(grid_dw)) then
+   grid_dw = 0._dp
    c = 0
    do i=1, lebedev_grid(ileb(1))%n
    do j=1, nshell(1)

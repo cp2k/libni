@@ -19,20 +19,13 @@ USE nao_grad_unit, ONLY: test_jacobian, test_twocenter_grad, test_kinetic_grad,&
                          test_kinetic_fd, test_twocenter_fd, test_coulomb_grad
 implicit none
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
-call test_twocenter_grad()
+! call test_radial_weight_pos(ntests=9)
+! call test_radial_weight_asc(ntests=9)
+! call test_radial_chebyherm(ntests=25, loud=.FALSE.)
+! call test_forward_deriv_coeff()
+! call test_spline(ntests=10)
+call test_interpolation(ntests=1)
 return
-print*, 'test_kinetic_grad'
-call test_kinetic_grad()
-print*, 'test_coulomb_grad'
-call test_coulomb_grad()    
-call test_jacobian()
-
-call test_radial_weight_pos(ntests=9)
-call test_radial_weight_asc(ntests=9)
-call test_radial_chebyherm(ntests=25, loud=.FALSE.)
-call test_forward_deriv_coeff()
-call test_interpolation(ntests=100)
-call test_spline(ntests=100)
 
 call test_derivatives()
 call test_derivative_point_on()
@@ -45,5 +38,11 @@ call test_twocenter(ntests=100, loud=.FALSE.)
 call test_threecenter(ntests=25 , loud=.FALSE.)
 call test_kinetic(ntests=100, loud=.FALSE.)
 call test_coulomb(ntests=50, loud=.FALSE.)
+
+call test_twocenter_grad()
+call test_kinetic_grad()
+print*, 'test_coulomb_grad'
+call test_coulomb_grad()    
+call test_jacobian()
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 end program test_suite
