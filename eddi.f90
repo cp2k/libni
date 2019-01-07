@@ -37,7 +37,9 @@ subroutine fun_grid(r, max)
    REAL(KIND=dp), DIMENSION(:), intent(out) :: r
    REAL(KIND=dp), intent(in) :: max
    INTEGER :: i
-   r = (/(REAL(i-1, dp)*max/size(r), i=1,size(r))/)
+   do i=1,size(r)
+      r(i) = REAL(i-1, dp)*max/size(r)
+   enddo
     
 end subroutine fun_grid
 
@@ -197,7 +199,7 @@ subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
    implicit none
    ! Input
    INTEGER, intent(in) :: nang, nshell
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r, y, spline
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, y, spline
    INTEGER, intent(in) :: quadr
    ! Output
    REAL(KIND=dp) :: integral
@@ -310,7 +312,7 @@ subroutine integration_threecenter(nang, nshell, d12, d13, &
    ! Input
    INTEGER, DIMENSION(3), intent(in) :: nang, nshell
    REAL(KIND=dp), DIMENSION(3), intent(in) :: d12, d13
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, &
+   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, &
                    r2, y2, r3, y3, spline1, spline2, spline3
    ! Output
    REAL(KIND=dp) :: integral
@@ -666,10 +668,13 @@ subroutine derivative_point(r, y, r0, y1)
    REAL(KIND=dp) :: y1
    ! Local variables
    REAL(KIND=dp), DIMENSION(3,3,5) :: coeff
-   INTEGER :: low, upper
+   INTEGER :: low, upper, high
 
    call bisection(r=r, r0=r0, low=low, upper=upper)
-   call forward_derivative_weights(order=2, x0=r0, r=r(low:size(r)), coeff=coeff)
+   high = low + 5
+   if (high .gt. size(r)) high = size(r)
+
+   call forward_derivative_weights(order=2, x0=r0, r=r(low:high), coeff=coeff)
    y1 = sum( coeff(1,2,1:3) * y(low:low+2) )  ! 2nd order accuracy
    ! this will crash/yield 0 if we want the derivative at the end points
 end subroutine derivative_point

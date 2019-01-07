@@ -63,7 +63,7 @@ subroutine test_coulomb_grad()
 end subroutine test_coulomb_grad
 
 subroutine test_kinetic_grad()
-   REAL(KIND=dp), DIMENSION(25000) :: r, y1, wr, y2, d1y, d2y, d3y
+   REAL(KIND=dp), DIMENSION(15000) :: r, y1, wr, y2, d1y, d2y, d3y
    REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
    REAL(KIND=dp), DIMENSION(1000,3) :: error
    INTEGER :: l1, l2, m1, m2, c, n
