@@ -33,17 +33,6 @@ subroutine gauss_der(r, alpha, y, y1, y2, y3, y4, y5)
    y5 = -8._dp * (4_dp*alpha**5 * r**5 - 20._dp * alpha**4 * r**3 + 15._dp*alpha**3*r) * y
 end subroutine gauss_der
 
-subroutine fun_grid(r, max)
-   implicit none
-   REAL(KIND=dp), DIMENSION(:), intent(out) :: r
-   REAL(KIND=dp), intent(in) :: max
-   INTEGER :: i
-   do i=1,size(r)
-      r(i) = REAL(i-1, dp)*max/size(r)
-   enddo
-    
-end subroutine fun_grid
-
 ! **********************************************
 !> \brief Computes the radial integral of f(r)
 !> \param f(n): The tabulated function at n grid points

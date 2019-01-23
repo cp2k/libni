@@ -2,10 +2,10 @@ module nao_unit
 USE eddi, ONLY: integration_onecenter, integration_twocenter, integration_threecenter, &
                 kinetic_energy, coulomb_integral, spline, interpolation,&
                 bisection, derivative_point,&
-                kah_sum, fun_grid
+                kah_sum
 USE lebedev, ONLY: dp
 USE grid, ONLY: radial_grid
-USE ni_fun, ONLY: forward_derivative_weights, derivatives
+USE ni_fun, ONLY: forward_derivative_weights, derivatives, fun_grid
 implicit none
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 contains

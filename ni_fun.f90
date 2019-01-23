@@ -8,13 +8,14 @@ type :: type_fun
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: y, y1, y2, y3, y4, y5
 end type type_fun
 
-public :: type_fun, prepare_fun, prepare_gauss
+public :: type_fun, fun_grid, prepare_fun, prepare_gauss
 contains
 subroutine prepare_fun(r, f, fun)
    implicit none
    REAL(KIND=dp), DIMENSION(:) :: r, f
    TYPE(type_fun), POINTER :: fun
 
+   fun%r = r
    fun%y = f
    ! We want to produce the first through fifth derivatives
    call derivatives(r=r, y=f, y1=fun%y1, y2=fun%y2, y3=fun%y3)
@@ -161,5 +162,44 @@ subroutine spline(r, y, n, yspline)
       yspline(i) = yspline(i)*yspline(i+1)+u(i)
    enddo
 end subroutine spline
+
+! Generate an equally spaced grid up to max
+subroutine fun_grid(r, max)
+   implicit none
+   REAL(KIND=dp), DIMENSION(:), intent(out) :: r
+   REAL(KIND=dp), intent(in) :: max
+   INTEGER :: i
+   do i=1,size(r)
+      r(i) = REAL(i-1, dp)*max/size(r)
+   enddo
+end subroutine fun_grid
+
+subroutine allocate_fun(fun, n)
+   implicit none
+   INTEGER :: n
+   TYPE(type_fun), POINTER :: fun
+   
+   if (.not. allocated(fun%r)) allocate(fun%r(n))
+   if (.not. allocated(fun%y)) allocate(fun%y(n))
+   if (.not. allocated(fun%y1)) allocate(fun%y1(n))
+   if (.not. allocated(fun%y2)) allocate(fun%y2(n))
+   if (.not. allocated(fun%y3)) allocate(fun%y3(n))
+   if (.not. allocated(fun%y4)) allocate(fun%y4(n))
+   if (.not. allocated(fun%y5)) allocate(fun%y5(n))
+end subroutine allocate_fun
+
+subroutine deallocate_fun(fun)
+   implicit none
+   INTEGER :: n
+   TYPE(type_fun), POINTER :: fun
+   
+   deallocate(fun%r)
+   deallocate(fun%y)
+   deallocate(fun%y1)
+   deallocate(fun%y2)
+   deallocate(fun%y3)
+   deallocate(fun%y4)
+   deallocate(fun%y5)
+end subroutine deallocate_fun
 
 end module

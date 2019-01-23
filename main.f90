@@ -1,53 +1,35 @@
 program hallo 
-USE lebedev, ONLY: dp
-USE eddi, ONLY: type_atom, integration_twocenter, &
-                read_nfun, pi, interpolation, spline, &
-                integration_threecenter, kinetic_energy, &
-                integration_onecenter, coulomb_integral, coulomb_integral_grid, &
-                radial_integration, pp_projector, pp_nonloc,&
-                forward_derivative_weights
-USE grid, ONLY: grid_parameters, radial_grid, gauher, s3, ds3dmu
-USE nao_unit, ONLY: test_onecenter, test_twocenter, test_threecenter, test_kinetic, &
-                    test_coulomb,&
-                    test_radial_weight_pos, test_radial_chebyherm, test_radial_weight_asc, &
-                    test_forward_deriv_coeff, test_spline,&
-                    test_derivative_point_on, test_derivative_point_off,&
-                    test_interpolation,&
-                    test_derivative_on, test_derivative_off
-USE gradients, ONLY: jacobian, grad_onecenter, grad_onecenter_cart, grad_twocenter_fd, &
-                     grad_twocenter
-USE nao_grad_unit, ONLY: test_jacobian, test_twocenter_grad
+USE lebedev, ONLY: dp, get_number_of_lebedev_grid
+USE ni_fun, ONLY: allocate_fun, prepare_fun, deallocate_fun, type_fun, fun_grid
+USE ni_grid, ONLY: deallocate_grid, build_onecenter_grid, type_grid
 implicit none
-REAL(KIND=dp), DIMENSION(1000) :: r, y1, wr, y2
-REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
-REAL(KIND=dp), DIMENSION(1000,3) :: error
-INTEGER :: l1, l2, m1, m2, c, n
+REAL(KIND=dp), DIMENSION(50) :: r, f
+TYPE(type_fun), POINTER :: pfun
+TYPE(type_fun), TARGET :: fun
 
-call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
+TYPE(type_grid), POINTER :: pgrid
+TYPE(type_grid), target :: grid
+INTEGER :: i
 
-y1 = exp(-0.2_dp * r**2)
-y2 = exp(-0.5_dp * r**2)
+call fun_grid(r=r, max=10._dp)
+f = exp(-r**2)
 
-c = 0
-error = 0._dp
-d12 = (/ .1_dp, -.5_dp, .1_dp /)
-n = 130
-l1 = 0; m1 = 0; l2 = 1; m2 = 1;
-   open(unit=222, file='b')
-   write(222, *) r, y1, y2, (/l1,l2/), (/m1,m2/), (/n, n/), d12, grad1
-   close(222)
-call grad_twocenter(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
-                  nshell=(/n, n/), d12=d12, grad=grad1)
-call grad_twocenter_fd(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
-                     nshell=(/n, n/), d12=d12, grad=grad2)
-error(c, :) = abs(grad1-grad2)
-if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
-if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
-if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-! if ( any( error(c, :)  .gt. 0.1_dp  )) then
-print *, '   ', l1, m1, l2, m2
-print *, 'e  ', grad1
-print *, 'fd ', grad2
-print *, 'ra ', error(c, :), '/3 = ', sum(error(c, :))/3._dp
+pfun => fun
 
+call allocate_fun(fun=pfun, n=size(r))
+call prepare_fun(r=r, f=f, fun=pfun)
+do i=1,size(r)
+  print *, fun%r(i), fun%y(i), fun%y1(i), fun%y2(i)
+enddo
+call deallocate_fun(fun=pfun)
+
+pgrid => grid
+call build_onecenter_grid(ileb=4, nshell=50, addr2=.TRUE.,&
+                          quadr=1, grid=pgrid)
+print *, 'grid'
+print *, size(grid%r)
+print *, size(grid%w)
+print *, size(grid%dw)
+print *, get_number_of_lebedev_grid(n=10)
+call deallocate_grid(grid=pgrid)
 end program hallo
