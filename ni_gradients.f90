@@ -1,9 +1,10 @@
-module gradients
+module ni_gradients
 USE lebedev, ONLY: dp, get_number_of_lebedev_grid, lebedev_grid
 USE eddi, ONLY: pi, spline, interpolation, integration_twocenter,&
                 kinetic_energy, coulomb_integral,&
                 kah_sum
-USE ni_grid, ONLY: radial_grid, build_onecenter_grid, build_twocenter_grid
+USE ni_grid, ONLY: radial_grid, build_onecenter_grid, build_twocenter_grid,&
+                   type_grid
 USE spherical_harmonics, ONLY: rry_lm, dry_lm
 USE ni_fun, ONLY: derivatives
 
@@ -26,8 +27,9 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
    ! Local variables
    INTEGER :: i, j
    ! Local variables (integration)
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r, grid_dw, tmp_grad
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w, dy2, dy2s
+   TYPE(type_grid), POINTER :: grid
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: tmp_grad
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: dy2, dy2s
    REAL(KIND=dp), DIMENSION(3) :: dylm2, dr, dtheta, dphi
    REAL(KIND=dp) :: ylm, norm, x, y, z, rho, theta, phi, dylm, df2, f1, f2
    INTEGER, DIMENSION(2) :: ileb
@@ -69,15 +71,10 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
 
    ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
            lebedev_grid(ileb(2))%n * nshell(2)
-   allocate(grid_r(ngrid, 3))
-   allocate(grid_w(ngrid))
-   allocate(grid_dw(ngrid, 3))
    allocate(tmp_grad(ngrid, 3))
 
-   grid_dw = 0._dp
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.FALSE., grid_r=grid_r, grid_w=grid_w, &
-                             grid_dw=grid_dw)
+                             addr2=.FALSE., grid=grid)
 
    allocate(dy2(size(r2)))
    allocate(dy2s(size(r2)))
@@ -88,18 +85,18 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
    do i=1,ngrid
       ! d CI = (dw * f2*Y2 + w * df2 * Y2 + w*f2 * dY2) * Vc*Y1 = d2 * Vc*Y1
       !! we start with Vc*Y1
-      norm = sqrt(sum( grid_r(i, :)**2 ))
+      norm = sqrt(sum( grid%r(i, :)**2 ))
       call interpolation(coul_r, pot, pots, norm, f1)
-      call rry_lm(l=l(1), m=m(1), r=grid_r(i, :)/norm, y=ylm)
+      call rry_lm(l=l(1), m=m(1), r=grid%r(i, :)/norm, y=ylm)
       f1 = f1 * ylm
 
       !!! Helpers
-      norm = sqrt( sum( (grid_r(i, :) - d12)**2 ) )
-      x = grid_r(i, 1)-d12(1); y = grid_r(i, 2)-d12(2); z = grid_r(i, 3)-d12(3);
+      norm = sqrt( sum( (grid%r(i, :) - d12)**2 ) )
+      x = grid%r(i, 1)-d12(1); y = grid%r(i, 2)-d12(2); z = grid%r(i, 3)-d12(3);
       rho = x*x + y*y
       theta = acos(z/norm); phi = atan2(y, x);
       !!! The partial derivatives dr/dXYZ, dtheta/XYZ, dphi/XYZ
-      dr = -(grid_r(i, :) - d12)/norm
+      dr = -(grid%r(i, :) - d12)/norm
 
       dtheta = 0._dp
       if (rho .ne. 0._dp) then
@@ -119,21 +116,21 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
       !!! Lets-a-go
       call interpolation(r2, y2, s2, norm, f2)
       call interpolation(r2, dy2, dy2s, norm, df2)
-      call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :)-d12)/norm, y=ylm)
+      call rry_lm(l=l(2), m=m(2), r=(grid%r(i, :)-d12)/norm, y=ylm)
       call dry_lm(l=l(2), m=m(2), c=(/theta, phi/), dy=dylm2)
 
       !!! d2 = f2 * (dw * Y + w * dY) + w * df2 * Y
       dylm = dylm2(1)*dtheta(1) + dylm2(2)*dphi(1)
-      tmp_grad(i, 1) = f2 * ( grid_dw(i, 1) * ylm + grid_w(i) * dylm )&
-                       + grid_w(i) * df2*dr(1) * ylm
+      tmp_grad(i, 1) = f2 * ( grid%dw(i, 1) * ylm + grid%w(i) * dylm )&
+                       + grid%w(i) * df2*dr(1) * ylm
 
       dylm = dylm2(1)*dtheta(2) + dylm2(2)*dphi(2)
-      tmp_grad(i, 2) = f2 * ( grid_dw(i, 2) * ylm + grid_w(i) * dylm )&
-                       + grid_w(i) * df2*dr(2) * ylm
+      tmp_grad(i, 2) = f2 * ( grid%dw(i, 2) * ylm + grid%w(i) * dylm )&
+                       + grid%w(i) * df2*dr(2) * ylm
 
       dylm = dylm2(1)*dtheta(3) + dylm2(2)*dphi(3)
-      tmp_grad(i, 3) = f2 * ( grid_dw(i, 3) * ylm + grid_w(i) * dylm )&
-                       + grid_w(i) * df2*dr(3) * ylm
+      tmp_grad(i, 3) = f2 * ( grid%dw(i, 3) * ylm + grid%w(i) * dylm )&
+                       + grid%w(i) * df2*dr(3) * ylm
 
       ! Concluding...
       tmp_grad(i, :) = tmp_grad(i, :) * f1
@@ -143,7 +140,7 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
          print *, 'df2', df2
          print *, 'df2', dr(1)
          print *, 'df2*', df2*dr(1)
-         print *, 'grid_r', grid_r(i, :)
+         print *, 'grid%r', grid%r(i, :)
          print *, 'xyz', x, y, z
          print *, 'norm', norm
       endif
@@ -156,9 +153,6 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
 
    deallocate(dy2)
    deallocate(dy2s)
-   deallocate(grid_r)
-   deallocate(grid_w)
-   deallocate(grid_dw)
 
    deallocate(coul_r)
    deallocate(pot)
@@ -269,8 +263,8 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
    ! Local variables
    INTEGER, DIMENSION(2) :: ileb
    INTEGER :: i, ngrid
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r, grid_dw, tmp_grad
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
+   TYPE(type_grid), POINTER :: grid
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: tmp_grad
    REAL(KIND=dp), DIMENSION(size(r1)) :: s1
    REAL(KIND=dp), DIMENSION(size(r2)) :: s2, ddf2_spline
    REAL(KIND=dp), DIMENSION(3) :: dr, dtheta, dphi, dylm2
@@ -290,22 +284,18 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
 
    ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
            lebedev_grid(ileb(2))%n * nshell(2)
-   allocate(grid_r(ngrid, 3))
    allocate(tmp_grad(ngrid, 3))
-   allocate(grid_w(ngrid))
-   allocate(grid_dw(ngrid, 3))
 
-   grid_dw = 0._dp
+   grid%dw = 0._dp
 
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.FALSE., grid_r=grid_r, grid_w=grid_w, &
-                             grid_dw=grid_dw)
+                             addr2=.FALSE., grid=grid)
    !  N                        ~      ~
    !  Σ  w  * f(r) * Y(r)  Δ f(r) * Y(r) ,
    ! i=1  i    1 i    1 i     2 i    2 i
 
    !       ~    ––>     ––>                  T
-   ! where r = grid_r - d12 = (x-X, y-Y, z-Z)
+   ! where r = grid%r - d12 = (x-X, y-Y, z-Z)
 
    call spline(r=r2, y=s2, n=size(r2), yspline=ddf2_spline)
 
@@ -319,14 +309,14 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
    do i=1,ngrid
       if(mod(i, 10000) .eq. 0) print *, 'grad_kinetic i/ngrid', i, ngrid
       ! When taking the derivative wrt X, Y, Z - f1 and ylm1 won't change
-      norm = sqrt( sum( grid_r(i, :)**2 ) )
+      norm = sqrt( sum( grid%r(i, :)**2 ) )
       call interpolation(gr=r1, gy=y1, spline=s1, r=norm, y=f1)
-      call rry_lm(l=l(1), m=m(1), r=grid_r(i, :)/norm, y=ylm1)
+      call rry_lm(l=l(1), m=m(1), r=grid%r(i, :)/norm, y=ylm1)
 
       ! f2, ylm2 do have non-vanishing derivatives + are affected by the Laplacian
       !! Helpers
-      norm = sqrt( sum( (grid_r(i, :) - d12)**2 ) )
-      x = grid_r(i, 1)-d12(1); y = grid_r(i, 2)-d12(2); z = grid_r(i, 3)-d12(3);
+      norm = sqrt( sum( (grid%r(i, :) - d12)**2 ) )
+      x = grid%r(i, 1)-d12(1); y = grid%r(i, 2)-d12(2); z = grid%r(i, 3)-d12(3);
       rho = x*x + y*y; theta = acos(z/norm); phi = atan2(y, x);
 
       !! Derivatives and function values
@@ -336,12 +326,12 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
       call interpolation(gr=r2, gy=d2y, spline=sd2y, r=norm, y=ddf2)
       call interpolation(gr=r2, gy=d3y, spline=sd3y, r=norm, y=dddf2)
       !!! ylm2, dylm2
-      call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :) - d12)/norm, y=ylm2)
+      call rry_lm(l=l(2), m=m(2), r=(grid%r(i, :) - d12)/norm, y=ylm2)
       call dry_lm(l=l(2), m=m(2), c=(/theta, phi/), dy=dylm2)
       if(sum(dylm2**2) .ne. 0._dp) print *, dylm2
 
       ! The partial derivatives dr/dXYZ, dtheta/XYZ, dphi/XYZ
-      dr = (grid_r(i, :) - d12)/norm
+      dr = (grid%r(i, :) - d12)/norm
 
       dtheta = 0._dp
       if (rho .ne. 0._dp) then
@@ -370,28 +360,28 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
       ! flap   0.00000187787
       ! xdflap 0.00000119142
       dylm = dylm2(1)*dtheta(1) + dylm2(2)*dphi(1)
-      tmp_grad(i, 1) = grid_dw(i, 1) * flap     * ylm2 +&
-                       grid_w(i)     * x*dflap  * ylm2 +&
-                       grid_w(i)     * flap     * dylm   
+      tmp_grad(i, 1) = grid%dw(i, 1) * flap     * ylm2 +&
+                       grid%w(i)     * x*dflap  * ylm2 +&
+                       grid%w(i)     * flap     * dylm   
 
       ! Y
       dylm = dylm2(1)*dtheta(2) + dylm2(2)*dphi(2)
-      tmp_grad(i, 2) = grid_dw(i, 2) * flap     * ylm2 +&
-                       grid_w(i)     * y*dflap  * ylm2 +&
-                       grid_w(i)     * flap     * dylm   
+      tmp_grad(i, 2) = grid%dw(i, 2) * flap     * ylm2 +&
+                       grid%w(i)     * y*dflap  * ylm2 +&
+                       grid%w(i)     * flap     * dylm   
 
       ! Z
       dylm = dylm2(1)*dtheta(3)
-      tmp_grad(i, 3) = grid_dw(i, 3) * flap     * ylm2 +&
-                       grid_w(i)     * z*dflap  * ylm2 +&
-                       grid_w(i)     * flap     * dylm
+      tmp_grad(i, 3) = grid%dw(i, 3) * flap     * ylm2 +&
+                       grid%w(i)     * z*dflap  * ylm2 +&
+                       grid%w(i)     * flap     * dylm
 
       if (i .eq. 60306) then
          print *, i, norm
          print *, 'd12', d12
-         print *, 'norm1', sqrt( sum( grid_r(i, :)**2 ) )
+         print *, 'norm1', sqrt( sum( grid%r(i, :)**2 ) )
          print *, 'norm2', norm
-         print *, 'grid_r ', grid_r(i, :)
+         print *, 'grid%r ', grid%r(i, :)
          print *, 'x, y, z', x, y, z
          print *, 'theta, phi, ll1', theta, phi, ll1
          print *, 
@@ -404,13 +394,13 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
          print *,
          print *, 'ylm1, ylm2', ylm1, ylm2
          print *, '–---------- tmp_grad(i,3) –----------'
-         print *, 'grid_w(i)', grid_w(i)
+         print *, 'grid%w(i)', grid%w(i)
          print *,
          print *, 'dr(1),', dr(1)
          print *, '(dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2)', (dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2)
          print *, '2._dp*z*( df2/norm**3 + ll1*f2 )', 2._dp*z*( df2/norm**3 + ll1*f2 )
          print *, 
-         print *, 'grid_dw(i, 3)', grid_dw(i, 3)
+         print *, 'grid%dw(i, 3)', grid%dw(i, 3)
          print *,
          print *, 'dylm', dylm
          print *, 'dylm2(1)*dtheta(1)', dylm2(1)*dtheta(1)
@@ -433,10 +423,7 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
    grad(3) = kah_sum(tmp_grad(:,3))
    print *, 'start third sum'
 
-   deallocate(grid_r)
    deallocate(tmp_grad)
-   deallocate(grid_w)
-   deallocate(grid_dw)
 end subroutine grad_kinetic
 
 subroutine grad_kinetic_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
@@ -549,8 +536,8 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    ! Local variables
    INTEGER, DIMENSION(2) :: ileb
    INTEGER :: ngrid, i
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r, grid_dw, tmp_grad
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w
+   TYPE(type_grid), POINTER :: grid
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: tmp_grad
    REAL(KIND=dp), DIMENSION(size(r1)) :: s1
    REAL(KIND=dp), DIMENSION(size(r2)) :: s2
    REAL(KIND=dp), DIMENSION(3) :: dr, dtheta, dphi, dylm2
@@ -562,16 +549,12 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
 
    ngrid = lebedev_grid(ileb(1))%n * nshell(1) + &
            lebedev_grid(ileb(2))%n * nshell(2)
-   allocate(grid_r(ngrid, 3))
    allocate(tmp_grad(ngrid, 3))
-   allocate(grid_w(ngrid))
-   allocate(grid_dw(ngrid, 3))
 
-   grid_dw = 0._dp
+   grid%dw = 0._dp
 
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.TRUE., grid_r=grid_r, grid_w=grid_w, &
-                             grid_dw=grid_dw)
+                             addr2=.TRUE., grid=grid)
    call spline(r=r1, y=y1, n=size(r1), yspline=s1)
    call spline(r=r2, y=y2, n=size(r2), yspline=s2)
 
@@ -583,27 +566,27 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
       ! i=1  i    1 i    2 i      i      i
 
       !       ~    ––>     ––>                  T
-      ! where r = grid_r - d12 = (x-X, y-Y, z-Z)
+      ! where r = grid%r - d12 = (x-X, y-Y, z-Z)
 
       ! When taking the derivative wrt X, Y, Z - f1 and ylm1 won't change
-      norm = sqrt( sum( grid_r(i, :)**2 ) )
+      norm = sqrt( sum( grid%r(i, :)**2 ) )
       call interpolation(gr=r1, gy=y1, spline=s1, r=norm, y=f1)
-      call rry_lm(l=l(1), m=m(1), r=grid_r(i, :)/norm, y=ylm1)
+      call rry_lm(l=l(1), m=m(1), r=grid%r(i, :)/norm, y=ylm1)
 
       ! f2, ylm2 do have non-vanishing derivatives
-      norm = sqrt( sum( (grid_r(i, :) - d12)**2 ) )
-      x = grid_r(i, 1)-d12(1); y = grid_r(i, 2)-d12(2); z = grid_r(i, 3)-d12(3);
+      norm = sqrt( sum( (grid%r(i, :) - d12)**2 ) )
+      x = grid%r(i, 1)-d12(1); y = grid%r(i, 2)-d12(2); z = grid%r(i, 3)-d12(3);
       rho = x*x + y*y
       theta = acos(z/norm); phi = atan2(y, x);
 
       call interpolation(gr=r2, gy=y2, spline=s2, r=norm, y=f2, yprime=df2)
-      call rry_lm(l=l(2), m=m(2), r=(grid_r(i, :) - d12)/norm, y=ylm2)
+      call rry_lm(l=l(2), m=m(2), r=(grid%r(i, :) - d12)/norm, y=ylm2)
       call dry_lm(l=l(2), m=m(2), c=(/theta, phi/), dy=dylm2)
 
       ! dwdr2 = alpha*(7._dp*norm**(2.5_dp) + 5._dp*norm**(1.5_dp))
 
       ! The partial derivatives dr/dXYZ, dtheta/XYZ, dphi/XYZ
-      dr = -(grid_r(i, :) - d12)/norm
+      dr = -(grid%r(i, :) - d12)/norm
 
       dtheta = 0._dp
       if (rho .ne. 0._dp) then
@@ -622,21 +605,21 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
 
       ! On to the actual calculation
       ! X  
-      tmp_grad(i, 1) = grid_w(i) * df2*dr(1) * ylm2 +&
-                       grid_w(i) * f2 * dylm2(1)*dtheta(1) +&
-                       grid_w(i) * f2 * dylm2(2)*dphi(1)! +&
-                       ! grid_dw(i, 1) * f2 * ylm2
+      tmp_grad(i, 1) = grid%w(i) * df2*dr(1) * ylm2 +&
+                       grid%w(i) * f2 * dylm2(1)*dtheta(1) +&
+                       grid%w(i) * f2 * dylm2(2)*dphi(1)! +&
+                       ! grid%dw(i, 1) * f2 * ylm2
 
       ! Y
-      tmp_grad(i, 2) = grid_w(i) * df2 * dr(2) * ylm2 +&
-                       grid_w(i) * f2 * dylm2(1) * dtheta(2) +&
-                       grid_w(i) * f2 * dylm2(2) * dphi(2)! +&
-                       ! grid_dw(i, 2) * f2 * ylm2
+      tmp_grad(i, 2) = grid%w(i) * df2 * dr(2) * ylm2 +&
+                       grid%w(i) * f2 * dylm2(1) * dtheta(2) +&
+                       grid%w(i) * f2 * dylm2(2) * dphi(2)! +&
+                       ! grid%dw(i, 2) * f2 * ylm2
 
       ! Z
-      tmp_grad(i, 3) = grid_w(i) * df2 * dr(3) * ylm2 +&
-                       grid_w(i) * f2 * dylm2(1) * dtheta(3)! +&
-                       ! grid_dw(i, 3) * f2 * ylm2
+      tmp_grad(i, 3) = grid%w(i) * df2 * dr(3) * ylm2 +&
+                       grid%w(i) * f2 * dylm2(1) * dtheta(3)! +&
+                       ! grid%dw(i, 3) * f2 * ylm2
 
       tmp_grad(i, :) = tmp_grad(i, :) * f1 * ylm1
    enddo
@@ -646,10 +629,7 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    grad(2) = kah_sum(tmp_grad(:,2))
    grad(3) = kah_sum(tmp_grad(:,3))
 
-   deallocate(grid_r)
    deallocate(tmp_grad)
-   deallocate(grid_w)
-   deallocate(grid_dw)
 end subroutine grad_twocenter
 
 subroutine grad_twocenter_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
@@ -753,8 +733,9 @@ subroutine grad_onecenter(r, y, l, m, nshell, grad)
    ! Output
    REAL(KIND=dp), DIMENSION(3) :: grad
    ! Local variables
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r, dylm, tmp_grad
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w, y_loc, dy, ylm
+   TYPE(type_grid), POINTER :: grid
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: dylm, tmp_grad
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: y_loc, dy, ylm
    REAL(KIND=dp), DIMENSION(size(r)) :: s
    REAL(KIND=dp), DIMENSION(3,3) :: jac
    REAL(KIND=dp) :: theta, phi, xx, yy, zz, dwdr, alpha, norm
@@ -765,8 +746,6 @@ subroutine grad_onecenter(r, y, l, m, nshell, grad)
    ileb = get_number_of_lebedev_grid(l=l+5)
    nleb = lebedev_grid(ileb)%n
 
-   allocate(grid_r(nleb*nshell,3))
-   allocate(grid_w(nleb*nshell))
 
    allocate(y_loc(nleb*nshell))
    allocate(dy(nleb*nshell))
@@ -774,20 +753,20 @@ subroutine grad_onecenter(r, y, l, m, nshell, grad)
    allocate(ylm(nleb*nshell))
    allocate(dylm(nleb*nshell, 2))
 
-   allocate(tmp_grad(size(grid_w),3))
+   allocate(tmp_grad(size(grid%w),3))
 
    call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
-                             quadr=1, grid_r=grid_r, grid_w=grid_w)
+                             quadr=1, grid=grid)
    alpha = pi/(REAL(2*nshell+2, dp))
    ! Evaluate y, dy/dr, Ylm, dYlm/dtheta, dYlm/dphi
    call spline(r=r, y=y, n=size(r), yspline=s)
    tmp_grad = 0._dp
-   do i=1,size(grid_w)
+   do i=1,size(grid%w)
       ! gradient (r, theta, phi)
 
       ! Define some helpers
-      norm = sqrt(sum( grid_r(i, :)**2 ))
-      xx = grid_r(i, 1); yy = grid_r(i, 2); zz = grid_r(i, 3)
+      norm = sqrt(sum( grid%r(i, :)**2 ))
+      xx = grid%r(i, 1); yy = grid%r(i, 2); zz = grid%r(i, 3)
       theta = acos(zz/norm)
       phi = atan2(yy, xx)
 
@@ -796,7 +775,7 @@ subroutine grad_onecenter(r, y, l, m, nshell, grad)
       call interpolation(gr=r, gy=y, spline=s, r=norm+5._dp*epsilon(1._dp), y=y_loc(i), yprime=dy(i))
       dwdr = alpha*(7._dp*norm**(2.5_dp) + 5._dp*norm**(1.5_dp))
       ! Ylm, dYlm/dtheta, dYlm/dphi
-      call rry_lm(l=l, m=m, r=grid_r(i, :)/norm, y=ylm(i))
+      call rry_lm(l=l, m=m, r=grid%r(i, :)/norm, y=ylm(i))
       call dry_lm(l=l, m=m, c=(/theta, phi/), dy=dylm(i, :))
 
       !                                                          T
@@ -806,14 +785,14 @@ subroutine grad_onecenter(r, y, l, m, nshell, grad)
       ! d/dr => (dw/dr * f + w * df/dr) * Ylm
       !    dw/dr = pi/(N+1) * (7*r^2.5 + 5*r^1.5)/2 
       !    df/dr <- dy
-      tmp_grad(i,1) = ( dwdr * y_loc(i) + grid_w(i) * dy(i) ) * ylm(i)
+      tmp_grad(i,1) = ( dwdr * y_loc(i) + grid%w(i) * dy(i) ) * ylm(i)
 
       ! 1/r d/dtheta => w * f * dYlm/dtheta
-      tmp_grad(i,2) = grid_w(i) * y_loc(i) * dylm(i, 1) / norm
+      tmp_grad(i,2) = grid%w(i) * y_loc(i) * dylm(i, 1) / norm
 
       ! 1/(r * sin(theta)) d/dphi => w * f * dYlm/dphi / r*sin(theta)
       if (dylm(i, 2) .ne. 0._dp) then
-         tmp_grad(i,3) = grid_w(i) * y_loc(i) * dylm(i, 2) / (norm * sin(theta))
+         tmp_grad(i,3) = grid%w(i) * y_loc(i) * dylm(i, 2) / (norm * sin(theta))
       endif
 
       ! And transform it to xyz
@@ -826,8 +805,6 @@ subroutine grad_onecenter(r, y, l, m, nshell, grad)
    grad(2) = sum(tmp_grad(:,2))
    grad(3) = sum(tmp_grad(:,3))
 
-   deallocate(grid_r)
-   deallocate(grid_w)
    deallocate(y_loc)
    deallocate(dy)
    deallocate(ylm)
@@ -843,8 +820,9 @@ subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
    ! Output
    REAL(KIND=dp), DIMENSION(3) :: grad
    ! Local variables
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: grid_r, dylm, tmp_grad
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w, y_loc, dy, ylm
+   TYPE(type_grid), POINTER :: grid
+   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: dylm, tmp_grad
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: y_loc, dy, ylm
    REAL(KIND=dp), DIMENSION(size(r)) :: s
    REAL(KIND=dp) :: theta, phi, xx, yy, zz, dwdr, alpha, norm, rho
    INTEGER :: i, ileb, nleb
@@ -853,8 +831,6 @@ subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
    ileb = get_number_of_lebedev_grid(l=l+5)
    nleb = lebedev_grid(ileb)%n
 
-   allocate(grid_r(nleb*nshell,3))
-   allocate(grid_w(nleb*nshell))
 
    allocate(y_loc(nleb*nshell))
    allocate(dy(nleb*nshell))
@@ -862,20 +838,20 @@ subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
    allocate(ylm(nleb*nshell))
    allocate(dylm(nleb*nshell, 2))
 
-   allocate(tmp_grad(size(grid_w),3))
+   allocate(tmp_grad(size(grid%w),3))
 
    call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
-                             quadr=1, grid_r=grid_r, grid_w=grid_w)
+                             quadr=1, grid=grid)
    alpha = pi/(REAL(2*nshell+2, dp))
    ! Evaluate y, dy/dr, Ylm, dYlm/dtheta, dYlm/dphi
    call spline(r=r, y=y, n=size(r), yspline=s)
    tmp_grad = 0._dp
-   do i=1,size(grid_w)
+   do i=1,size(grid%w)
       ! gradient (r, theta, phi)
 
       ! Define some helpers
-      norm = sqrt(sum( grid_r(i, :)**2 ))
-      xx = grid_r(i, 1); yy = grid_r(i, 2); zz = grid_r(i, 3)
+      norm = sqrt(sum( grid%r(i, :)**2 ))
+      xx = grid%r(i, 1); yy = grid%r(i, 2); zz = grid%r(i, 3)
       rho = xx**2 + yy**2
       theta = acos(zz/norm)
       phi = atan2(yy, xx)
@@ -885,7 +861,7 @@ subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
       call interpolation(gr=r, gy=y, spline=s, r=norm+5._dp*epsilon(1._dp), y=y_loc(i), yprime=dy(i))
       dwdr = alpha*(7._dp*norm**(2.5_dp) + 5._dp*norm**(1.5_dp))
       ! Ylm, dYlm/dtheta, dYlm/dphi
-      call rry_lm(l=l, m=m, r=grid_r(i, :)/norm, y=ylm(i))
+      call rry_lm(l=l, m=m, r=grid%r(i, :)/norm, y=ylm(i))
       call dry_lm(l=l, m=m, c=(/theta, phi/), dy=dylm(i, :))
 
       !                                                          T
@@ -893,7 +869,7 @@ subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
       !
 
       ! dr/dx = x/r, dr/dy = y/r, dr/dz = z/r
-      tmp_grad(i,:) = ( dwdr * y_loc(i) + grid_w(i) * dy(i) ) * ylm(i)
+      tmp_grad(i,:) = ( dwdr * y_loc(i) + grid%w(i) * dy(i) ) * ylm(i)
       tmp_grad(i,1) = tmp_grad(i,1) * xx/norm
       tmp_grad(i,2) = tmp_grad(i,2) * yy/norm
       tmp_grad(i,3) = tmp_grad(i,3) * zz/norm
@@ -902,24 +878,24 @@ subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
       ! dtheta/dy = y*z/(r^3*sqrt(1-z^2/r^2))
       ! dtheta/dz = -sqrt(rho^2/r^2)/r
       if (xx*zz .ne. 0._dp) then
-      tmp_grad(i,1) = tmp_grad(i,1) + grid_w(i) * y_loc(i) * dylm(i, 1)&
+      tmp_grad(i,1) = tmp_grad(i,1) + grid%w(i) * y_loc(i) * dylm(i, 1)&
          * xx*zz/( norm**3 * sqrt( 1._dp-(zz/norm)**2 ) )
       endif
       if (yy*zz .ne. 0._dp) then
-      tmp_grad(i,2) = tmp_grad(i,2) + grid_w(i) * y_loc(i) * dylm(i, 1)&
+      tmp_grad(i,2) = tmp_grad(i,2) + grid%w(i) * y_loc(i) * dylm(i, 1)&
          * yy*zz/( norm**3 * sqrt( 1._dp-(zz/norm)**2 ) )
       endif
-      tmp_grad(i,3) = tmp_grad(i,3) + grid_w(i) * y_loc(i) * dylm(i, 1)&
+      tmp_grad(i,3) = tmp_grad(i,3) + grid%w(i) * y_loc(i) * dylm(i, 1)&
          * sqrt((xx*xx+yy*yy)/norm**2)/norm
 
       ! dphi/dx = -y/(x^2+y^2)
       ! dphi/dy = x/(x^2+y^2)
       ! dphi/dz = 0
       if (yy .ne. 0._dp) then
-         tmp_grad(i,1) = tmp_grad(i,1) - grid_w(i) * y_loc(i) * dylm(i, 2) * (yy/rho)
+         tmp_grad(i,1) = tmp_grad(i,1) - grid%w(i) * y_loc(i) * dylm(i, 2) * (yy/rho)
       endif
       if (xx .ne. 0._dp) then
-         tmp_grad(i,2) = tmp_grad(i,2) + grid_w(i) * y_loc(i) * dylm(i, 2) * (xx/rho)
+         tmp_grad(i,2) = tmp_grad(i,2) + grid%w(i) * y_loc(i) * dylm(i, 2) * (xx/rho)
       endif
    enddo
 
@@ -928,8 +904,6 @@ subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
    grad(2) = sum(tmp_grad(:,2))
    grad(3) = sum(tmp_grad(:,3))
 
-   deallocate(grid_r)
-   deallocate(grid_w)
    deallocate(y_loc)
    deallocate(dy)
    deallocate(ylm)
@@ -960,4 +934,4 @@ function jacobian(r, theta, phi)
    jacobian(3,3) = 0._dp
 end function jacobian
 
-end module gradients
+end module ni_gradients

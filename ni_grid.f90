@@ -93,9 +93,6 @@ subroutine build_onecenter_grid(ileb, nshell, addr2, quadr, grid)
 
    ngrid = lebedev_grid(ileb)%n * nshell
    call allocate_grid(grid=grid, n=ngrid)
-   print *, size(grid%w)
-   print *, ngrid
-   print *, lebedev_grid(ileb)%n
 
    do i=1, lebedev_grid(ileb)%n
       lower = 1+(i-1)*nshell
@@ -108,7 +105,6 @@ subroutine build_onecenter_grid(ileb, nshell, addr2, quadr, grid)
    enddo
    grid%dw = 0._dp
 end subroutine build_onecenter_grid
-
 
 subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid)
    implicit none

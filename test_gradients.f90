@@ -1,8 +1,8 @@
 module nao_grad_unit
 USE eddi, ONLY: pi, spline
 USE lebedev, ONLY: dp, lebedev_grid, get_number_of_lebedev_grid
-USE ni_grid, ONLY: build_onecenter_grid, radial_grid
-USE gradients, ONLY: jacobian, grad_twocenter, grad_twocenter_fd,&
+USE ni_grid, ONLY: build_onecenter_grid, radial_grid, type_grid
+USE ni_gradients, ONLY: jacobian, grad_twocenter, grad_twocenter_fd,&
                      grad_kinetic, grad_kinetic_fd,&
                      grad_coulomb, grad_coulomb_fd
 implicit none
@@ -235,8 +235,8 @@ end subroutine test_twocenter_fd
 !     grad_xyz ( 1/r ) = (-x/r^3, -y/r^3, -z/r^3)
 subroutine test_jacobian()
    implicit none
-   REAL(KIND=dp), DIMENSION(:,:), ALLOCATABLE :: grid_r
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w, errors
+   TYPE(type_grid), POINTER :: grid
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: errors
    REAL(KIND=dp), DIMENSION(3) :: grad_r, grad_xyz, grad_xyz_exact
    REAL(KIND=dp), DIMENSION(3,3) :: jac
    REAL(KIND=dp) :: norm, xx, yy, zz, theta, phi
@@ -244,18 +244,16 @@ subroutine test_jacobian()
 
    ileb = get_number_of_lebedev_grid(l=0)
    ngrid = lebedev_grid(ileb)%n * 25
-   allocate(grid_r(ngrid, 3))
-   allocate(grid_w(ngrid))
    allocate(errors(ngrid))
 
    call build_onecenter_grid(ileb=1, nshell=25, addr2=.TRUE.,&
-                             quadr=1, grid_r=grid_r, grid_w=grid_w)
-   do i=1,size(grid_w)
+                             quadr=1, grid=grid)
+   do i=1,size(grid%w)
       grad_r = 0._dp; grad_xyz = 0._dp; grad_xyz_exact = 0._dp
-      norm = sqrt( sum(grid_r(i, :)**2) )
-      xx = grid_r(i, 1)
-      yy = grid_r(i, 2)
-      zz = grid_r(i, 3)
+      norm = sqrt( sum(grid%r(i, :)**2) )
+      xx = grid%r(i, 1)
+      yy = grid%r(i, 2)
+      zz = grid%r(i, 3)
 
       theta = acos(zz/norm)
       phi = atan2(yy, xx)
@@ -275,8 +273,6 @@ subroutine test_jacobian()
       print *, '💣 test_jacobian - failed'
       print *, 'mean error: ', sum(errors)/size(errors)
    endif
-   deallocate(grid_r)
-   deallocate(grid_w)
    deallocate(errors)
 end subroutine test_jacobian
 

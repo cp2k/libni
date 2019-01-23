@@ -23,20 +23,20 @@ implicit none
 ! --  Tests concerning radial grids and functions on those grids -- !
 ! call test_radial_weight_pos(ntests=9)
 ! call test_radial_weight_asc(ntests=9)
-! call test_radial_chebyherm(ntests=9, loud=.FALSE.)
-! call test_spline(ntests=10)
-! call test_interpolation(ntests=1)
+call test_radial_chebyherm(ntests=9, loud=.FALSE.)
+call test_spline(ntests=10)
+call test_interpolation(ntests=1)
 
 ! --  Tests concerning derivatives -- !
-! call test_forward_deriv_coeff()
-! call test_derivatives()
-! call test_derivative_point_on()
-! call test_derivative_point_off()
-! call test_derivative_on(ntests=1)
-! call test_derivative_off(ntests=1)
+call test_forward_deriv_coeff()
+call test_derivatives()
+call test_derivative_point_on()
+call test_derivative_point_off()
+call test_derivative_on(ntests=1)
+call test_derivative_off(ntests=1)
 
 ! --  Tests concerning the integrals -- !
-! call test_onecenter(ntests=10, loud=.FALSE.)
+call test_onecenter(ntests=10, loud=.FALSE.)
 call test_twocenter(ntests=3, loud=.FALSE.)
 call test_threecenter(ntests=3 , loud=.FALSE.)
 call test_kinetic(ntests=3, loud=.FALSE.)

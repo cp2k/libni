@@ -1,5 +1,5 @@
 program hallo 
-USE lebedev, ONLY: dp, get_number_of_lebedev_grid
+USE lebedev, ONLY: dp, lebedev_grid, get_number_of_lebedev_grid
 USE ni_fun, ONLY: allocate_fun, prepare_fun, deallocate_fun, type_fun, fun_grid
 USE ni_grid, ONLY: deallocate_grid, build_onecenter_grid, type_grid
 implicit none
@@ -9,7 +9,9 @@ TYPE(type_fun), TARGET :: fun
 
 TYPE(type_grid), POINTER :: pgrid
 TYPE(type_grid), target :: grid
-INTEGER :: i
+INTEGER :: i, j
+
+i = get_number_of_lebedev_grid(l=3)
 
 call fun_grid(r=r, max=10._dp)
 f = exp(-r**2)
@@ -30,6 +32,5 @@ print *, 'grid'
 print *, size(grid%r)
 print *, size(grid%w)
 print *, size(grid%dw)
-print *, get_number_of_lebedev_grid(n=10)
 call deallocate_grid(grid=pgrid)
 end program hallo

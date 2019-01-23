@@ -195,6 +195,7 @@ subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
    integral = kah_sum(grid%w*int_i)
 
    deallocate(int_i)
+   deallocate(grid)
 end subroutine integration_onecenter
 
 function kah_sum(arr)
@@ -261,6 +262,7 @@ subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
 
    deallocate(f1)
    deallocate(f2)
+   deallocate(grid)
 
 end subroutine integration_twocenter
 
@@ -312,6 +314,7 @@ subroutine integration_threecenter(nang, nshell, d12, d13, &
    deallocate(f1)
    deallocate(f2)
    deallocate(f3)
+   deallocate(grid)
 end subroutine integration_threecenter
 
 subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
@@ -377,6 +380,7 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
    deallocate(f2)
    deallocate(d2rf2)
    deallocate(d2rf2_spline)
+   deallocate(grid)
 end subroutine kinetic_energy
 
 subroutine coulomb_integral(nshell, coul_n, d12, l, m,&
@@ -542,6 +546,7 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    deallocate(pot)
    deallocate(coul_r)
    deallocate(coul_w)
+   deallocate(grid)
 end subroutine coulomb_integral_grid
 
 subroutine derivative_point(r, y, r0, y1)
