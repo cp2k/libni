@@ -5,6 +5,7 @@ USE lebedev, ONLY: lebedev_grid,&
 USE grid, ONLY: build_onecenter_grid, build_twocenter_grid, build_threecenter_grid, &
                 type_grid_point, radial_grid
 USE spherical_harmonics, ONLY: rry_lm
+USE ni_fun, ONLY: forward_derivative_weights, spline
 implicit none
 REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 
@@ -42,27 +43,6 @@ subroutine fun_grid(r, max)
    enddo
     
 end subroutine fun_grid
-
-! Get the derivatives of a function by finite differences
-subroutine derivatives(r, y, y1, y2, y3)
-   implicit none
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, y
-   REAL(KIND=dp), DIMENSION(size(r)), OPTIONAL, intent(out) :: y1, y2, y3
-   ! Local variables
-   REAL(KIND=dp), DIMENSION(3,3,5) :: c
-   INTEGER :: ir
-   if(present(y1)) y1 = 0._dp
-   if(present(y2)) y2 = 0._dp
-   if(present(y3)) y3 = 0._dp
-
-   do ir=1, size(r)-5
-      ! [...] where coeff[derivative, accuracy, coefficients]
-      call forward_derivative_weights(order=3, x0=r(ir), r=r(ir:ir+6), coeff=c)
-      if(present(y1)) y1(ir) = sum( c(1,2,1:3) * y(ir:ir+2) )
-      if(present(y2)) y2(ir) = sum( c(2,2,1:4) * y(ir:ir+3) )
-      if(present(y3)) y3(ir) = sum( c(3,2,1:5) * y(ir:ir+4) )
-   enddo
-end subroutine derivatives
 
 ! **********************************************
 !> \brief Computes the radial integral of f(r)
@@ -601,64 +581,6 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    deallocate(grid_w)
 end subroutine coulomb_integral_grid
 
-subroutine forward_derivative_weights(order, x0, r, coeff)
-   implicit none
-   ! Input
-   INTEGER, intent(in) :: order
-   REAL(KIND=dp), intent(in) :: x0
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r
-   ! Output
-   REAL(KIND=dp), DIMENSION(3,3,5) :: coeff
-   ! Local variables
-   INTEGER :: points, n, nu, m
-   REAL(KIND=dp) :: c1, c2, c3
-   REAL(KIND=dp), DIMENSION(0:order,0:size(r),0:size(r)) :: d
-
-   points = size(r)-1
-
-   d = 0.0_dp
-   d(0,0,0) = 1.0_dp
-   c1 = 1.0_dp
-
-   do n=1,points
-      c2 = 1.0_dp
-      do nu=0,n-1
-         c3 = r(n+1) - r(nu+1)
-         c2 = c2 * c3
-         do m=0,min(n,order)
-            d(m,n,nu) = (r(n+1)-x0)*d(m,n-1,nu)
-            if (m .ne. 0) then
-               d(m,n,nu) = d(m,n,nu) - m*d(m-1,n-1,nu)
-            endif
-            d(m,n,nu) = d(m,n,nu)/c3
-         enddo
-      enddo
-      do m=0,min(n,order)
-         if (m .ne. 0) then
-            d(m,n,n) = m*d(m-1,n-1,n-1)
-         endif
-         d(m,n,n) = c1/c2*(d(m,n,n) - (r(n)-x0)*d(m,n-1,n-1))
-      enddo
-      c1 = c2
-   enddo
-
-   ! d contains way more information than we need it to.
-   ! instead we construct a smaller field `coeff`
-   ! where coeff[derivative, accuracy, coefficients]
-   ! First derivative
-   coeff(1,1,:) = d(1,1,0:4)
-   coeff(1,2,:) = d(1,2,0:4)
-   coeff(1,3,:) = d(1,3,0:4)
-   ! Second derivative
-   coeff(2,1,:) = d(2,2,0:4)
-   coeff(2,2,:) = d(2,3,0:4)
-   coeff(2,3,:) = d(2,4,0:4)
-   ! Third derivative
-   coeff(3,1,:) = d(3,3,0:4)
-   coeff(3,2,:) = d(3,4,0:4)
-   ! coeff(3,3,:) = d(3,5,0:4) ! this one has 6 coefficients
-end subroutine forward_derivative_weights
-
 subroutine derivative_point(r, y, r0, y1)
    implicit none
    ! Input
@@ -679,46 +601,6 @@ subroutine derivative_point(r, y, r0, y1)
    ! this will crash/yield 0 if we want the derivative at the end points
 end subroutine derivative_point
 
-subroutine spline(r, y, n, yspline)
-   implicit none
-   ! Input
-   INTEGER, INTENT(in) :: n
-   REAL(KIND=dp), DIMENSION(:), INTENT(in) :: r, y
-   ! Output
-   REAL(KIND=dp), DIMENSION(n) :: yspline
-   ! Local variables
-   REAL(KIND=dp), DIMENSION(n) :: u
-   REAL(KIND=dp), DIMENSION(3,3,5) :: coeff
-   INTEGER :: i
-   REAL(KIND=dp) :: sig, p, un, qn, der1, dern
-
-   ! der1 is the first derivative at r(1)
-   yspline(1) = -0.5_dp
-   call forward_derivative_weights(order=2, x0=r(1), r=r, coeff=coeff)
-   der1 = sum( coeff(1,2,1:4) * y(1:4) )  ! 2nd order accuracy
-   u(1) = (3.0_dp/(r(2)-r(1))) * ((y(2)-y(1))/(r(2)-r(1))-der1)
-
-   do i=2,n-1
-      sig = (r(i)-r(i-1))/(r(i+1)-r(i-1))
-      p = sig*yspline(i-1)+2.0_dp
-      yspline(i) = (sig-1.0_dp)/p
-
-      u(i) = (6.0_dp * ( (y(i+1)-y(i))/(r(i+1)-r(i)) -&
-                         (y(i)-y(i-1))/(r(i)-r(i-1)) )/&
-               (r(i+1)-r(i-1)) - sig*u(i-1)) / p
-   enddo
-
-   ! zero first derivative at r->infinity seems reasonable for our purposes
-   qn = 0.5_dp
-   dern = 0.0_dp
-   un = (3.0_dp/(r(n)-r(n-1))) * (dern - (y(n)-y(n-1))/(r(n)-r(n-1)) )
-
-   yspline(n) = (un-qn*u(n-1))/(qn*yspline(n-1)+1.0_dp);
-
-   do i=n-1,1,-1
-      yspline(i) = yspline(i)*yspline(i+1)+u(i)
-   enddo
-end subroutine spline
 
 ! Given a function `gy` on a grid `gr` and a requested
 ! function value y(r) interpolates the function value `y` using `spline`

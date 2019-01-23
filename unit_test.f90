@@ -1,10 +1,11 @@
 module nao_unit
 USE eddi, ONLY: integration_onecenter, integration_twocenter, integration_threecenter, &
                 kinetic_energy, coulomb_integral, spline, interpolation,&
-                forward_derivative_weights, bisection, derivative_point,&
-                derivatives, kah_sum, fun_grid
+                bisection, derivative_point,&
+                kah_sum, fun_grid
 USE lebedev, ONLY: dp
 USE grid, ONLY: radial_grid
+USE ni_fun, ONLY: forward_derivative_weights, derivatives
 implicit none
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 contains
@@ -19,11 +20,12 @@ contains
 subroutine test_onecenter(ntests, loud)
    implicit none
    LOGICAL :: loud
+   INTEGER :: ntests
    REAL(KIND=dp), DIMENSION(ntests) :: errors
    REAL(KIND=dp) :: integral, ri, err
    REAL(KIND=dp) :: rand
    REAL(KIND=dp), DIMENSION(15000) :: r, y, spline1
-   INTEGER :: j, ntests
+   INTEGER :: j
 
    print *, REPEAT('-', 30) // ' Testing One-Center ' // REPEAT('-', 30)
 
@@ -61,13 +63,14 @@ end subroutine test_onecenter
 subroutine test_twocenter(ntests, loud)
    implicit none
    LOGICAL :: loud
+   INTEGER :: ntests
    REAL(KIND=dp), DIMENSION(ntests) :: errors
    REAL(KIND=dp) :: integral, ri, err
    REAL(KIND=dp), DIMENSION(2) :: rand2, nshell_rand
    REAL(KIND=dp), DIMENSION(3) :: rand_pos
    REAL(KIND=dp), DIMENSION(15000) :: r1, r2, y1, y2, spline1, spline2
    INTEGER, DIMENSION(2) :: nshell
-   INTEGER :: j, ntests, ngrid
+   INTEGER :: j, ngrid
 
    print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
    ngrid = 100
@@ -125,12 +128,13 @@ end subroutine test_twocenter
 subroutine test_threecenter(ntests, loud)
    implicit none
    LOGICAL :: loud
+   INTEGER :: ntests
    REAL(KIND=dp), DIMENSION(ntests) :: errors
    REAL(KIND=dp) :: abc, integral, ri, err
    REAL(KIND=dp), DIMENSION(3) :: rand3, rand_pos1, rand_pos2, exparg, nshell_rand
    REAL(KIND=dp), DIMENSION(10000) :: r, y1, y2, y3, s1, s2, s3
    INTEGER, DIMENSION(3) :: nshell, nang
-   INTEGER :: j, ntests, ngrid
+   INTEGER :: j, ngrid
 
    print *, REPEAT('-', 30) // ' Testing Three-Center ' // REPEAT('-', 30)
    ngrid = 5000
@@ -199,11 +203,12 @@ end subroutine test_threecenter
 subroutine test_kinetic(ntests, loud)
    implicit none
    LOGICAL :: loud
+   INTEGER :: ntests
    REAL(KIND=dp), DIMENSION(ntests) :: errors
    REAL(KIND=dp) :: integral, ri, err
    REAL(KIND=dp), DIMENSION(2) :: rand2
    REAL(KIND=dp), DIMENSION(10000) :: r, wr, y1, y2, spline1, spline2, d2f2
-   INTEGER :: j, ntests, ngrid
+   INTEGER :: j, ngrid
 
    print *, REPEAT('-', 30) // ' Testing Kinetic energy ' // REPEAT('-', 30)
    ngrid = 2500
@@ -261,13 +266,14 @@ end subroutine test_kinetic
 subroutine test_coulomb(ntests, loud)
    implicit none
    LOGICAL :: loud
+   INTEGER :: ntests
    REAL(KIND=dp), DIMENSION(ntests) :: errors
    REAL(KIND=dp) :: integral, ri, err, alpha, norm
    REAL(KIND=dp), DIMENSION(2) :: rand2, nshell_rand
    REAL(KIND=dp), DIMENSION(3) :: rand_pos
    REAL(KIND=dp), DIMENSION(10000) :: r, y1, y2, spline1, spline2
    INTEGER, DIMENSION(2) :: nshell
-   INTEGER :: j, ntests, ngrid, coul_n
+   INTEGER :: j, ngrid, coul_n
 
    print *, REPEAT('-', 30) // ' Testing Coulomb ' // REPEAT('-', 30)
    ngrid = 5000
@@ -401,11 +407,12 @@ end subroutine test_radial_weight_asc
 subroutine test_radial_chebyherm(ntests, loud)
    implicit none
    LOGICAL :: loud
+   INTEGER :: ntests
    REAL(KIND=dp), DIMENSION(ntests) :: errors
    REAL(KIND=dp) :: integral_c, integral_h, ri, err
    REAL(KIND=dp) :: rand
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r_c, r_h, y, spline1, wr
-   INTEGER :: j, ntests, ngrid
+   INTEGER :: j, ngrid
 
    ngrid = 100
 
@@ -517,11 +524,12 @@ end subroutine test_spline
 ! 
 subroutine test_interpolation(ntests)
    implicit none
+   INTEGER :: ntests
    REAL(KIND=dp), DIMENSION(20000) :: r_orig, y_orig, s_orig
    REAL(KIND=dp), DIMENSION(500) :: r_interp, wr2, errors
    REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
    REAL(KIND=dp) :: alpha, y_interp, y_exact, abs_error
-   INTEGER :: i, ntests, t
+   INTEGER :: i, t
 
    ! We want to now the function on r_interp...
    call radial_grid(r=r_interp, wr=wr2, n=size(r_interp), addr2=.FALSE., quadr=1)
