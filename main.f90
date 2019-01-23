@@ -19,7 +19,7 @@ pfun => fun
 call allocate_fun(fun=pfun, n=size(r))
 call prepare_fun(r=r, f=f, fun=pfun)
 do i=1,size(r)
-  print *, fun%r(i), fun%y(i), fun%y1(i), fun%y2(i)
+  ! print *, fun%r(i), fun%y(i), fun%y1(i), fun%y2(i)
 enddo
 call deallocate_fun(fun=pfun)
 

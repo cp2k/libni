@@ -6,7 +6,7 @@ USE eddi, ONLY: type_atom, integration_twocenter, &
                 integration_onecenter, coulomb_integral, coulomb_integral_grid, &
                 radial_integration, pp_projector, pp_nonloc,&
                 forward_derivative_weights
-USE grid, ONLY: grid_parameters, radial_grid, gauher
+USE ni_grid, ONLY: grid_parameters, radial_grid, gauher
 USE ni_fun, ONLY: type_fun, prepare_fun
 USE nao_unit, ONLY: test_onecenter, test_twocenter, test_threecenter, test_kinetic, &
                     test_coulomb,&

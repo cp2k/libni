@@ -1,7 +1,7 @@
 module nao_grad_unit
 USE eddi, ONLY: pi, spline
 USE lebedev, ONLY: dp, lebedev_grid, get_number_of_lebedev_grid
-USE grid, ONLY: build_onecenter_grid, radial_grid
+USE ni_grid, ONLY: build_onecenter_grid, radial_grid
 USE gradients, ONLY: jacobian, grad_twocenter, grad_twocenter_fd,&
                      grad_kinetic, grad_kinetic_fd,&
                      grad_coulomb, grad_coulomb_fd

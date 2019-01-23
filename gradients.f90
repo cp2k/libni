@@ -3,7 +3,7 @@ USE lebedev, ONLY: dp, get_number_of_lebedev_grid, lebedev_grid
 USE eddi, ONLY: pi, spline, interpolation, integration_twocenter,&
                 kinetic_energy, coulomb_integral,&
                 kah_sum
-USE grid, ONLY: radial_grid, build_onecenter_grid, build_twocenter_grid
+USE ni_grid, ONLY: radial_grid, build_onecenter_grid, build_twocenter_grid
 USE spherical_harmonics, ONLY: rry_lm, dry_lm
 USE ni_fun, ONLY: derivatives
 
