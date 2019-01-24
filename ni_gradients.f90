@@ -1,6 +1,7 @@
 module ni_gradients
-USE lebedev, ONLY: dp, get_number_of_lebedev_grid, lebedev_grid
-USE eddi, ONLY: pi, spline, interpolation, integration_twocenter,&
+USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
+USE lebedev, ONLY: get_number_of_lebedev_grid, lebedev_grid
+USE eddi, ONLY: spline, interpolation, integration_twocenter,&
                 kinetic_energy, coulomb_integral,&
                 kah_sum
 USE ni_grid, ONLY: radial_grid, build_onecenter_grid, build_twocenter_grid,&

@@ -1,13 +1,12 @@
 module eddi
+USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
 USE lebedev, ONLY: lebedev_grid,&
-                   get_number_of_lebedev_grid,&
-                   dp
+                   get_number_of_lebedev_grid
 USE ni_grid, ONLY: build_onecenter_grid, build_twocenter_grid, build_threecenter_grid, &
                 type_grid, radial_grid
 USE spherical_harmonics, ONLY: rry_lm
 USE ni_fun, ONLY: forward_derivative_weights, spline
 implicit none
-REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 
 type :: type_atom
    REAL(KIND=dp), DIMENSION(3) :: r = 0.0_dp

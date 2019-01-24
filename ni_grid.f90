@@ -1,13 +1,7 @@
 module ni_grid
-USE lebedev, ONLY: dp, lebedev_grid
+USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
+USE lebedev, ONLY: lebedev_grid
 implicit none
-type :: type_grid
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: r
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: w
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: dw
-end type type_grid
-REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
-
 public :: type_grid, build_onecenter_grid, build_twocenter_grid, &
           build_threecenter_grid, radial_grid
     
@@ -17,10 +11,13 @@ subroutine allocate_grid(grid, n)
    implicit none
    TYPE(type_grid), POINTER :: grid
    INTEGER :: n
-
+   if (associated(grid)) then
    allocate(grid%r(n, 3))
    allocate(grid%w(n))
    allocate(grid%dw(n, 3))
+   else
+   stop 'Grid is not associated!'
+   endif
 end subroutine allocate_grid
 
 subroutine deallocate_grid(grid)
@@ -90,10 +87,11 @@ subroutine build_onecenter_grid(ileb, nshell, addr2, quadr, grid)
    call radial_grid(r=radii, &
                     wr=radii_w, &
                     n=nshell, addr2=aa, quadr=quadr)
-
    ngrid = lebedev_grid(ileb)%n * nshell
+print *, 'build_onecenter_grid'
    call allocate_grid(grid=grid, n=ngrid)
 
+print *, 'i will survive 🎶'
    do i=1, lebedev_grid(ileb)%n
       lower = 1+(i-1)*nshell
       upper = i*nshell

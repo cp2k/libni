@@ -1,13 +1,13 @@
 program test_suite 
-USE lebedev, ONLY: dp
-USE eddi, ONLY: type_atom, integration_twocenter, &
+USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
+USE eddi, ONLY: integration_twocenter, &
                 read_nfun, pi, interpolation, spline, &
                 integration_threecenter, kinetic_energy, &
                 integration_onecenter, coulomb_integral, coulomb_integral_grid, &
                 radial_integration, pp_projector, pp_nonloc,&
                 forward_derivative_weights
 USE ni_grid, ONLY: grid_parameters, radial_grid, gauher
-USE ni_fun, ONLY: type_fun, prepare_fun
+USE ni_fun, ONLY: prepare_fun
 USE nao_unit, ONLY: test_onecenter, test_twocenter, test_threecenter, test_kinetic, &
                     test_coulomb,&
                     test_radial_weight_pos, test_radial_chebyherm, test_radial_weight_asc, &

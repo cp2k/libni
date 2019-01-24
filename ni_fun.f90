@@ -1,12 +1,6 @@
 module ni_fun
-USE lebedev, ONLY: dp
+USE ni_types, ONLY: dp, pi, ni_env, type_grid, type_fun
 implicit none
-REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp
-
-type :: type_fun
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: y, y1, y2, y3, y4, y5
-end type type_fun
 
 public :: type_fun, fun_grid, prepare_fun, prepare_gauss
 contains
