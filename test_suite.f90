@@ -1,28 +1,47 @@
 program test_suite 
 USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
-USE eddi, ONLY: integration_twocenter, &
-                read_nfun, pi, interpolation, spline, &
-                integration_threecenter, kinetic_energy, &
-                integration_onecenter, coulomb_integral, coulomb_integral_grid, &
-                radial_integration, pp_projector, pp_nonloc,&
+USE eddi, ONLY: integration_twocenter,&
+                read_nfun,&
+                interpolation,&
+                spline,&
+                integration_threecenter,&
+                kinetic_energy,&
+                integration_onecenter,&
+                coulomb_integral,&
+                coulomb_integral_grid,&
+                radial_integration,&
+                pp_projector,&
+                pp_nonloc,&
                 forward_derivative_weights
 USE ni_grid, ONLY: grid_parameters, radial_grid, gauher
 USE ni_fun, ONLY: prepare_fun
-USE nao_unit, ONLY: test_onecenter, test_twocenter, test_threecenter, test_kinetic, &
+USE nao_unit, ONLY: test_onecenter,&
+                    test_twocenter,&
+                    test_threecenter,&
+                    test_kinetic,&
                     test_coulomb,&
-                    test_radial_weight_pos, test_radial_chebyherm, test_radial_weight_asc, &
-                    test_forward_deriv_coeff, test_spline,&
-                    test_derivative_point_on, test_derivative_point_off,&
+                    test_radial_weight_pos,&
+                    test_radial_chebyherm,&
+                    test_radial_weight_asc,&
+                    test_forward_deriv_coeff,&
+                    test_spline,&
+                    test_derivative_point_on,&
+                    test_derivative_point_off,&
                     test_interpolation,&
-                    test_derivative_on, test_derivative_off,&
+                    test_derivative_on,&
+                    test_derivative_off,&
                     test_derivatives
-USE nao_grad_unit, ONLY: test_jacobian, test_twocenter_grad, test_kinetic_grad,&
-                         test_kinetic_fd, test_twocenter_fd, test_coulomb_grad
+USE nao_grad_unit, ONLY: test_jacobian,&
+                         test_twocenter_grad,&
+                         test_kinetic_grad,&
+                         test_kinetic_fd,&
+                         test_twocenter_fd,&
+                         test_coulomb_grad
 implicit none
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 ! --  Tests concerning radial grids and functions on those grids -- !
-! call test_radial_weight_pos(ntests=9)
-! call test_radial_weight_asc(ntests=9)
+call test_radial_weight_pos(ntests=9)
+call test_radial_weight_asc(ntests=9)
 call test_radial_chebyherm(ntests=9, loud=.FALSE.)
 call test_spline(ntests=10)
 call test_interpolation(ntests=1)

@@ -88,10 +88,8 @@ subroutine build_onecenter_grid(ileb, nshell, addr2, quadr, grid)
                     wr=radii_w, &
                     n=nshell, addr2=aa, quadr=quadr)
    ngrid = lebedev_grid(ileb)%n * nshell
-print *, 'build_onecenter_grid'
    call allocate_grid(grid=grid, n=ngrid)
 
-print *, 'i will survive 🎶'
    do i=1, lebedev_grid(ileb)%n
       lower = 1+(i-1)*nshell
       upper = i*nshell

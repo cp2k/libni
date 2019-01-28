@@ -2,8 +2,13 @@ module eddi
 USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
 USE lebedev, ONLY: lebedev_grid,&
                    get_number_of_lebedev_grid
-USE ni_grid, ONLY: build_onecenter_grid, build_twocenter_grid, build_threecenter_grid, &
-                type_grid, radial_grid
+USE ni_grid, ONLY: build_onecenter_grid,&
+                   build_twocenter_grid,&
+                   build_threecenter_grid,&
+                   type_grid,&
+                   radial_grid,&
+                   allocate_grid,&
+                   deallocate_grid
 USE spherical_harmonics, ONLY: rry_lm
 USE ni_fun, ONLY: forward_derivative_weights, spline
 implicit none
@@ -173,7 +178,8 @@ subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
    REAL(KIND=dp) :: integral
    ! Local variables
    INTEGER :: ileb, ngrid, i
-   TYPE(type_grid), POINTER :: grid
+   TYPE(type_grid), TARGET :: grid
+   TYPE(type_grid), POINTER :: pgrid
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: int_i
    REAL(KIND=dp) :: norm
    ! End header
@@ -183,8 +189,9 @@ subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
    allocate(int_i(ngrid))
    int_i = 0.0_dp
 
-   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE., quadr=quadr,&
-                             grid=grid)
+   pgrid => grid
+   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
+                             quadr=quadr, grid=pgrid)
 
    do i=1,size(grid%w)
       norm = sqrt(sum( grid%r(i, :)**2 ))
@@ -194,7 +201,7 @@ subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
    integral = kah_sum(grid%w*int_i)
 
    deallocate(int_i)
-   deallocate(grid)
+   call deallocate_grid(grid=pgrid)
 end subroutine integration_onecenter
 
 function kah_sum(arr)
