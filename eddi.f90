@@ -204,25 +204,6 @@ subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
    call deallocate_grid(grid=pgrid)
 end subroutine integration_onecenter
 
-function kah_sum(arr)
-   implicit none
-   REAL(KIND=dp), DIMENSION(:) :: arr
-   REAL(KIND=dp) :: sum, c, t, kah_sum
-   INTEGER :: i
-   sum = arr(1)
-   c = 0._dp
-   do i=2, size(arr)
-      t = sum + arr(i)
-      if (abs(sum) .ge. abs(arr(i))) then
-         c = c + (sum-t) + arr(i)
-      else
-         c = c + (arr(i)-t) + sum
-      endif
-      sum = t
-   enddo
-   kah_sum = sum + c
-end function kah_sum
-
 subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
                                  spline1, spline2, integral)
    implicit none
@@ -234,7 +215,8 @@ subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
    ! Output
    REAL(KIND=dp) :: integral
    ! Local variables
-   TYPE(type_grid), POINTER :: grid
+   TYPE(type_grid), TARGET :: grid
+   TYPE(type_grid), POINTER :: pgrid
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: f1, f2
    REAL(KIND=dp) :: norm, ylm
    INTEGER, DIMENSION(2) :: ileb
@@ -248,8 +230,9 @@ subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
    allocate(f1(ngrid))
    allocate(f2(ngrid))
 
+   pgrid => grid
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.TRUE., grid=grid)
+                             addr2=.TRUE., grid=pgrid)
 
    do i=1,ngrid
       if (grid%w(i) .eq. 0.0_dp) cycle         
@@ -268,8 +251,7 @@ subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
 
    deallocate(f1)
    deallocate(f2)
-   deallocate(grid)
-
+   call deallocate_grid(grid=pgrid)
 end subroutine integration_twocenter
 
 subroutine integration_threecenter(nang, nshell, d12, d13, &
@@ -285,7 +267,8 @@ subroutine integration_threecenter(nang, nshell, d12, d13, &
    REAL(KIND=dp) :: integral
 
    ! Local variables
-   TYPE(type_grid), POINTER :: grid
+   TYPE(type_grid), TARGET :: grid
+   TYPE(type_grid), POINTER :: pgrid
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: f1, f2, f3
    REAL(KIND=dp) :: norm
    INTEGER, DIMENSION(3) :: ileb
@@ -302,8 +285,9 @@ subroutine integration_threecenter(nang, nshell, d12, d13, &
    allocate(f2(ngrid))
    allocate(f3(ngrid))
 
+   pgrid => grid
    call build_threecenter_grid(ileb=ileb, nshell=nshell, d12=d12, d13=d13, &
-                               addr2=.TRUE., grid=grid)
+                               addr2=.TRUE., grid=pgrid)
 
    do i=1,ngrid
       norm = sqrt(sum( grid%r(i, :)**2 ))
@@ -320,7 +304,7 @@ subroutine integration_threecenter(nang, nshell, d12, d13, &
    deallocate(f1)
    deallocate(f2)
    deallocate(f3)
-   deallocate(grid)
+   call deallocate_grid(grid=pgrid)
 end subroutine integration_threecenter
 
 subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
@@ -334,7 +318,8 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
    ! Output
    REAL(KIND=dp) :: integral
    ! Local variables
-   TYPE(type_grid), POINTER :: grid
+   TYPE(type_grid), TARGET :: grid
+   TYPE(type_grid), POINTER :: pgrid
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: rf2, d2rf2, d2rf2_spline, f1, f2
    REAL(KIND=dp) :: norm, ylm, df2
    INTEGER, DIMENSION(2) :: ileb
@@ -353,8 +338,9 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
    allocate(d2rf2(size(r2)))
    allocate(d2rf2_spline(size(r2)))
 
+   pgrid => grid
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, addr2=.FALSE.,&
-                             grid=grid)
+                             grid=pgrid)
    ! < f1 | -0.5*🔺 | f2 >
    ! Laplace_r = 1/r * d_r^2(r*f2)
    rf2 = r2*y2
@@ -363,7 +349,12 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
    call spline(r2, d2rf2, size(r2), d2rf2_spline)
    d2rf2 = d2rf2/r2
 
+   if (r2(1) .lt. epsilon(0._dp)) then
+      d2rf2(1) = 0._dp
+   endif
+
    do i=1,ngrid
+      ! print *, i
       ! T = -0.5 * ∫f1*Ylm * (D_r f2(r) - l'(l'+1)*f2/r^2 ) * Yl'm'
       norm = sqrt(sum( grid%r(i, :)**2 ))
       call interpolation(r1, y1, spline1, norm, f1(i))
@@ -371,6 +362,7 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
       f1(i) = f1(i) * ylm * norm**2
 
       norm = sqrt(sum( (grid%r(i, :) - d12)**2 ))
+      ! print *, 'interpolat 2'
       call interpolation(r2, d2rf2, d2rf2_spline, norm, df2)  ! D_r f2
       call interpolation(r2, y2, spline2, norm, f2(i))        ! f2
       call rry_lm(l=l(2), m=m(2), r=(grid%r(i, :) - d12)/norm, y=ylm)
@@ -380,13 +372,13 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
       f2(i) = f2(i) * ylm
    enddo
 
-   integral = -0.5_dp*sum(grid%w * f1*f2)
+   integral = -0.5_dp*kah_sum(grid%w * f1*f2)
 
    deallocate(f1)
    deallocate(f2)
    deallocate(d2rf2)
    deallocate(d2rf2_spline)
-   deallocate(grid)
+   call deallocate_grid(grid=pgrid)
 end subroutine kinetic_energy
 
 subroutine coulomb_integral(nshell, coul_n, d12, l, m,&
@@ -450,7 +442,8 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    ! Output
    REAL(KIND=dp) :: integral
    ! Local variables
-   TYPE(type_grid), POINTER :: grid
+   TYPE(type_grid), TARGET :: grid
+   TYPE(type_grid), POINTER :: pgrid
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: f, gi, hi, G, H
    REAL(KIND=dp) :: norm
    INTEGER, DIMENSION(2) :: ileb
@@ -473,8 +466,9 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    ! When integrating f1 - retrieving the coulomb potential - the radial weights
    ! need to be included in order to get the right potential. After that the
    ! regular weights are used for the overlap integral
+   pgrid => grid
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.FALSE., grid=grid)
+                             addr2=.FALSE., grid=pgrid)
 
    ! First we need all unique distances
    !! together with the weights
@@ -552,7 +546,7 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    deallocate(pot)
    deallocate(coul_r)
    deallocate(coul_w)
-   deallocate(grid)
+   call deallocate_grid(grid=pgrid)
 end subroutine coulomb_integral_grid
 
 subroutine derivative_point(r, y, r0, y1)
@@ -742,5 +736,24 @@ recursive subroutine qsort_sim2(arr, brr)
    if (first .lt. (i-1)) call qsort_sim2( arr(first:i-1), brr(first:i-1) )
    if ((j+1) .lt. last) call qsort_sim2( arr(j+1:last), brr(j+1:last) )
 end subroutine qsort_sim2
+
+function kah_sum(arr)
+   implicit none
+   REAL(KIND=dp), DIMENSION(:) :: arr
+   REAL(KIND=dp) :: sum, c, t, kah_sum
+   INTEGER :: i
+   sum = arr(1)
+   c = 0._dp
+   do i=2, size(arr)
+      t = sum + arr(i)
+      if (abs(sum) .ge. abs(arr(i))) then
+         c = c + (sum-t) + arr(i)
+      else
+         c = c + (arr(i)-t) + sum
+      endif
+      sum = t
+   enddo
+   kah_sum = sum + c
+end function kah_sum
 
 end module eddi

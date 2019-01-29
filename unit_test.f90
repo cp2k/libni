@@ -13,10 +13,8 @@ contains
 ! --  Tests concerning the integrals -- !
 ! When we go about this stuff, the relative error does not matter
 ! all that much, since we want to compute values ~1. If we demand
-! accuracy up to ~1meV we end up at something like 1e-4 = 1e-3/27 (adv. math)
-! unless the total error should be 1meV and we have to make sure, that
-! 1000 * our error < 1meV, assuming that the errors just add linearly. Then
-! we can deal with an error of 1e-5. Ö
+! accuracy up to ~1meV we end up at something like 1e-4 ~= 1e-3/27
+
 subroutine test_onecenter(ntests, loud)
    implicit none
    LOGICAL :: loud
@@ -31,7 +29,7 @@ subroutine test_onecenter(ntests, loud)
 
    do j=1,ntests
       CALL RANDOM_NUMBER(rand)
-      rand = rand * 5.0_dp + 0.1_dp
+      rand = rand * 3.0_dp + 0.1_dp
       call fun_grid(r=r, max=75._dp/rand)
 
       ! Prepare function
@@ -94,8 +92,6 @@ subroutine test_twocenter(ntests, loud)
       call spline(r1, y1, size(r1), spline1)
       call spline(r2, y2, size(r2), spline2)
 
-      ! Prepare the grid
-
       call integration_twocenter(l=(/0, 0/), m=(/0, 0/), nshell=nshell, d12=rand_pos, &
                                  r1=r1, y1=y1, r2=r2, y2=y2,&
                                  spline1=spline1, spline2=spline2, integral=integral)
@@ -142,7 +138,7 @@ subroutine test_threecenter(ntests, loud)
    do j=1,ntests
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand3)
-      rand3 = rand3 * 5.0_dp + 0.5_dp
+      rand3 = rand3 * 3.0_dp + 0.5_dp
       ! Displacement
       CALL RANDOM_NUMBER(rand_pos1)
       rand_pos1 = rand_pos1 * sqrt(5.0_dp)
@@ -213,11 +209,10 @@ subroutine test_kinetic(ntests, loud)
    print *, REPEAT('-', 30) // ' Testing Kinetic energy ' // REPEAT('-', 30)
    ngrid = 2500
 
-
    do j=1,ntests
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand2)
-      rand2 = rand2 * 5.0_dp + 0.5_dp
+      rand2 = rand2 * 3.0_dp + 0.5_dp
       call fun_grid(r=r, max=75._dp/maxval(rand2))
 
       ! Prepare grids
@@ -283,10 +278,10 @@ subroutine test_coulomb(ntests, loud)
    do j=1,ntests
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand2)
-      rand2 = rand2 * 5.0_dp + 0.5_dp
+      rand2 = rand2 * 3.0_dp + 0.5_dp
       ! Displacement
       CALL RANDOM_NUMBER(rand_pos)
-      rand_pos = rand_pos * sqrt(10.0_dp) - 5_dp
+      rand_pos = rand_pos * sqrt(10.0_dp) - 5._dp
       ! nshell
       CALL RANDOM_NUMBER(nshell_rand)
       nshell = (/ 75, 75 /) + INT(50 * nshell_rand) + 1000
@@ -430,7 +425,7 @@ subroutine test_radial_chebyherm(ntests, loud)
    do j=1,ntests
       ! Gaussian exponents
       CALL RANDOM_NUMBER(rand)
-      rand = rand * 5.0_dp + 0.1_dp
+      rand = rand * 3.0_dp + 0.1_dp
 
       ! Prepare grids
       y = exp(-rand * r_c**2 )
@@ -843,7 +838,7 @@ subroutine test_derivative_on(ntests)
    tot_errors = 0.0_dp
    do t=1,ntests
       ! Set up the gaussian function and its derivatives analytically
-      call RANDOM_NUMBER(alpha); alpha = alpha * 5.0_dp + 0.1_dp
+      call RANDOM_NUMBER(alpha); alpha = alpha * 3.0_dp + 0.1_dp
 
       call fun_grid(r=r, max=sqrt(75._dp/alpha))
       y = exp(-alpha * r**2)
@@ -894,7 +889,7 @@ subroutine test_derivative_off(ntests)
    tot_errors = 0.0_dp
    do t=1,ntests
       ! Set up the gaussian function and its derivatives analytically
-      call RANDOM_NUMBER(alpha); alpha = alpha * 5.0_dp + 0.1_dp
+      call RANDOM_NUMBER(alpha); alpha = alpha * 3.0_dp + 0.1_dp
       call fun_grid(r=r, max=75._dp/alpha)
 
       y = exp(-alpha * r**2)
