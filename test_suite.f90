@@ -61,9 +61,9 @@ implicit none
 ! call test_kinetic(ntests=3, loud=.FALSE.)
 ! call test_coulomb(ntests=3, loud=.FALSE.)
 
-call test_twocenter_grad()
-! call test_kinetic_grad()
-! call test_coulomb_grad()    
+! call test_twocenter_grad(loud=.FALSE.)
+call test_kinetic_grad(loud=.TRUE.)
+! call test_coulomb_grad(loud=.FALSE.)    
 ! call test_jacobian()
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 end program test_suite

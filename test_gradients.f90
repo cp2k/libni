@@ -1,6 +1,7 @@
 module nao_grad_unit
-USE eddi, ONLY: pi, spline
-USE lebedev, ONLY: dp, lebedev_grid, get_number_of_lebedev_grid
+USE eddi, ONLY: spline
+USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
+USE lebedev, ONLY: lebedev_grid, get_number_of_lebedev_grid
 USE ni_grid, ONLY: build_onecenter_grid, radial_grid, type_grid
 USE ni_gradients, ONLY: jacobian, grad_twocenter, grad_twocenter_fd,&
                      grad_kinetic, grad_kinetic_fd,&
@@ -8,7 +9,8 @@ USE ni_gradients, ONLY: jacobian, grad_twocenter, grad_twocenter_fd,&
 implicit none
 contains
 
-subroutine test_coulomb_grad()
+subroutine test_coulomb_grad(loud)
+   LOGICAL, INTENT(IN) :: loud
    REAL(KIND=dp), DIMENSION(250) :: r, y1, wr, y2, s1, s2
    REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
    REAL(KIND=dp), DIMENSION(1000,3) :: error
@@ -44,12 +46,14 @@ subroutine test_coulomb_grad()
       if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
       if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
       if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-      if ( any( error(c, :)  .gt. 0.1_dp  )) then
-         print *, '   ', l1, m1, l2, m2
-         print *, 'e  ', grad1
-         print *, 'fd ', grad2
-         print *, 'ra ', error(c, :)
-         print *, achar(7)  ! beep, boop
+      if (loud .eqv. .TRUE.) then
+         if ( any( error(c, :)  .gt. 0.1_dp  )) then
+            print *, '   ', l1, m1, l2, m2
+            print *, 'e  ', grad1
+            print *, 'fd ', grad2
+            print *, 'ra ', error(c, :)
+            print *, achar(7)  ! beep, boop
+         endif
       endif
       ! write (*, *) n, grad1, grad2, sum( error(c,:) )/3._dp
    ! close(111)
@@ -62,7 +66,8 @@ subroutine test_coulomb_grad()
    print *, 'max error', maxval(error(1:c, :), 1)
 end subroutine test_coulomb_grad
 
-subroutine test_kinetic_grad()
+subroutine test_kinetic_grad(loud)
+   LOGICAL, INTENT(IN) :: loud
    REAL(KIND=dp), DIMENSION(15000) :: r, y1, wr, y2, d1y, d2y, d3y
    REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
    REAL(KIND=dp), DIMENSION(1000,3) :: error
@@ -85,7 +90,7 @@ subroutine test_kinetic_grad()
    ! do l2=l1,1
    ! do m1=-l1,l1
    ! do m2=-l2,l2
-   print *, '   ', l1, m1, l2, m2
+   ! print *, '   ', l1, m1, l2, m2
    ! l1 = 0; m1 = 0; l2 = 1; m2 = 0;
    ! open(unit=111, file='ipynb/llmm0010_nvar')
    ! do n = 10, 400, 30
@@ -106,12 +111,14 @@ subroutine test_kinetic_grad()
       if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
       if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
       if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-      ! if ( any( error(c, :)  .gt. 1.e-5_dp  )) then
-         ! print *, '   ', l1, m1, l2, m2
-         print *, 'fd ', grad2
-         print *, 'ra ', error(c, :)
-         print *, achar(7)  ! beep, boop
-      ! endif
+      if (loud .eqv. .TRUE.) then
+         if ( any( error(c, :)  .gt. 1.e-5_dp  )) then
+            print *, '   ', l1, m1, l2, m2
+            print *, 'fd ', grad2
+            print *, 'ra ', error(c, :)
+            print *, achar(7)  ! beep, boop
+         endif
+      endif
       ! write (111, *) n, grad1, grad2, sum( error(c,:) )/3._dp
    ! enddo
    ! close(111)
@@ -150,7 +157,8 @@ subroutine test_kinetic_fd()
    close(111)
 end subroutine test_kinetic_fd
 
-subroutine test_twocenter_grad()
+subroutine test_twocenter_grad(loud)
+   LOGICAL, INTENT(IN) :: loud
    REAL(KIND=dp), DIMENSION(1000) :: r, y1, wr, y2
    REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
    REAL(KIND=dp), DIMENSION(1000,3) :: error
@@ -181,15 +189,17 @@ subroutine test_twocenter_grad()
       if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
       if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
       if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-      ! if ( any( error(c, :)  .gt. 0.1_dp  )) then
-         print *, '   ', l1, m1, l2, m2
-         print *, 'e  ', grad1
-         print *, 'fd ', grad2
-         print *, 'ra ', error(c, :), '/3 = ', sum(error(c, :))/3._dp
-         ! print *,
-      ! else
-         ! print *, '👌  ', l1, m1, l2, m2
-      ! endif
+      if(loud .eqv. .TRUE.) then
+         if ( any( error(c, :)  .gt. 0.1_dp  )) then
+            print *, '   ', l1, m1, l2, m2
+            print *, 'e  ', grad1
+            print *, 'fd ', grad2
+            print *, 'ra ', error(c, :), '/3 = ', sum(error(c, :))/3._dp
+            print *,
+         else
+            print *, '👌  ', l1, m1, l2, m2
+         endif
+      endif
    enddo
    enddo
    enddo

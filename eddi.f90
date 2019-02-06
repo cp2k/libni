@@ -608,6 +608,7 @@ subroutine interpolation(gr, gy, spline, r, y, yprime)
          print *, gr(upper), gr(low), gy(upper), gy(low)
          print *, spline(low), spline(upper)
          print *, A, B, C, D
+         print *, "End interpolation output"
       endif
       ! y = A*gy(low) + B*gy(upper)
       if (present(yprime)) then

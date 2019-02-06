@@ -5,7 +5,7 @@ USE eddi, ONLY: spline, interpolation, integration_twocenter,&
                 kinetic_energy, coulomb_integral,&
                 kah_sum
 USE ni_grid, ONLY: radial_grid, build_onecenter_grid, build_twocenter_grid,&
-                   type_grid
+                   type_grid, deallocate_grid
 USE spherical_harmonics, ONLY: rry_lm, dry_lm
 USE ni_fun, ONLY: derivatives
 
@@ -28,7 +28,8 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
    ! Local variables
    INTEGER :: i, j
    ! Local variables (integration)
-   TYPE(type_grid), POINTER :: grid
+   TYPE(type_grid), TARGET :: grid
+   TYPE(type_grid), POINTER :: pgrid
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: tmp_grad
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: dy2, dy2s
    REAL(KIND=dp), DIMENSION(3) :: dylm2, dr, dtheta, dphi
@@ -74,8 +75,9 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
            lebedev_grid(ileb(2))%n * nshell(2)
    allocate(tmp_grad(ngrid, 3))
 
+   pgrid => grid
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.FALSE., grid=grid)
+                             addr2=.FALSE., grid=pgrid)
 
    allocate(dy2(size(r2)))
    allocate(dy2s(size(r2)))
@@ -158,6 +160,7 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
    deallocate(coul_r)
    deallocate(pot)
    deallocate(pots)
+   call deallocate_grid(grid=pgrid)
 end subroutine grad_coulomb
 
 subroutine grad_coulomb_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
@@ -264,7 +267,8 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
    ! Local variables
    INTEGER, DIMENSION(2) :: ileb
    INTEGER :: i, ngrid
-   TYPE(type_grid), POINTER :: grid
+   TYPE(type_grid), TARGET :: grid
+   TYPE(type_grid), POINTER :: pgrid
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: tmp_grad
    REAL(KIND=dp), DIMENSION(size(r1)) :: s1
    REAL(KIND=dp), DIMENSION(size(r2)) :: s2, ddf2_spline
@@ -287,10 +291,9 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
            lebedev_grid(ileb(2))%n * nshell(2)
    allocate(tmp_grad(ngrid, 3))
 
-   grid%dw = 0._dp
-
+   pgrid => grid
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.FALSE., grid=grid)
+                             addr2=.FALSE., grid=pgrid)
    !  N                        ~      ~
    !  Σ  w  * f(r) * Y(r)  Δ f(r) * Y(r) ,
    ! i=1  i    1 i    1 i     2 i    2 i
@@ -357,9 +360,6 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
                + (ll1 + 2._dp)/norm**3 * df2 - (2._dp * ll1)/norm**4 * f2
 
 
-      ! rel
-      ! flap   0.00000187787
-      ! xdflap 0.00000119142
       dylm = dylm2(1)*dtheta(1) + dylm2(2)*dphi(1)
       tmp_grad(i, 1) = grid%dw(i, 1) * flap     * ylm2 +&
                        grid%w(i)     * x*dflap  * ylm2 +&
@@ -377,54 +377,51 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
                        grid%w(i)     * z*dflap  * ylm2 +&
                        grid%w(i)     * flap     * dylm
 
-      if (i .eq. 60306) then
-         print *, i, norm
-         print *, 'd12', d12
-         print *, 'norm1', sqrt( sum( grid%r(i, :)**2 ) )
-         print *, 'norm2', norm
-         print *, 'grid%r ', grid%r(i, :)
-         print *, 'x, y, z', x, y, z
-         print *, 'theta, phi, ll1', theta, phi, ll1
-         print *, 
-         print *, 'f2', f2
-         print *, 'df2', df2
-         print *, 'ddf2', ddf2
-         print *, 'dddf2', dddf2
-         print *, 'flap', flap
-         print *, 'x*dflap', x*dflap
-         print *,
-         print *, 'ylm1, ylm2', ylm1, ylm2
-         print *, '–---------- tmp_grad(i,3) –----------'
-         print *, 'grid%w(i)', grid%w(i)
-         print *,
-         print *, 'dr(1),', dr(1)
-         print *, '(dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2)', (dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2)
-         print *, '2._dp*z*( df2/norm**3 + ll1*f2 )', 2._dp*z*( df2/norm**3 + ll1*f2 )
-         print *, 
-         print *, 'grid%dw(i, 3)', grid%dw(i, 3)
-         print *,
-         print *, 'dylm', dylm
-         print *, 'dylm2(1)*dtheta(1)', dylm2(1)*dtheta(1)
-         print *, 'dylm2', dylm2
-         print *, 'dtheta(1)', dtheta(1)
-         print *, 
-         print *, 'tmp_grad(i, 1)', tmp_grad(i, 1)
-      endif
+      ! if (.FALSE. .and. i .eq. 60306) then
+      !    print *, i, norm
+      !    print *, 'd12', d12
+      !    print *, 'norm1', sqrt( sum( grid%r(i, :)**2 ) )
+      !    print *, 'norm2', norm
+      !    print *, 'grid%r ', grid%r(i, :)
+      !    print *, 'x, y, z', x, y, z
+      !    print *, 'theta, phi, ll1', theta, phi, ll1
+      !    print *, 
+      !    print *, 'f2', f2
+      !    print *, 'df2', df2
+      !    print *, 'ddf2', ddf2
+      !    print *, 'dddf2', dddf2
+      !    print *, 'flap', flap
+      !    print *, 'x*dflap', x*dflap
+      !    print *,
+      !    print *, 'ylm1, ylm2', ylm1, ylm2
+      !    print *, '–---------- tmp_grad(i,3) –----------'
+      !    print *, 'grid%w(i)', grid%w(i)
+      !    print *,
+      !    print *, 'dr(1),', dr(1)
+      !    print *, '(dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2)', (dddf2 + 2._dp/norm * ddf2 - ll1/norm**2 * df2)
+      !    print *, '2._dp*z*( df2/norm**3 + ll1*f2 )', 2._dp*z*( df2/norm**3 + ll1*f2 )
+      !    print *, 
+      !    print *, 'grid%dw(i, 3)', grid%dw(i, 3)
+      !    print *,
+      !    print *, 'dylm', dylm
+      !    print *, 'dylm2(1)*dtheta(1)', dylm2(1)*dtheta(1)
+      !    print *, 'dylm2', dylm2
+      !    print *, 'dtheta(1)', dtheta(1)
+      !    print *, 
+      !    print *, 'tmp_grad(i, 1)', tmp_grad(i, 1)
+      ! endif
 
       ! Concluding...
       tmp_grad(i, :) = -0.5_dp * f1 * ylm1 * tmp_grad(i, :) 
    enddo
 
    grad = 0._dp
-   print *, 'start first sum'
    grad(1) = kah_sum(tmp_grad(:,1))
-   print *, 'start second sum'
    grad(2) = kah_sum(tmp_grad(:,2))
-   print *, 'start third sum'
    grad(3) = kah_sum(tmp_grad(:,3))
-   print *, 'start third sum'
 
    deallocate(tmp_grad)
+   call deallocate_grid(grid=pgrid)
 end subroutine grad_kinetic
 
 subroutine grad_kinetic_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
@@ -537,7 +534,8 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    ! Local variables
    INTEGER, DIMENSION(2) :: ileb
    INTEGER :: ngrid, i
-   TYPE(type_grid), POINTER :: grid
+   TYPE(type_grid), TARGET :: grid
+   TYPE(type_grid), POINTER :: pgrid
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: tmp_grad
    REAL(KIND=dp), DIMENSION(size(r1)) :: s1
    REAL(KIND=dp), DIMENSION(size(r2)) :: s2
@@ -552,10 +550,9 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
            lebedev_grid(ileb(2))%n * nshell(2)
    allocate(tmp_grad(ngrid, 3))
 
-   grid%dw = 0._dp
-
+   pgrid => grid
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.TRUE., grid=grid)
+                             addr2=.TRUE., grid=pgrid)
    call spline(r=r1, y=y1, n=size(r1), yspline=s1)
    call spline(r=r2, y=y2, n=size(r2), yspline=s2)
 
@@ -631,6 +628,7 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    grad(3) = kah_sum(tmp_grad(:,3))
 
    deallocate(tmp_grad)
+   call deallocate_grid(grid=pgrid)
 end subroutine grad_twocenter
 
 subroutine grad_twocenter_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
