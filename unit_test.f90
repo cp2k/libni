@@ -5,7 +5,9 @@ USE eddi, ONLY: integration_onecenter, integration_twocenter, integration_threec
                 kah_sum
 USE lebedev, ONLY: dp
 USE ni_grid, ONLY: radial_grid
-USE ni_fun, ONLY: forward_derivative_weights, derivatives, fun_grid
+USE ni_fun, ONLY: forward_derivative_weights,&
+                  derivatives,&
+                  fun_grid
 implicit none
    REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
 contains

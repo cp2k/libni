@@ -55,14 +55,14 @@ implicit none
 ! call test_derivative_off(ntests=1)
 
 ! ! --  Tests concerning the integrals -- !
-! call test_onecenter(ntests=10, loud=.FALSE.)
+call test_onecenter(ntests=10, loud=.FALSE.)
 ! call test_twocenter(ntests=3, loud=.FALSE.)
 ! call test_threecenter(ntests=3 , loud=.FALSE.)
 ! call test_kinetic(ntests=3, loud=.FALSE.)
 ! call test_coulomb(ntests=3, loud=.FALSE.)
 
 ! call test_twocenter_grad(loud=.FALSE.)
-call test_kinetic_grad(loud=.TRUE.)
+! call test_kinetic_grad(loud=.TRUE.)
 ! call test_coulomb_grad(loud=.FALSE.)    
 ! call test_jacobian()
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––

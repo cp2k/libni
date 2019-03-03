@@ -50,8 +50,8 @@ subroutine radial_grid(r, wr, n, addr2, quadr)
       do i=1,n
          t = REAL(i, dp)*alpha
          x = COS(t)
-         r(i) = 100._dp*(1.0_dp+x)/(1.0_dp-x)
-         wr(i) = 100._dp*alpha*2.0_dp*SIN(t)/(1.0_dp-x)**2
+         r(i) = (1.0_dp+x)/(1.0_dp-x)
+         wr(i) = alpha*2.0_dp*SIN(t)/(1.0_dp-x)**2
       enddo
    else if (quadr .eq. 2) then
       call gauher(r=her_r, wr=her_wr, n=n)
