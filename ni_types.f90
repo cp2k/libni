@@ -11,7 +11,7 @@ end type type_fun
 
 type :: type_grid
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: r
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE    :: w
+   REAL(KIND=dp), DIMENSION(:),    ALLOCATABLE :: w
    REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: dw
 end type type_grid
 
