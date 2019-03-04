@@ -1,0 +1,7 @@
+log.txt
+*mod
+*.grid
+out*
+ipynb/
+*.o
+*.tmp*
