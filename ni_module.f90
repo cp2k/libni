@@ -1,4 +1,4 @@
-module eddi
+module ni_module
 USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
 USE lebedev, ONLY: lebedev_grid,&
                    get_number_of_lebedev_grid
@@ -231,7 +231,7 @@ subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
    allocate(f2(ngrid))
 
    pgrid => grid
-   call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
+   call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12,&
                              addr2=.TRUE., grid=pgrid)
 
    do i=1,ngrid
@@ -354,7 +354,6 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
    endif
 
    do i=1,ngrid
-      ! print *, i
       ! T = -0.5 * ∫f1*Ylm * (D_r f2(r) - l'(l'+1)*f2/r^2 ) * Yl'm'
       norm = sqrt(sum( grid%r(i, :)**2 ))
       call interpolation(r1, y1, spline1, norm, f1(i))
@@ -362,7 +361,6 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
       f1(i) = f1(i) * ylm * norm**2
 
       norm = sqrt(sum( (grid%r(i, :) - d12)**2 ))
-      ! print *, 'interpolat 2'
       call interpolation(r2, d2rf2, d2rf2_spline, norm, df2)  ! D_r f2
       call interpolation(r2, y2, spline2, norm, f2(i))        ! f2
       call rry_lm(l=l(2), m=m(2), r=(grid%r(i, :) - d12)/norm, y=ylm)
@@ -757,4 +755,4 @@ function kah_sum(arr)
    kah_sum = sum + c
 end function kah_sum
 
-end module eddi
+end module ni_module

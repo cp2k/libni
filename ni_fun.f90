@@ -11,7 +11,7 @@ subroutine prepare_fun(r, f, fun)
 
    fun%r = r
    fun%y = f
-   ! We want to produce the first through fifth derivatives
+   ! We need the first through fifth derivatives
    call derivatives(r=r, y=f, y1=fun%y1, y2=fun%y2, y3=fun%y3)
    call spline(r, fun%y2, size(r), fun%y4)
    call spline(r, fun%y3, size(r), fun%y5)

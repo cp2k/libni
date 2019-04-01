@@ -1,4 +1,4 @@
-program hallo 
+program main_test 
 USE lebedev, ONLY: dp, lebedev_grid, get_number_of_lebedev_grid
 USE ni_fun, ONLY: allocate_fun, prepare_fun, deallocate_fun, type_fun, fun_grid
 USE ni_grid, ONLY: deallocate_grid, build_onecenter_grid, type_grid
@@ -33,4 +33,4 @@ print *, size(grid%r)
 print *, size(grid%w)
 print *, size(grid%dw)
 call deallocate_grid(grid=pgrid)
-end program hallo
+end program main_test

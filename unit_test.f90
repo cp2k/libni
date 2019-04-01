@@ -1,5 +1,5 @@
 module nao_unit
-USE eddi, ONLY: integration_onecenter, integration_twocenter, integration_threecenter, &
+USE ni_module, ONLY: integration_onecenter, integration_twocenter, integration_threecenter, &
                 kinetic_energy, coulomb_integral, spline, interpolation,&
                 bisection, derivative_point,&
                 kah_sum
@@ -16,6 +16,90 @@ contains
 ! When we go about this stuff, the relative error does not matter
 ! all that much, since we want to compute values ~1. If we demand
 ! accuracy up to ~1meV we end up at something like 1e-4 ~= 1e-3/27
+
+subroutine test_onecenter_acc()
+   implicit none
+   LOGICAL :: loud
+   REAL(KIND=dp), DIMENSION(50) :: errors
+   REAL(KIND=dp) :: integral, ri, err
+   REAL(KIND=dp) :: rand
+   REAL(KIND=dp), DIMENSION(15000) :: r, y, spline1
+   INTEGER :: j, nshell
+
+   print *, REPEAT('-', 28) // ' Testing One-Center Acc ' // REPEAT('-', 28)
+
+   CALL RANDOM_NUMBER(rand)
+   rand = rand * 3.0_dp + 0.1_dp
+   call fun_grid(r=r, max=75._dp/rand)
+
+   y = exp(-rand * r**2 )
+   call spline(r, y, size(r), spline1)
+
+   j = 0
+   do nshell=10,200,10
+      j = j + 1
+      call integration_onecenter(nang=1, nshell=nshell, r=r, y=y,&
+                                 spline=spline1, quadr=1, integral=integral)
+      ri = 4.0_dp*pi**1.5_dp/(4.0_dp*rand**(1.5_dp))
+
+      errors(j) = abs(1.0_dp-integral/ri)
+      print *, nshell, errors(j)
+   enddo
+
+   print *, REPEAT('-', 26) // ' End Testing One-Center Acc ' // REPEAT('-', 26)
+   print *, ''
+end subroutine test_onecenter_acc
+
+
+subroutine test_twocenter_acc()
+   implicit none
+   REAL(KIND=dp), DIMENSION(100) :: errors
+   REAL(KIND=dp) :: integral, ri, err
+   REAL(KIND=dp), DIMENSION(2) :: rand2, nshell_rand
+   REAL(KIND=dp), DIMENSION(3) :: rand_pos
+   REAL(KIND=dp), DIMENSION(15000) :: r1, r2, y1, y2, spline1, spline2
+   INTEGER, DIMENSION(2) :: nshell
+   INTEGER :: j, ngrid, nnshell
+
+   print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
+   ngrid = 100
+
+   errors = 0._dp
+
+   ! Gaussian exponents
+   CALL RANDOM_NUMBER(rand2)
+   rand2 = rand2 * 4.5_dp + 0.5_dp
+   ! Displacement
+   CALL RANDOM_NUMBER(rand_pos)
+   rand_pos = rand_pos * sqrt(5.0_dp)
+
+   call fun_grid(r=r1, max=75._dp/rand2(1))
+   call fun_grid(r=r2, max=75._dp/rand2(2))
+   y1 = exp(-rand2(1) * r1**2 )
+   y2 = exp(-rand2(2) * r2**2 )
+   call spline(r1, y1, size(r1), spline1)
+   call spline(r2, y2, size(r2), spline2)
+
+   j = 0
+   do nnshell=20,400,10
+      nshell = nnshell
+      j = j + 1
+      call integration_twocenter(l=(/0, 0/), m=(/0, 0/), nshell=nshell, d12=rand_pos, &
+                                 r1=r1, y1=y1, r2=r2, y2=y2,&
+                                 spline1=spline1, spline2=spline2, integral=integral)
+
+      ri = (pi/sum(rand2))**(1.5_dp)
+      ri = ri * exp(-rand2(1)*rand2(2)*sum(rand_pos**2)/sum(rand2))
+      ri = ri / (4._dp * pi)
+
+      errors(j) = abs(1.0_dp-integral/ri)
+
+      print *, nshell, errors(j)
+
+   enddo
+   print *, REPEAT('-', 28) // ' End Testing Two-Center ' // REPEAT('-', 28)
+   print *, ''
+end subroutine test_twocenter_acc
 
 subroutine test_onecenter(ntests, loud)
    implicit none
@@ -59,6 +143,7 @@ subroutine test_onecenter(ntests, loud)
    print *, REPEAT('-', 28) // ' End Testing One-Center ' // REPEAT('-', 28)
    print *, ''
 end subroutine test_onecenter
+
 
 subroutine test_twocenter(ntests, loud)
    implicit none
@@ -259,6 +344,51 @@ subroutine test_kinetic(ntests, loud)
    print *, REPEAT('-', 28) // ' End Testing Kinetic energy ' // REPEAT('-', 28)
 
 end subroutine test_kinetic
+
+
+subroutine test_kinetic_acc()
+   implicit none
+   REAL(KIND=dp), DIMENSION(100) :: errors
+   REAL(KIND=dp) :: integral, ri, err
+   REAL(KIND=dp), DIMENSION(2) :: rand2
+   REAL(KIND=dp), DIMENSION(10000) :: r, wr, y1, y2, spline1, spline2, d2f2
+   INTEGER :: j, ngrid, nshell
+
+   print *, REPEAT('-', 30) // ' Testing Kinetic energy ' // REPEAT('-', 30)
+   ngrid = 2500
+
+   ! Gaussian exponents
+   CALL RANDOM_NUMBER(rand2)
+   rand2 = rand2 * 3.0_dp + 0.5_dp
+   call fun_grid(r=r, max=75._dp/maxval(rand2))
+
+   ! Prepare grids
+   y1 = exp( -rand2(1) * r**2 )
+   y2 = exp( -rand2(2) * r**2 )
+   call spline(r, y1, size(r), spline1)
+   call spline(r, y2, size(r), spline2)
+
+   j = 0
+   do nshell=25,500,25
+      j = j + 1
+
+      ! The result we get from subroutine kinetic_energy
+      call kinetic_energy(l=(/0, 0/), m=(/0, 0/), nshell=(/nshell,nshell/),&
+                          r1=r, y1=y1, r2=r, y2=y2, d12=(/0._dp, 0._dp, 0._dp/),&
+                          spline1=spline1, spline2=spline2, integral=integral)
+
+      ! The result we want to have
+      ri = 3.0_dp*rand2(2)*(pi/(sum(rand2)))**1.5_dp&
+           - 3.0_dp*rand2(2)**2*sqrt(pi**3/(sum(rand2)**5))
+      ri = ri/(4._dp*pi)
+
+      errors(j) = abs(1.0_dp-integral/ri)
+      print *, nshell, errors(j)
+   enddo
+
+   print *, REPEAT('-', 28) // ' End Testing Kinetic energy ' // REPEAT('-', 28)
+
+end subroutine test_kinetic_acc
 
 subroutine test_coulomb(ntests, loud)
    implicit none

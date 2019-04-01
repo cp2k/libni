@@ -1,6 +1,6 @@
 program test_suite 
 USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
-USE eddi, ONLY: integration_twocenter,&
+USE ni_module, ONLY: integration_twocenter,&
                 read_nfun,&
                 interpolation,&
                 spline,&
@@ -30,7 +30,10 @@ USE nao_unit, ONLY: test_onecenter,&
                     test_interpolation,&
                     test_derivative_on,&
                     test_derivative_off,&
-                    test_derivatives
+                    test_derivatives,&
+                    test_onecenter_acc,&
+                    test_twocenter_acc,&
+                    test_kinetic_acc
 USE nao_grad_unit, ONLY: test_jacobian,&
                          test_twocenter_grad,&
                          test_kinetic_grad,&
@@ -39,29 +42,36 @@ USE nao_grad_unit, ONLY: test_jacobian,&
                          test_coulomb_grad
 implicit none
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
-! ! --  Tests concerning radial grids and functions on those grids -- !
-! call test_radial_weight_pos(ntests=9)
-! call test_radial_weight_asc(ntests=9)
-! call test_radial_chebyherm(ntests=9, loud=.FALSE.)
-! call test_spline(ntests=10)
-! call test_interpolation(ntests=1)
+! Benchmarks
+! call test_onecenter_acc()
+! call test_twocenter_acc()
+! call test_kinetic_acc()
+
+! call test_twocenter_fd()
+
+! --  Tests concerning radial grids and functions on those grids -- !
+ call test_radial_weight_pos(ntests=9)
+ call test_radial_weight_asc(ntests=9)
+ call test_radial_chebyherm(ntests=9, loud=.FALSE.)
+ call test_spline(ntests=10)
+ call test_interpolation(ntests=1)
 
 ! ! --  Tests concerning derivatives -- !
-! call test_forward_deriv_coeff()
-! call test_derivatives()
-! call test_derivative_point_on()
-! call test_derivative_point_off()
-! call test_derivative_on(ntests=1)
-! call test_derivative_off(ntests=1)
+ call test_forward_deriv_coeff()
+ call test_derivatives()
+ call test_derivative_point_on()
+ call test_derivative_point_off()
+ call test_derivative_on(ntests=1)
+ call test_derivative_off(ntests=1)
 
 ! ! --  Tests concerning the integrals -- !
-call test_onecenter(ntests=10, loud=.FALSE.)
+ call test_onecenter(ntests=10, loud=.FALSE.)
 ! call test_twocenter(ntests=3, loud=.FALSE.)
 ! call test_threecenter(ntests=3 , loud=.FALSE.)
 ! call test_kinetic(ntests=3, loud=.FALSE.)
 ! call test_coulomb(ntests=3, loud=.FALSE.)
 
-! call test_twocenter_grad(loud=.FALSE.)
+ call test_twocenter_grad(loud=.FALSE.)
 ! call test_kinetic_grad(loud=.TRUE.)
 ! call test_coulomb_grad(loud=.FALSE.)    
 ! call test_jacobian()

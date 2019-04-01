@@ -1,5 +1,5 @@
 module nao_grad_unit
-USE eddi, ONLY: spline
+USE ni_module, ONLY: spline
 USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
 USE lebedev, ONLY: lebedev_grid, get_number_of_lebedev_grid
 USE ni_grid, ONLY: build_onecenter_grid, radial_grid, type_grid
