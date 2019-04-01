@@ -43,7 +43,6 @@ end subroutine gauss_der
 !> \param r(n): The tabulated grid points
 !> \param n: The number of radial grid points
 !> \param integral: The integral's value
-!> \author 
 ! **********************************************
 subroutine radial_integration(f, r, n, addr2, integral)
    implicit none

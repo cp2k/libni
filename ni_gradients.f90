@@ -15,6 +15,17 @@ REAL(KIND=dp), DIMENSION(3), PARAMETER :: ey = (/ 0._dp, 1._dp, 0._dp /)
 REAL(KIND=dp), DIMENSION(3), PARAMETER :: ez = (/ 0._dp, 0._dp, 1._dp /)
 contains
 
+! **********************************************
+!> \brief Calculates the gradient of the coulomb integral
+!> \param nshell: number of radial points to integrate the two-center integral on
+!> \param coul_n: number of points to evaluate the Coulomb potential on
+!> \param d12: distance vector between both centers
+!> \param l: angular quantum number
+!> \param m: magnetic quantum number
+!> \param r1, y1, s1: the first function and spline
+!> \param r2, y2, s2: the second function and spline
+!> \param grad: output vector
+! **********************************************
 subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
                         r1, y1, r2, y2, s1, s2, grad)
    implicit none
@@ -163,6 +174,9 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
    call deallocate_grid(grid=pgrid)
 end subroutine grad_coulomb
 
+! **********************************************
+!> \brief Calculates the gradient of the coulomb integral by finite differences
+! **********************************************
 subroutine grad_coulomb_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
    implicit none
    ! Input
@@ -256,6 +270,9 @@ subroutine grad_coulomb_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
 end subroutine grad_coulomb_fd
 
 
+! **********************************************
+!> \brief Calculates the gradient of the kinetic energy integral
+! **********************************************
 subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
    implicit none
    ! Input
@@ -424,6 +441,9 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
    call deallocate_grid(grid=pgrid)
 end subroutine grad_kinetic
 
+! **********************************************
+!> \brief Calculates the gradient of the coulomb integral by finite differences
+! **********************************************
 subroutine grad_kinetic_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
    implicit none
    ! Input
@@ -523,6 +543,9 @@ subroutine grad_kinetic_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
    grad = grad/(12._dp*h)
 end subroutine grad_kinetic_fd
 
+! **********************************************
+!> \brief Calculates the gradient of the two-center integral
+! **********************************************
 subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    implicit none
    ! Input
@@ -631,6 +654,9 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    call deallocate_grid(grid=pgrid)
 end subroutine grad_twocenter
 
+! **********************************************
+!> \brief Calculates the gradient of the two-center integral by finite differences
+! **********************************************
 subroutine grad_twocenter_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
    implicit none
    ! Input
@@ -724,6 +750,10 @@ subroutine grad_twocenter_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
    grad = grad/(12._dp*h)
 end subroutine grad_twocenter_fd
 
+! **********************************************
+!> \brief Calculates the gradient of the one-center integral
+!>        Should be zero.
+! **********************************************
 subroutine grad_onecenter(r, y, l, m, nshell, grad)
    implicit none
    ! Input
@@ -910,6 +940,9 @@ subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
    deallocate(tmp_grad)
 end subroutine grad_onecenter_cart
 
+! **********************************************
+!> \brief Calculates the jacobian of (r, theta, phi)
+! **********************************************
 function jacobian(r, theta, phi)
    implicit none
    REAL(KIND=dp), intent(in) :: r, theta, phi

@@ -4,6 +4,13 @@ implicit none
 
 public :: type_fun, fun_grid, prepare_fun, prepare_gauss
 contains
+
+! **********************************************
+!> \brief Prepares the function for further calculations
+!> \param r: tabulated grid points
+!> \param f: tabulated function  values
+!> \param fun: type_fun type pointer
+! **********************************************
 subroutine prepare_fun(r, f, fun)
    implicit none
    REAL(KIND=dp), DIMENSION(:) :: r, f
@@ -23,6 +30,12 @@ subroutine prepare_fun(r, f, fun)
    ! to `derivatives`.
 end subroutine prepare_fun
 
+! **********************************************
+!> \brief Prepares exact an Gaussian type_fun type 
+!> \param r: tabulated grid points
+!> \param alpha: 
+!> \param fun: type_fun type pointer
+! **********************************************
 subroutine prepare_gauss(r, alpha, fun)
    implicit none
    REAL(KIND=dp), DIMENSION(:) :: r
@@ -37,7 +50,9 @@ subroutine prepare_gauss(r, alpha, fun)
    fun%y5 = -(32._dp*alpha**2*r**4 - 160._dp*alpha*r**2 + 120._dp)*alpha**3*r*fun%y
 end subroutine prepare_gauss
 
-! Get the derivatives of a function by finite differences
+! **********************************************
+!> \brief Get the derivatives of a function by finite differences 
+! **********************************************
 subroutine derivatives(r, y, y1, y2, y3)
    implicit none
    REAL(KIND=dp), DIMENSION(:), intent(in) :: r, y
@@ -58,6 +73,9 @@ subroutine derivatives(r, y, y1, y2, y3)
    enddo
 end subroutine derivatives
 
+! **********************************************
+!> \brief Get the forward finite differences weights 
+! **********************************************
 subroutine forward_derivative_weights(order, x0, r, coeff)
    implicit none
    ! Input
@@ -116,6 +134,9 @@ subroutine forward_derivative_weights(order, x0, r, coeff)
    ! coeff(3,3,:) = d(3,5,0:4) ! this one has 6 coefficients
 end subroutine forward_derivative_weights
 
+! **********************************************
+!> \brief Get the spline of y(r) 
+! **********************************************
 subroutine spline(r, y, n, yspline)
    implicit none
    ! Input
@@ -157,7 +178,9 @@ subroutine spline(r, y, n, yspline)
    enddo
 end subroutine spline
 
-! Generate an equally spaced grid up to max
+! **********************************************
+!> \brief Generate an equally spaced grid up to max
+! **********************************************
 subroutine fun_grid(r, max)
    implicit none
    REAL(KIND=dp), DIMENSION(:), intent(out) :: r
@@ -168,6 +191,9 @@ subroutine fun_grid(r, max)
    enddo
 end subroutine fun_grid
 
+! **********************************************
+!> \brief Allocations
+! **********************************************
 subroutine allocate_fun(fun, n)
    implicit none
    INTEGER :: n

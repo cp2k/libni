@@ -7,6 +7,9 @@ public :: type_grid, build_onecenter_grid, build_twocenter_grid, &
     
 contains
 
+! **********************************************
+!> \brief Allocate the grid
+! **********************************************
 subroutine allocate_grid(grid, n)
    implicit none
    TYPE(type_grid), POINTER :: grid
@@ -29,7 +32,11 @@ subroutine deallocate_grid(grid)
    deallocate(grid%dw)
 end subroutine deallocate_grid
 
-! Writes a radial grid of size N into r, wr
+! **********************************************
+!> \brief Write a radial grid with n points into r, wr
+!>        quadr = 1: Chebyshev
+!>        quadr = 2: Hermite
+! **********************************************
 subroutine radial_grid(r, wr, n, addr2, quadr)
    implicit none
    ! Input
@@ -69,7 +76,9 @@ subroutine radial_grid(r, wr, n, addr2, quadr)
    wr = wr(n:1:-1)
 end subroutine radial_grid
 
-! Writes the onecenter grid into `grid`
+! **********************************************
+!> \brief Generates the one-center grid
+! **********************************************
 subroutine build_onecenter_grid(ileb, nshell, addr2, quadr, grid)
    implicit none
    ! Input
@@ -102,6 +111,9 @@ subroutine build_onecenter_grid(ileb, nshell, addr2, quadr, grid)
    grid%dw = 0._dp
 end subroutine build_onecenter_grid
 
+! **********************************************
+!> \brief Generates the two-center grid
+! **********************************************
 subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid)
    implicit none
    ! Input
@@ -239,6 +251,9 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid)
    enddo
 end subroutine build_twocenter_grid
 
+! **********************************************
+!> \brief Generates the three-center grid
+! **********************************************
 subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid)
    implicit none
    ! Input
@@ -410,6 +425,7 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid)
    enddo
 end subroutine build_threecenter_grid
 
+! Not used anymore (?)
    function h(mu)
       implicit none
       REAL(KIND=dp) :: mu, h
@@ -426,6 +442,9 @@ end subroutine build_threecenter_grid
       z = mua*(35.0_dp*(1-mua2)+21.0_dp*mua4-5.0_dp*mua6)/16.0_dp
    end function z
 
+! **********************************************
+!> \brief The nuclear partition function (see Becke)
+! **********************************************
 function s3(mu)
    implicit none
    REAL(KIND=dp) :: mu, a, a3, s3, mu3
@@ -438,6 +457,9 @@ function s3(mu)
          .046875_dp*a3 + 0.5625_dp*mu3 - 1.6875_dp*mu + 0.5_dp
 end function s3
 
+! **********************************************
+!> \brief The derivative of the nuclear partition function wrt. mu
+! **********************************************
 function ds3dmu(mu)
    implicit none
    REAL(KIND=dp) :: mu, mu2, mu3, a, a2, a3, ds3dmu
@@ -450,6 +472,10 @@ function ds3dmu(mu)
              - 27._dp/64._dp * a2*(mu2-1._dp) + 27._dp/16._dp * (mu2 - 1)
 end function ds3dmu
 
+
+! **********************************************
+!> \brief The size of the grid should somehow depend on the size of the atom.
+! **********************************************
    subroutine grid_parameters(atom, nleb, nshell)
       implicit none
       INTEGER :: atom, nleb, nshell
@@ -476,7 +502,9 @@ end function ds3dmu
       END SELECT
    end subroutine grid_parameters
 
-! Compute the `n`th Hermite polynomial y=H_n(x).
+! **********************************************
+!> \brief Compute the `n`th Hermite polynomial y=H_n(x).
+! **********************************************
 recursive subroutine hermite(n, x, y)
    implicit none
    INTEGER, intent(in) :: n
