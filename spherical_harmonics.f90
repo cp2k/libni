@@ -1,8 +1,7 @@
 module spherical_harmonics
 
-USE lebedev, ONLY: dp
+USE ni_types, ONLY: dp, pi
 implicit none
-   REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
    INTEGER, PARAMETER :: maxfac = 30
    REAL(KIND=dp), PARAMETER, DIMENSION(0:maxfac) :: fac = (/ &
                                       0.10000000000000000000E+01_dp, 0.10000000000000000000E+01_dp, 0.20000000000000000000E+01_dp, &

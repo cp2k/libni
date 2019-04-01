@@ -1,14 +1,16 @@
 module nao_grad_unit
-USE eddi, ONLY: pi, spline
-USE lebedev, ONLY: dp, lebedev_grid, get_number_of_lebedev_grid
-USE grid, ONLY: build_onecenter_grid, radial_grid
-USE gradients, ONLY: jacobian, grad_twocenter, grad_twocenter_fd,&
+USE ni_module, ONLY: spline
+USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
+USE lebedev, ONLY: lebedev_grid, get_number_of_lebedev_grid
+USE ni_grid, ONLY: build_onecenter_grid, radial_grid, type_grid
+USE ni_gradients, ONLY: jacobian, grad_twocenter, grad_twocenter_fd,&
                      grad_kinetic, grad_kinetic_fd,&
                      grad_coulomb, grad_coulomb_fd
 implicit none
 contains
 
-subroutine test_coulomb_grad()
+subroutine test_coulomb_grad(loud)
+   LOGICAL, INTENT(IN) :: loud
    REAL(KIND=dp), DIMENSION(250) :: r, y1, wr, y2, s1, s2
    REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
    REAL(KIND=dp), DIMENSION(1000,3) :: error
@@ -44,12 +46,14 @@ subroutine test_coulomb_grad()
       if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
       if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
       if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-      if ( any( error(c, :)  .gt. 0.1_dp  )) then
-         print *, '   ', l1, m1, l2, m2
-         print *, 'e  ', grad1
-         print *, 'fd ', grad2
-         print *, 'ra ', error(c, :)
-         print *, achar(7)  ! beep, boop
+      if (loud .eqv. .TRUE.) then
+         if ( any( error(c, :)  .gt. 0.1_dp  )) then
+            print *, '   ', l1, m1, l2, m2
+            print *, 'e  ', grad1
+            print *, 'fd ', grad2
+            print *, 'ra ', error(c, :)
+            print *, achar(7)  ! beep, boop
+         endif
       endif
       ! write (*, *) n, grad1, grad2, sum( error(c,:) )/3._dp
    ! close(111)
@@ -62,8 +66,9 @@ subroutine test_coulomb_grad()
    print *, 'max error', maxval(error(1:c, :), 1)
 end subroutine test_coulomb_grad
 
-subroutine test_kinetic_grad()
-   REAL(KIND=dp), DIMENSION(25000) :: r, y1, wr, y2, d1y, d2y, d3y
+subroutine test_kinetic_grad(loud)
+   LOGICAL, INTENT(IN) :: loud
+   REAL(KIND=dp), DIMENSION(15000) :: r, y1, wr, y2, d1y, d2y, d3y
    REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
    REAL(KIND=dp), DIMENSION(1000,3) :: error
    INTEGER :: l1, l2, m1, m2, c, n
@@ -85,7 +90,7 @@ subroutine test_kinetic_grad()
    ! do l2=l1,1
    ! do m1=-l1,l1
    ! do m2=-l2,l2
-   print *, '   ', l1, m1, l2, m2
+   ! print *, '   ', l1, m1, l2, m2
    ! l1 = 0; m1 = 0; l2 = 1; m2 = 0;
    ! open(unit=111, file='ipynb/llmm0010_nvar')
    ! do n = 10, 400, 30
@@ -106,12 +111,14 @@ subroutine test_kinetic_grad()
       if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
       if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
       if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-      ! if ( any( error(c, :)  .gt. 1.e-5_dp  )) then
-         ! print *, '   ', l1, m1, l2, m2
-         print *, 'fd ', grad2
-         print *, 'ra ', error(c, :)
-         print *, achar(7)  ! beep, boop
-      ! endif
+      if (loud .eqv. .TRUE.) then
+         if ( any( error(c, :)  .gt. 1.e-5_dp  )) then
+            print *, '   ', l1, m1, l2, m2
+            print *, 'fd ', grad2
+            print *, 'ra ', error(c, :)
+            print *, achar(7)  ! beep, boop
+         endif
+      endif
       ! write (111, *) n, grad1, grad2, sum( error(c,:) )/3._dp
    ! enddo
    ! close(111)
@@ -150,7 +157,8 @@ subroutine test_kinetic_fd()
    close(111)
 end subroutine test_kinetic_fd
 
-subroutine test_twocenter_grad()
+subroutine test_twocenter_grad(loud)
+   LOGICAL, INTENT(IN) :: loud
    REAL(KIND=dp), DIMENSION(1000) :: r, y1, wr, y2
    REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
    REAL(KIND=dp), DIMENSION(1000,3) :: error
@@ -181,15 +189,17 @@ subroutine test_twocenter_grad()
       if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
       if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
       if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-      ! if ( any( error(c, :)  .gt. 0.1_dp  )) then
-         print *, '   ', l1, m1, l2, m2
-         print *, 'e  ', grad1
-         print *, 'fd ', grad2
-         print *, 'ra ', error(c, :), '/3 = ', sum(error(c, :))/3._dp
-         ! print *,
-      ! else
-         ! print *, '👌  ', l1, m1, l2, m2
-      ! endif
+      if(loud .eqv. .TRUE.) then
+         if ( any( error(c, :)  .gt. 0.1_dp  )) then
+            print *, '   ', l1, m1, l2, m2
+            print *, 'e  ', grad1
+            print *, 'fd ', grad2
+            print *, 'ra ', error(c, :), '/3 = ', sum(error(c, :))/3._dp
+            print *,
+         else
+            print *, '👌  ', l1, m1, l2, m2
+         endif
+      endif
    enddo
    enddo
    enddo
@@ -235,8 +245,8 @@ end subroutine test_twocenter_fd
 !     grad_xyz ( 1/r ) = (-x/r^3, -y/r^3, -z/r^3)
 subroutine test_jacobian()
    implicit none
-   REAL(KIND=dp), DIMENSION(:,:), ALLOCATABLE :: grid_r
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: grid_w, errors
+   TYPE(type_grid), POINTER :: grid
+   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: errors
    REAL(KIND=dp), DIMENSION(3) :: grad_r, grad_xyz, grad_xyz_exact
    REAL(KIND=dp), DIMENSION(3,3) :: jac
    REAL(KIND=dp) :: norm, xx, yy, zz, theta, phi
@@ -244,18 +254,16 @@ subroutine test_jacobian()
 
    ileb = get_number_of_lebedev_grid(l=0)
    ngrid = lebedev_grid(ileb)%n * 25
-   allocate(grid_r(ngrid, 3))
-   allocate(grid_w(ngrid))
    allocate(errors(ngrid))
 
    call build_onecenter_grid(ileb=1, nshell=25, addr2=.TRUE.,&
-                             quadr=1, grid_r=grid_r, grid_w=grid_w)
-   do i=1,size(grid_w)
+                             quadr=1, grid=grid)
+   do i=1,size(grid%w)
       grad_r = 0._dp; grad_xyz = 0._dp; grad_xyz_exact = 0._dp
-      norm = sqrt( sum(grid_r(i, :)**2) )
-      xx = grid_r(i, 1)
-      yy = grid_r(i, 2)
-      zz = grid_r(i, 3)
+      norm = sqrt( sum(grid%r(i, :)**2) )
+      xx = grid%r(i, 1)
+      yy = grid%r(i, 2)
+      zz = grid%r(i, 3)
 
       theta = acos(zz/norm)
       phi = atan2(yy, xx)
@@ -275,8 +283,6 @@ subroutine test_jacobian()
       print *, '💣 test_jacobian - failed'
       print *, 'mean error: ', sum(errors)/size(errors)
    endif
-   deallocate(grid_r)
-   deallocate(grid_w)
    deallocate(errors)
 end subroutine test_jacobian
 
