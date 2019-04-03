@@ -13,6 +13,10 @@ implicit none
 REAL(KIND=dp), DIMENSION(3), PARAMETER :: ex = (/ 1._dp, 0._dp, 0._dp /)
 REAL(KIND=dp), DIMENSION(3), PARAMETER :: ey = (/ 0._dp, 1._dp, 0._dp /)
 REAL(KIND=dp), DIMENSION(3), PARAMETER :: ez = (/ 0._dp, 0._dp, 1._dp /)
+
+public :: jacobian, grad_twocenter, grad_twocenter_fd,&
+          grad_kinetic, grad_kinetic_fd,&
+          grad_coulomb, grad_coulomb_fd
 contains
 
 ! **********************************************
