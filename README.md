@@ -67,3 +67,91 @@ subroutine prepare_fun(r, f, fun)
    ! to `derivatives`.
 end subroutine prepare_fun
 ```
+
+## Tests
+
+There are tests for all routines, comparing analytical Gaussian integrals with the numerical integration scheme. The latest output:
+
+```
+ 👌 test_radial - all weights positive - passed
+ 👌 test_radial - radii ascending order - passed
+ 👌 test_radial - cheby.herm - passed
+ 👌 test_spline - passed
+ max. error:    5.2551394519997629E-007
+ mean error:    5.2532541405195017E-007
+ 👌 test_interpolation - passed
+ max. error:    2.0330073160962031E-011
+ mean error:    2.0330073160962031E-011
+ 👌 test forward derivative coefficients - passed
+ 👌 test derivative - first - passed
+ Average error   2.0734877921523409E-006
+ Max error   1.1119069213850314E-005
+ 👌 test derivative - second - passed
+ Average error   2.0734877921523409E-006
+ Max error   1.1119069213850314E-005
+ 👌 test derivative - third - passed
+ Average error   2.0734877921523409E-006
+ Max error   1.1119069213850314E-005
+ 👌 test_derivative_point_on – radial grid - passed
+ max. error:    1.1351726254208810E-005
+ mean error:    2.1391453761181597E-006
+ error of sum:    2.2222216466971645E-007
+ 👌 test_derivative_point_on – equally spaced grid - passed
+ max. error:    1.8984180834541634E-007
+ mean error:    6.1935172909896709E-008
+ error of sum:    1.9534793782582938E-008
+ 👌 test_derivative_point_off – radial grid - passed
+ max. error:    1.1458953580938935E-004
+ mean error:    3.2296242554542527E-006
+ error of sum:    1.3098482794390939E-008
+ 👌 test_derivative_point_off – equally spaced grid - passed
+ max. error:    4.8449707018411357E-002
+ mean error:    1.7156257798068885E-003
+ error of sum:    2.9853664109350093E-005
+ 💣 test_derivative - on grid - failed
+ max. error:    8.6298361075689459E+017
+ mean error:    8.6298361075689459E+017
+ 👌  test_derivative - off grid - passed
+ max. error:    3.4527185031314547E-005
+ mean error:    3.4527185031314547E-005
+ 
+ ------------------------------ Testing One-Center ------------------------------
+ Mean error:    3.8182790262908382E-013
+ ---------------------------- End Testing One-Center ----------------------------
+
+ ------------------------------ Testing Two-Center ------------------------------
+ Mean error:    0.0000000000000000
+ ---------------------------- End Testing Two-Center ----------------------------
+
+ ------------------------------ Testing Three-Center ------------------------------
+ Mean error:    2.1002187544638673E-008
+ ---------------------------- End Testing Three-Center ----------------------------
+ 
+ 
+ THE TEST SUITE WILL OUTPUT TEST CASES FOR WHICH THE ERROR IS HIGH. IN THIS CASE
+ INTEGRATEING A COMBINATION OF HIGH α GAUSSIANS DOESN'T WORK PERFECTLY.
+  ------------------------------ Testing Kinetic energy ------------------------------
+           2
+ Exponents:    3.2131044185975841        3.3375705296524085
+ Is:   0.12980211413251669
+ Should:  0.12980050036408144
+ Absolute Difference:    1.6137684352435233E-006
+ Relative Error:    1.2432682699348163E-005
+
+ --------------------------------------------------------------------------------
+           3
+ Exponents:    2.1796953626752340        3.3250087368354655
+ Is:   0.13551770967891422
+ Should:  0.13551577206623969
+
+ Absolute Difference:    1.9376126745296318E-006
+ Relative Error:    1.4298060255102385E-005
+
+ --------------------------------------------------------------------------------
+ Mean error:    1.1632930605539235E-005
+ ---------------------------- End Testing Kinetic energy ----------------------------
+ ------------------------------ Testing Coulomb ------------------------------
+ Mean error:    1.1597608758536400E-006
+ ---------------------------- End Testing Coulomb ----------------------------
+  👌 test_twocenter_grad - passed
+```
