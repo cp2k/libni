@@ -54,18 +54,18 @@
 ! **************************************************************************************************
 MODULE lebedev
 
-!    USE kinds,                           ONLY: dp
+!    use kinds,                           only: dp
 ! #include "../base/base_uses.f90"
 
    IMPLICIT NONE
 
    SAVE
-   INTEGER, PARAMETER :: dp = SELECTED_REAL_KIND(14, 200)
+   integer, parameter :: dp = SELECTED_REAL_KIND(14, 200)
 
    PRIVATE
-   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'lebedev'
+   CHARACTER(len=*), parameter, PRIVATE :: moduleN = 'lebedev'
 
-   INTEGER, PARAMETER  :: na1 = 6, &
+   integer, parameter  :: na1 = 6, &
                           na2 = 12, &
                           na3 = 8, &
                           nb = 24, &
@@ -75,20 +75,20 @@ MODULE lebedev
                           max_np = 36
 
 ! **************************************************************************************************
-   TYPE oh_grid
-      INTEGER                           :: l, n
-      REAL(KIND=dp), DIMENSION(:), POINTER   :: w => NULL()
-      REAL(KIND=dp), DIMENSION(:, :), POINTER :: r => NULL()
-   END TYPE oh_grid
+   type oh_grid
+      integer                           :: l, n
+      real(kind=dp), dimension(:), pointer   :: w => NULL()
+      real(kind=dp), dimension(:, :), pointer :: r => NULL()
+   END type oh_grid
 
-   TYPE(oh_grid), DIMENSION(nlg), TARGET :: lebedev_grid
+   type(oh_grid), dimension(nlg), TARGET :: lebedev_grid
 
-   REAL(KIND=dp) :: one, rs2, rs3, zero
-   INTEGER  :: nlgp
-   LOGICAL  :: init_lebedev_grids_done = .FALSE.
+   real(kind=dp) :: one, rs2, rs3, zero
+   integer  :: nlgp
+   logical  :: init_lebedev_grids_done = .false.
 
-   REAL(KIND=dp), DIMENSION(max_np/3) :: w
-   REAL(KIND=dp), DIMENSION(max_np)   :: r
+   real(kind=dp), dimension(max_np/3) :: w
+   real(kind=dp), dimension(max_np)   :: r
 
    PUBLIC :: lebedev_grid, dp
 
@@ -111,17 +111,17 @@ CONTAINS
 ! **************************************************************************************************
    FUNCTION get_number_of_lebedev_grid(l, n) RESULT(number_of_lebedev_grid)
 
-      INTEGER, INTENT(IN), OPTIONAL                      :: l, n
-      INTEGER                                            :: number_of_lebedev_grid
+      integer, INTENT(IN), OPTIONAL                      :: l, n
+      integer                                            :: number_of_lebedev_grid
 
-      CHARACTER(len=*), PARAMETER :: routineN = 'get_number_of_lebedev_grid', &
+      CHARACTER(len=*), parameter :: routineN = 'get_number_of_lebedev_grid', &
          routineP = moduleN//':'//routineN
 
-      INTEGER                                            :: i
-      INTEGER, ALLOCATABLE, DIMENSION(:)                 :: ll, nn
-      INTEGER, DIMENSION(1)                              :: lgnum
+      integer                                            :: i
+      integer, allocatable, dimension(:)                 :: ll, nn
+      integer, dimension(1)                              :: lgnum
 
-      IF (.NOT. init_lebedev_grids_done) CALL init_lebedev_grids
+      IF (.NOT. init_lebedev_grids_done) call init_lebedev_grids
 
       lgnum(1) = 0
       ALLOCATE (nn(SIZE(lebedev_grid, 1)), ll(SIZE(lebedev_grid, 1)))
@@ -162,12 +162,12 @@ CONTAINS
 ! **************************************************************************************************
    SUBROUTINE load_sub_grid(subsystem, lgnum, np)
       CHARACTER(*), INTENT(IN)                           :: subsystem
-      INTEGER, INTENT(IN)                                :: lgnum, np
+      integer, INTENT(IN)                                :: lgnum, np
 
-      CHARACTER(len=*), PARAMETER :: routineN = 'load_sub_grid', routineP = moduleN//':'//routineN
+      CHARACTER(len=*), parameter :: routineN = 'load_sub_grid', routineP = moduleN//':'//routineN
 
-      INTEGER                                            :: i, j
-      REAL(KIND=dp)                                      :: x, y, z
+      integer                                            :: i, j
+      real(kind=dp)                                      :: x, y, z
 
 !   *** Check argument values ***
 
@@ -309,7 +309,7 @@ CONTAINS
          END IF
          nlgp = nlgp+nd*np/3
       CASE DEFAULT
-         ! CALL cp_abort(__LOCATION__, &
+         ! call cp_abort(__LOCATION__, &
          !               "The invalid subsystem <"//TRIM(subsystem)//"> was "// &
          !               "specified (check argument #1)")
       END SELECT
@@ -326,7 +326,7 @@ CONTAINS
 ! **************************************************************************************************
    SUBROUTINE deallocate_lebedev_grids()
 
-      INTEGER                                            :: ilg
+      integer                                            :: ilg
 
       DO ilg = 1, nlg
          DEALLOCATE (lebedev_grid(ilg)%r, lebedev_grid(ilg)%w)
@@ -343,12 +343,12 @@ CONTAINS
 ! **************************************************************************************************
    SUBROUTINE init_lebedev_grids()
 
-      CHARACTER(len=*), PARAMETER :: routineN = 'init_lebedev_grids', &
+      CHARACTER(len=*), parameter :: routineN = 'init_lebedev_grids', &
          routineP = moduleN//':'//routineN
 
-      INTEGER                                            :: ilg
+      integer                                            :: ilg
 
-      ! CALL timeset(routineN, handle)
+      ! call timeset(routineN, handle)
 
       DO ilg = 1, nlg
          IF (ASSOCIATED(lebedev_grid(ilg)%r)) DEALLOCATE (lebedev_grid(ilg)%r)
@@ -388,79 +388,79 @@ CONTAINS
 !   *** 1. l = 3 (6 points, octahedron) ***
 
       w(1) = 1.0_dp/6.0_dp
-      CALL load_sub_grid("A1", 1, 0)
+      call load_sub_grid("A1", 1, 0)
 
 !   *** 2. l = 5 (14 points, capped octahedron) ***
 
       w(1) = 1.0_dp/15.0_dp
-      CALL load_sub_grid("A1", 2, 0)
+      call load_sub_grid("A1", 2, 0)
 
       w(1) = 3.0_dp/40.0_dp
-      CALL load_sub_grid("A3", 2, 0)
+      call load_sub_grid("A3", 2, 0)
 
 !   *** 3. l = 7 (26 points) ***
 
       w(1) = 1.0_dp/21.0_dp
-      CALL load_sub_grid("A1", 3, 0)
+      call load_sub_grid("A1", 3, 0)
 
       w(1) = 4.0_dp/105.0_dp
-      CALL load_sub_grid("A2", 3, 0)
+      call load_sub_grid("A2", 3, 0)
 
       w(1) = 9.0_dp/280.0_dp
-      CALL load_sub_grid("A3", 3, 0)
+      call load_sub_grid("A3", 3, 0)
 
 !   *** 4. l = 9 (38 points) ***
 
       w(1) = 1.0_dp/105.0_dp
-      CALL load_sub_grid("A1", 4, 0)
+      call load_sub_grid("A1", 4, 0)
 
       w(1) = 9.0_dp/280.0_dp
-      CALL load_sub_grid("A3", 4, 0)
+      call load_sub_grid("A3", 4, 0)
 
       w(1) = 1.0_dp/35.0_dp
       r(1) = rs2*SQRT(1.0_dp+rs3)
-      CALL load_sub_grid("C", 4, 1)
+      call load_sub_grid("C", 4, 1)
 
 !   *** 5. l = 11 (50 points) ***
 
       w(1) = 4.0_dp/315.0_dp
-      CALL load_sub_grid("A1", 5, 0)
+      call load_sub_grid("A1", 5, 0)
 
       w(1) = 64.0_dp/2835.0_dp
-      CALL load_sub_grid("A2", 5, 0)
+      call load_sub_grid("A2", 5, 0)
 
       w(1) = 27.0_dp/1280.0_dp
-      CALL load_sub_grid("A3", 5, 0)
+      call load_sub_grid("A3", 5, 0)
 
       w(1) = 14641.0_dp/725760.0_dp
       r(1) = 3.0_dp/SQRT(11.0_dp)
-      CALL load_sub_grid("B", 5, 1)
+      call load_sub_grid("B", 5, 1)
 
 !   *** 6. l = 15 (86 points) ***
 
       w(1) = 1.15440115440115440115440115440115E-2_dp
-      CALL load_sub_grid("A1", 6, 0)
+      call load_sub_grid("A1", 6, 0)
 
       w(1) = 1.19439090858562823236989259736470E-2_dp
-      CALL load_sub_grid("A3", 6, 0)
+      call load_sub_grid("A3", 6, 0)
 
       w(1) = 1.11105557106034025109468482160140E-2_dp
       r(1) = 8.52518311701267605338736780155357E-1_dp
       w(2) = 1.18765012945371420137882805994025E-2_dp
       r(2) = 1.89063552885395482707075847005288E-1_dp
-      CALL load_sub_grid("B", 6, 2)
+      call load_sub_grid("B", 6, 2)
 
       w(1) = 1.18123037469044753644792263073650E-2_dp
       r(1) = 9.27330657151172465678969739310097E-1_dp
-      CALL load_sub_grid("C", 6, 1)
+      call load_sub_grid("C", 6, 1)
 
 !   *** 7. l = 17 (110 points) ***
 
       w(1) = 3.82827049493716160382827049493716E-3_dp
-      CALL load_sub_grid("A1", 7, 0)
+      call load_sub_grid("A1", 7, 0)
 
       w(1) = 9.79373751248751248751248751248751E-3_dp
-      CALL load_sub_grid("A3", 7, 0)
+      call load_sub_grid("A3", 7, 0)
 
       w(1) = 8.21173728319111097598993405227308E-3_dp
       r(1) = 9.65124035086594105655529546158531E-1_dp
@@ -468,22 +468,22 @@ CONTAINS
       r(2) = 8.28769981252592210694031500711749E-1_dp
       w(3) = 9.94281489117810328140065828526450E-3_dp
       r(3) = 2.15957291845848832354930328945946E-1_dp
-      CALL load_sub_grid("B", 7, 3)
+      call load_sub_grid("B", 7, 3)
 
       w(1) = 9.69499636166302832969499636166303E-3_dp
       r(1) = 8.78158910604066133449110592671618E-1_dp
-      CALL load_sub_grid("C", 7, 1)
+      call load_sub_grid("C", 7, 1)
 
 !   *** 8. l = 19 (146 points) ***
 
       w(1) = 5.99631368862138092907323676554446E-4_dp
-      CALL load_sub_grid("A1", 8, 0)
+      call load_sub_grid("A1", 8, 0)
 
       w(1) = 7.37299971862075642305743268410561E-3_dp
-      CALL load_sub_grid("A2", 8, 0)
+      call load_sub_grid("A2", 8, 0)
 
       w(1) = 7.21051536014448777763305996834282E-3_dp
-      CALL load_sub_grid("A3", 8, 0)
+      call load_sub_grid("A3", 8, 0)
 
       w(1) = 7.57439415905403372268748574713806E-3_dp
       r(1) = 9.74888643677173235480043489928723E-1_dp
@@ -491,24 +491,24 @@ CONTAINS
       r(2) = 8.07089818359582501629574989264033E-1_dp
       w(3) = 7.11635549311755538760089284953968E-3_dp
       r(3) = 2.91298882209526746288335878313128E-1_dp
-      CALL load_sub_grid("B", 8, 3)
+      call load_sub_grid("B", 8, 3)
 
       w(1) = 6.99108735330326239417148508057599E-3_dp
       r(1) = 1.40355381171318328571556780746292E-1_dp
       r(2) = 4.49332832326955734884695382705101E-1_dp
       r(3) = 8.82270011260322631916665753046583E-1_dp
-      CALL load_sub_grid("D", 8, 3)
+      call load_sub_grid("D", 8, 3)
 
 !   *** 9. l = 23 (194 points) ***
 
       w(1) = 1.78234044724461115736727104869868E-3_dp
-      CALL load_sub_grid("A1", 9, 0)
+      call load_sub_grid("A1", 9, 0)
 
       w(1) = 5.71690594997710189299212838832099E-3_dp
-      CALL load_sub_grid("A2", 9, 0)
+      call load_sub_grid("A2", 9, 0)
 
       w(1) = 5.57338317884873796836784958446647E-3_dp
-      CALL load_sub_grid("A3", 9, 0)
+      call load_sub_grid("A3", 9, 0)
 
       w(1) = 5.51877146727361369172768460119380E-3_dp
       r(1) = 7.77493219314767127213777704028801E-1_dp
@@ -518,25 +518,25 @@ CONTAINS
       r(3) = 3.14196994182586079225390955831946E-1_dp
       w(4) = 4.10677702816939409072861128564582E-3_dp
       r(4) = 9.82972302707253296863729593965148E-1_dp
-      CALL load_sub_grid("B", 9, 4)
+      call load_sub_grid("B", 9, 4)
 
       w(1) = 5.05184606461480847598931196006390E-3_dp
       r(1) = 9.38319218137591520905616389195671E-1_dp
-      CALL load_sub_grid("C", 9, 1)
+      call load_sub_grid("C", 9, 1)
 
       w(1) = 5.53024891623309370129768269143303E-3_dp
       r(1) = 1.59041710538352952424263581362096E-1_dp
       r(2) = 5.25118572443642024905268207753317E-1_dp
       r(3) = 8.36036015482458885943746377793309E-1_dp
-      CALL load_sub_grid("D", 9, 3)
+      call load_sub_grid("D", 9, 3)
 
 !   *** 10. l = 29 (302 points) ***
 
       w(1) = 8.54591172512814813423121032618880E-4_dp
-      CALL load_sub_grid("A1", 10, 0)
+      call load_sub_grid("A1", 10, 0)
 
       w(1) = 3.59911928502557145886397858961119E-3_dp
-      CALL load_sub_grid("A3", 10, 0)
+      call load_sub_grid("A3", 10, 0)
 
       w(1) = 3.65004580767725542865433220112651E-3_dp
       r(1) = 1.29238672710514925339493976600550E-1_dp
@@ -550,13 +550,13 @@ CONTAINS
       r(5) = 9.49454317226443084214869821724903E-1_dp
       w(6) = 2.35210141368916437879217118337424E-3_dp
       r(6) = 9.90705621379408123821774729602922E-1_dp
-      CALL load_sub_grid("B", 10, 6)
+      call load_sub_grid("B", 10, 6)
 
       w(1) = 3.60082093221646027279920634177099E-3_dp
       r(1) = 8.20326419827759303328870367500864E-1_dp
       w(2) = 2.98234496317180385195111046924520E-3_dp
       r(2) = 9.64408914879206014987053264857406E-1_dp
-      CALL load_sub_grid("C", 10, 2)
+      call load_sub_grid("C", 10, 2)
 
       w(1) = 3.57154055427338708123297920312395E-3_dp
       r(1) = 2.51003475177046506904110494820777E-1_dp
@@ -566,18 +566,18 @@ CONTAINS
       r(4) = 1.23354853258332742165467555277499E-1_dp
       r(5) = 4.12772408316853095996383989497138E-1_dp
       r(6) = 9.02442529533000401095678759353334E-1_dp
-      CALL load_sub_grid("D", 10, 6)
+      call load_sub_grid("D", 10, 6)
 
 !   *** 11. l = 35 (434 points) ***
 
       w(1) = 5.26589796822443623921598397444095E-4_dp
-      CALL load_sub_grid("A1", 11, 0)
+      call load_sub_grid("A1", 11, 0)
 
       w(1) = 2.54821997200260718024899528063707E-3_dp
-      CALL load_sub_grid("A2", 11, 0)
+      call load_sub_grid("A2", 11, 0)
 
       w(1) = 2.51231741892730716751285677008112E-3_dp
-      CALL load_sub_grid("A3", 11, 0)
+      call load_sub_grid("A3", 11, 0)
 
       w(1) = 1.46249562159461384222611198788353E-3_dp
       r(1) = 9.94255912631277812357804047239411E-1_dp
@@ -593,13 +593,13 @@ CONTAINS
       r(6) = 4.07712664897769512483055658274718E-1_dp
       w(7) = 2.53040380118635500209853222454729E-3_dp
       r(7) = 2.12646824707552073524018894972799E-1_dp
-      CALL load_sub_grid("B", 11, 7)
+      call load_sub_grid("B", 11, 7)
 
       w(1) = 1.91095128217953227363116198076372E-3_dp
       r(1) = 9.77642811118264871364737333213224E-1_dp
       w(2) = 2.41744237563898077608784837021936E-3_dp
       r(2) = 8.81813287779428812899447039158355E-1_dp
-      CALL load_sub_grid("C", 11, 2)
+      call load_sub_grid("C", 11, 2)
 
       w(1) = 2.23660776043784866397235325901501E-3_dp
       r(1) = 9.92176963642923726861469072682696E-2_dp
@@ -617,15 +617,15 @@ CONTAINS
       r(10) = 3.10428403516654146818973681387686E-1_dp
       r(11) = 5.55015236107680716116395510647568E-1_dp
       r(12) = 7.71746262691590088133470564383333E-1_dp
-      CALL load_sub_grid("D", 11, 12)
+      call load_sub_grid("D", 11, 12)
 
 !   *** 12. l = 41 (590 points) ***
 
       w(1) = 3.09512129530618734224885916984167E-4_dp
-      CALL load_sub_grid("A1", 12, 0)
+      call load_sub_grid("A1", 12, 0)
 
       w(1) = 1.85237969859748902097779927120955E-3_dp
-      CALL load_sub_grid("A3", 12, 0)
+      call load_sub_grid("A3", 12, 0)
 
       w(1) = 9.76433116505105003063946798281256E-4_dp
       r(1) = 9.96278129754016372294779397439010E-1_dp
@@ -645,7 +645,7 @@ CONTAINS
       r(8) = 2.70356088359165054450644840302674E-1_dp
       w(9) = 1.87179063927774375088198703268059E-3_dp
       r(9) = 9.21904070768989460773325829762845E-2_dp
-      CALL load_sub_grid("B", 12, 9)
+      call load_sub_grid("B", 12, 9)
 
       w(1) = 1.30032168588604773254689500223665E-3_dp
       r(1) = 9.85013335028001910431569760301413E-1_dp
@@ -653,7 +653,7 @@ CONTAINS
       r(2) = 9.18045287711453949033261544688478E-1_dp
       w(3) = 1.85716119677407798248150549753942E-3_dp
       r(3) = 7.91101929626901988791072435283520E-1_dp
-      CALL load_sub_grid("C", 12, 3)
+      call load_sub_grid("C", 12, 3)
 
       w(1) = 1.55521360339680849695800543399046E-3_dp
       r(1) = 8.21302158193251139256011433978433E-2_dp
@@ -679,18 +679,18 @@ CONTAINS
       r(16) = 3.51828092773351899746468433493901E-1_dp
       r(17) = 5.61026380862206018993247924039616E-1_dp
       r(18) = 7.49310611904115932021924350883623E-1_dp
-      CALL load_sub_grid("D", 12, 18)
+      call load_sub_grid("D", 12, 18)
 
 !   *** 13. l = 47 (770 points) ***
 
       w(1) = 2.19294208818118413191132531546907E-4_dp
-      CALL load_sub_grid("A1", 13, 0)
+      call load_sub_grid("A1", 13, 0)
 
       w(1) = 1.43643361731907982089311290725143E-3_dp
-      CALL load_sub_grid("A2", 13, 0)
+      call load_sub_grid("A2", 13, 0)
 
       w(1) = 1.42194034433587736471699229343586E-3_dp
-      CALL load_sub_grid("A3", 13, 0)
+      call load_sub_grid("A3", 13, 0)
 
       w(1) = 6.79812351105050201620332392505941E-4_dp
       r(1) = 9.97408677652823043744886496130338E-1_dp
@@ -712,7 +712,7 @@ CONTAINS
       r(9) = 3.12521305001653125265256223110153E-1_dp
       w(10) = 1.43155404217856675285551659613462E-3_dp
       r(10) = 1.60155803498828974610387120985563E-1_dp
-      CALL load_sub_grid("B", 13, 10)
+      call load_sub_grid("B", 13, 10)
 
       w(1) = 9.25440149986536789398468419487000E-4_dp
       r(1) = 9.89477537495598496934466234590453E-1_dp
@@ -720,7 +720,7 @@ CONTAINS
       r(2) = 9.40776878793758755393692765525837E-1_dp
       w(3) = 1.39436584332923012313782491233921E-3_dp
       r(3) = 8.45749305193653306776973233373898E-1_dp
-      CALL load_sub_grid("C", 13, 3)
+      call load_sub_grid("C", 13, 3)
 
       w(1) = 1.12708909467174883469499826293069E-3_dp
       r(1) = 6.94402439334941301856132689108761E-2_dp
@@ -758,15 +758,15 @@ CONTAINS
       r(25) = 3.82247737952478700050265491776632E-1_dp
       r(26) = 5.64876814909950046651375249432877E-1_dp
       r(27) = 7.31300793659765701947278263710234E-1_dp
-      CALL load_sub_grid("D", 13, 27)
+      call load_sub_grid("D", 13, 27)
 
 !   *** 14. l = 53 (974 points) ***
 
       w(1) = 1.43829419052743111472634384792800E-4_dp
-      CALL load_sub_grid("A1", 14, 0)
+      call load_sub_grid("A1", 14, 0)
 
       w(1) = 1.12577228828700411922446003897444E-3_dp
-      CALL load_sub_grid("A3", 14, 0)
+      call load_sub_grid("A3", 14, 0)
 
       w(1) = 4.94802934194924095056628951683154E-4_dp
       r(1) = 9.98155345023846501191494527575073E-1_dp
@@ -792,7 +792,7 @@ CONTAINS
       r(11) = 2.11954151850184645694140401473565E-1_dp
       w(12) = 1.13498653436395488643714589963293E-3_dp
       r(12) = 7.16244014499556615845369803814026E-2_dp
-      CALL load_sub_grid("B", 14, 12)
+      call load_sub_grid("B", 14, 12)
 
       w(1) = 6.82336792710993096637138363442284E-4_dp
       r(1) = 9.92323565431490196070394244122238E-1_dp
@@ -802,7 +802,7 @@ CONTAINS
       r(3) = 8.82785980701181710576015026411856E-1_dp
       w(4) = 1.12930008656913165822354345410170E-3_dp
       r(4) = 7.73778447257374736807517446423091E-1_dp
-      CALL load_sub_grid("C", 14, 4)
+      call load_sub_grid("C", 14, 4)
 
       w(1) = 8.43688450090195438498026316671055E-4_dp
       r(1) = 5.97404861418134181366741615801962E-2_dp
@@ -852,11 +852,11 @@ CONTAINS
       r(34) = 4.05512213787283588596898056051174E-1_dp
       r(35) = 5.67499754607437348401393912269671E-1_dp
       r(36) = 7.16591845467023718833743633176626E-1_dp
-      CALL load_sub_grid("D", 14, 36)
+      call load_sub_grid("D", 14, 36)
 
-      init_lebedev_grids_done = .TRUE.
+      init_lebedev_grids_done = .true.
 
-      ! CALL timestop(handle)
+      ! call timestop(handle)
 
    END SUBROUTINE init_lebedev_grids
 

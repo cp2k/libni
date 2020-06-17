@@ -1,9 +1,9 @@
 module spherical_harmonics
 
-USE ni_types, ONLY: dp, pi
+use ni_types, only: dp, pi
 implicit none
-   INTEGER, PARAMETER :: maxfac = 30
-   REAL(KIND=dp), PARAMETER, DIMENSION(0:maxfac) :: fac = (/ &
+   integer, parameter :: maxfac = 30
+   real(kind=dp), parameter, dimension(0:maxfac) :: fac = (/ &
                                       0.10000000000000000000E+01_dp, 0.10000000000000000000E+01_dp, 0.20000000000000000000E+01_dp, &
                                       0.60000000000000000000E+01_dp, 0.24000000000000000000E+02_dp, 0.12000000000000000000E+03_dp, &
                                       0.72000000000000000000E+03_dp, 0.50400000000000000000E+04_dp, 0.40320000000000000000E+05_dp, &
@@ -26,13 +26,13 @@ contains
 !
 ! Input: r == (x,y,z) : normalised    x^2 + y^2 + z^2 = 1
 !
-      REAL(KIND=dp), DIMENSION(:, :), INTENT(IN)         :: r
-      REAL(KIND=dp), DIMENSION(:), INTENT(OUT)           :: y
-      INTEGER, INTENT(IN)                                :: l, m
+      real(kind=dp), dimension(:, :), INTENT(IN)         :: r
+      real(kind=dp), dimension(:), INTENT(OUT)           :: y
+      integer, INTENT(IN)                                :: l, m
 
 
-      INTEGER                                            :: i
-      REAL(KIND=dp)                                      :: cp, lmm, lpm, pf, plm, rxy, sp, t, z
+      integer                                            :: i
+      real(kind=dp)                                      :: cp, lmm, lpm, pf, plm, rxy, sp, t, z
 
       SELECT CASE (l)
       CASE (:-1)
@@ -158,12 +158,12 @@ contains
 !
 ! Input: r == (x,y,z) : normalised    x^2 + y^2 + z^2 = 1
 !
-      REAL(KIND=dp), DIMENSION(:), INTENT(IN)            :: r
-      REAL(KIND=dp), INTENT(OUT)                         :: y
-      INTEGER, INTENT(IN)                                :: l, m
+      real(kind=dp), dimension(:), INTENT(IN)            :: r
+      real(kind=dp), INTENT(OUT)                         :: y
+      integer, INTENT(IN)                                :: l, m
 
 
-      REAL(KIND=dp)                                      :: cp, lmm, lpm, pf, plm, rxy, sp, t, z
+      real(kind=dp)                                      :: cp, lmm, lpm, pf, plm, rxy, sp, t, z
 
       SELECT CASE (l)
       CASE (:-1)
@@ -285,13 +285,13 @@ contains
 ! z == cos(t)
 !
 
-      REAL(KIND=dp), DIMENSION(2), INTENT(IN)            :: c
-      REAL(KIND=dp), DIMENSION(2), INTENT(OUT)           :: dy
-      INTEGER, INTENT(IN)                                :: l, m
+      real(kind=dp), dimension(2), INTENT(IN)            :: c
+      real(kind=dp), dimension(2), INTENT(OUT)           :: dy
+      integer, INTENT(IN)                                :: l, m
 
-      REAL(KIND=dp)                                      :: cp, ct, dplm, lmm, lpm, p, pf, rxy, sp, &
+      real(kind=dp)                                      :: cp, ct, dplm, lmm, lpm, p, pf, rxy, sp, &
                                                             st, t, tt, y, z
-      REAL(KIND=dp), DIMENSION(3)                        :: r
+      real(kind=dp), dimension(3)                        :: r
 
       t = c(1)
       ct = COS(t)
@@ -307,7 +307,7 @@ contains
       IF (m == 0) THEN
          dy(2) = 0.0_dp
       ELSE
-         CALL rry_lm(r, y, l, -m)
+         call rry_lm(r, y, l, -m)
          dy(2) = -REAL(m, KIND=dp)*y
       END IF
 
@@ -415,13 +415,13 @@ contains
 
    FUNCTION legendre(x, l, m) RESULT(plm)
 
-      REAL(KIND=dp), INTENT(IN)                          :: x
-      INTEGER, INTENT(IN)                                :: l, m
-      REAL(KIND=dp)                                      :: plm
+      real(kind=dp), INTENT(IN)                          :: x
+      integer, INTENT(IN)                                :: l, m
+      real(kind=dp)                                      :: plm
 
 
-      INTEGER                                            :: il, im, mm
-      REAL(KIND=dp)                                      :: fact, pll, pmm, pmmp1, somx2
+      integer                                            :: il, im, mm
+      real(kind=dp)                                      :: fact, pll, pmm, pmmp1, somx2
 
       IF (ABS(x) > 1.0_dp) stop ("xa value > 1")
       SELECT CASE (l)
@@ -559,12 +559,12 @@ contains
 !> \return ...
 ! **************************************************************************************************
    FUNCTION dlegendre(x, l, m) RESULT(dplm)
-      REAL(KIND=dp), INTENT(IN)                          :: x
-      INTEGER, INTENT(IN)                                :: l, m
-      REAL(KIND=dp)                                      :: dplm
+      real(kind=dp), INTENT(IN)                          :: x
+      integer, INTENT(IN)                                :: l, m
+      real(kind=dp)                                      :: dplm
 
 
-      INTEGER                                            :: mm
+      integer                                            :: mm
 
       IF (ABS(x) > 1.0_dp) stop ("xb value > 1")
       SELECT CASE (l)
@@ -692,9 +692,9 @@ contains
 ! **************************************************************************************************
    FUNCTION dPof1(x, l)
 
-      REAL(KIND=dp), INTENT(IN)                          :: x
-      INTEGER, INTENT(IN)                                :: l
-      REAL(KIND=dp)                                      :: dPof1
+      real(kind=dp), INTENT(IN)                          :: x
+      integer, INTENT(IN)                                :: l
+      real(kind=dp)                                      :: dPof1
 
 
       IF (ABS(x)-1.0_dp > EPSILON(1.0_dp)) THEN
@@ -754,8 +754,8 @@ contains
 ! **************************************************************************************************
    FUNCTION choose(n, k)
 
-      INTEGER, INTENT(IN)                                :: n, k
-      REAL(KIND=dp)                                      :: choose
+      integer, INTENT(IN)                                :: n, k
+      real(kind=dp)                                      :: choose
 
       IF (n >= k) THEN
          choose = REAL(NINT(fac(n)/(fac(k)*fac(n-k))), KIND=dp)
@@ -774,11 +774,11 @@ contains
 ! **************************************************************************************************
    FUNCTION cosn(n, c, s)
 
-      INTEGER, INTENT(IN)                                :: n
-      REAL(KIND=dp), INTENT(IN)                          :: c, s
-      REAL(KIND=dp)                                      :: cosn
+      integer, INTENT(IN)                                :: n
+      real(kind=dp), INTENT(IN)                          :: c, s
+      real(kind=dp)                                      :: cosn
 
-      INTEGER                                            :: i, j
+      integer                                            :: i, j
 
       cosn = 0.0_dp
       IF (ABS(c) < EPSILON(1.0_dp) .OR. n == 0) THEN
@@ -822,11 +822,11 @@ contains
 ! **************************************************************************************************
    FUNCTION dcosn_dcp(n, c, s)
 
-      INTEGER, INTENT(IN)                                :: n
-      REAL(KIND=dp), INTENT(IN)                          :: c, s
-      REAL(KIND=dp)                                      :: dcosn_dcp
+      integer, INTENT(IN)                                :: n
+      real(kind=dp), INTENT(IN)                          :: c, s
+      real(kind=dp)                                      :: dcosn_dcp
 
-      INTEGER                                            :: i, j
+      integer                                            :: i, j
 
       dcosn_dcp = 0.0_dp
 
@@ -858,11 +858,11 @@ contains
 ! **************************************************************************************************
    FUNCTION dcosn_dsp(n, c, s)
 
-      INTEGER, INTENT(IN)                                :: n
-      REAL(KIND=dp), INTENT(IN)                          :: c, s
-      REAL(KIND=dp)                                      :: dcosn_dsp
+      integer, INTENT(IN)                                :: n
+      real(kind=dp), INTENT(IN)                          :: c, s
+      real(kind=dp)                                      :: dcosn_dsp
 
-      INTEGER                                            :: i, j
+      integer                                            :: i, j
 
       dcosn_dsp = 0.0_dp
       IF (c < EPSILON(1.0_dp) .OR. s < EPSILON(1.0_dp)) THEN
@@ -893,11 +893,11 @@ contains
 ! **************************************************************************************************
    FUNCTION sinn(n, c, s)
 
-      INTEGER, INTENT(IN)                                :: n
-      REAL(KIND=dp), INTENT(IN)                          :: c, s
-      REAL(KIND=dp)                                      :: sinn
+      integer, INTENT(IN)                                :: n
+      real(kind=dp), INTENT(IN)                          :: c, s
+      real(kind=dp)                                      :: sinn
 
-      INTEGER                                            :: i, j
+      integer                                            :: i, j
 
       sinn = 0.0_dp
 
@@ -940,11 +940,11 @@ contains
 ! **************************************************************************************************
    FUNCTION dsinn_dcp(n, c, s)
 
-      INTEGER, INTENT(IN)                                :: n
-      REAL(KIND=dp), INTENT(IN)                          :: c, s
-      REAL(KIND=dp)                                      :: dsinn_dcp
+      integer, INTENT(IN)                                :: n
+      real(kind=dp), INTENT(IN)                          :: c, s
+      real(kind=dp)                                      :: dsinn_dcp
 
-      INTEGER                                            :: i, j
+      integer                                            :: i, j
 
       dsinn_dcp = 0.0_dp
 
@@ -976,11 +976,11 @@ contains
 ! **************************************************************************************************
    FUNCTION dsinn_dsp(n, c, s)
 
-      INTEGER, INTENT(IN)                                :: n
-      REAL(KIND=dp), INTENT(IN)                          :: c, s
-      REAL(KIND=dp)                                      :: dsinn_dsp
+      integer, INTENT(IN)                                :: n
+      real(kind=dp), INTENT(IN)                          :: c, s
+      real(kind=dp)                                      :: dsinn_dsp
 
-      INTEGER                                            :: i, j
+      integer                                            :: i, j
 
       dsinn_dsp = 0.0_dp
 

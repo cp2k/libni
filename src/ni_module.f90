@@ -1,21 +1,21 @@
 module ni_module
-USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
-USE lebedev, ONLY: lebedev_grid,&
+use ni_types, only: dp, pi, type_grid, type_fun, ni_env
+use lebedev, only: lebedev_grid,&
                    get_number_of_lebedev_grid
-USE ni_grid, ONLY: build_onecenter_grid,&
+use ni_grid, only: build_onecenter_grid,&
                    build_twocenter_grid,&
                    build_threecenter_grid,&
                    type_grid,&
                    radial_grid,&
                    allocate_grid,&
                    deallocate_grid
-USE spherical_harmonics, ONLY: rry_lm
-USE ni_fun, ONLY: forward_derivative_weights, spline
+use spherical_harmonics, only: rry_lm
+use ni_fun, only: forward_derivative_weights, spline
 implicit none
 
 type :: type_atom
-   REAL(KIND=dp), DIMENSION(3) :: r = 0.0_dp
-   INTEGER :: z = 1
+   real(kind=dp), dimension(3) :: r = 0.0_dp
+   integer :: z = 1
 end type type_atom
 
 public :: integration_twocenter, integration_onecenter, integration_threecenter,&
@@ -25,10 +25,10 @@ contains
 subroutine gauss_der(r, alpha, y, y1, y2, y3, y4, y5)
    implicit none
    ! Input
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r
-   REAL(KIND=dp), intent(in) :: alpha
+   real(kind=dp), dimension(:), intent(in) :: r
+   real(kind=dp), intent(in) :: alpha
    ! Output
-   REAL(KIND=dp), DIMENSION(size(r)) :: y, y1, y2, y3, y4, y5
+   real(kind=dp), dimension(size(r)) :: y, y1, y2, y3, y4, y5
    y = exp(-alpha * r**2)
    y1 = -2._dp * alpha * r * y
    y2 = (4._dp * alpha * r**2 - 2._dp) * alpha * y
@@ -46,12 +46,12 @@ end subroutine gauss_der
 ! **********************************************
 subroutine radial_integration(f, r, n, addr2, integral)
    implicit none
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: f, r
-   INTEGER, intent(in) :: n
-   LOGICAL, intent(in) :: addr2
-   REAL(KIND=dp) :: integral
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: rad, wr, d2f, fun
-   INTEGER :: i
+   real(kind=dp), dimension(:), intent(in) :: f, r
+   integer, intent(in) :: n
+   logical, intent(in) :: addr2
+   real(kind=dp) :: integral
+   real(kind=dp), dimension(:), allocatable :: rad, wr, d2f, fun
+   integer :: i
 
    allocate(rad(n))
    allocate(wr(n))
@@ -82,16 +82,16 @@ end subroutine radial_integration
 subroutine pp_projector(l, m, r, f, s, d12, p)
    implicit none
    ! Inputs
-   INTEGER, intent(in) :: l, m
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, f, s
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
+   integer, intent(in) :: l, m
+   real(kind=dp), dimension(:), intent(in) :: r, f, s
+   real(kind=dp), dimension(3), intent(in) :: d12
    ! Outputs
-   REAL(KIND=dp), DIMENSION(size(r)) :: p
+   real(kind=dp), dimension(size(r)) :: p
    ! Local variables
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: ylm, funs
-   REAL(KIND=dp), DIMENSION(3) :: gr
-   REAL(KIND=dp) :: norm
-   INTEGER :: ileb, iang, irad
+   real(kind=dp), dimension(:), allocatable :: ylm, funs
+   real(kind=dp), dimension(3) :: gr
+   real(kind=dp) :: norm
+   integer :: ileb, iang, irad
 
    ileb = get_number_of_lebedev_grid(l=l+5)
    allocate(ylm(lebedev_grid(ileb)%n))
@@ -121,23 +121,23 @@ end subroutine pp_projector
 subroutine pp_nonloc(rv, v, rp1, p1, rp2, p2, d12, d13, lmax, nrad, integral)
    implicit none
    ! Input
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: rv, v, rp1, p1, rp2, p2
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12, d13
-   INTEGER, intent(in) :: lmax, nrad
+   real(kind=dp), dimension(:), intent(in) :: rv, v, rp1, p1, rp2, p2
+   real(kind=dp), dimension(3), intent(in) :: d12, d13
+   integer, intent(in) :: lmax, nrad
    ! Output
-   REAL(KIND=dp) :: integral
+   real(kind=dp) :: integral
    ! Local variables
-   REAL(KIND=dp), DIMENSION(nrad) :: r, wr, gv, gp1, gp2, gsv, gsp1, gsp2,&
+   real(kind=dp), dimension(nrad) :: r, wr, gv, gp1, gp2, gsv, gsp1, gsp2,&
                                      proj1, proj2
-   REAL(KIND=dp), DIMENSION(size(rv)) :: sv
-   REAL(KIND=dp), DIMENSION(size(rp1)) :: sp1
-   REAL(KIND=dp), DIMENSION(size(rp2)) :: sp2
-   REAL(KIND=dp), DIMENSION((lmax+1)**2) :: integral_sub
-   INTEGER :: i, il, im, h!elp
+   real(kind=dp), dimension(size(rv)) :: sv
+   real(kind=dp), dimension(size(rp1)) :: sp1
+   real(kind=dp), dimension(size(rp2)) :: sp2
+   real(kind=dp), dimension((lmax+1)**2) :: integral_sub
+   integer :: i, il, im, h!elp
    ! End header
 
    ! First we transpose the three functions to a common grid
-   call radial_grid(r=r, wr=wr, n=nrad, addr2=.TRUE., quadr=2) !2=hermite
+   call radial_grid(r=r, wr=wr, n=nrad, addr2=.true., quadr=2) !2=hermite
    call spline(r=rv, y=v, n=size(rv), yspline=sv)
    call spline(r=rp1, y=p1, n=size(rp1), yspline=sp1)
    call spline(r=rp2, y=p2, n=size(rp2), yspline=sp2)
@@ -170,17 +170,17 @@ end subroutine pp_nonloc
 subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
    implicit none
    ! Input
-   INTEGER, intent(in) :: nang, nshell
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, y, spline
-   INTEGER, intent(in) :: quadr
+   integer, intent(in) :: nang, nshell
+   real(kind=dp), dimension(:), intent(in) :: r, y, spline
+   integer, intent(in) :: quadr
    ! Output
-   REAL(KIND=dp) :: integral
+   real(kind=dp) :: integral
    ! Local variables
-   INTEGER :: ileb, ngrid, i
-   TYPE(type_grid), TARGET :: grid
-   TYPE(type_grid), POINTER :: pgrid
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: int_i
-   REAL(KIND=dp) :: norm
+   integer :: ileb, ngrid, i
+   type(type_grid), TARGET :: grid
+   type(type_grid), pointer :: pgrid
+   real(kind=dp), dimension(:), allocatable :: int_i
+   real(kind=dp) :: norm
    ! End header
 
    ileb = get_number_of_lebedev_grid(n=nang)
@@ -189,7 +189,7 @@ subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
    int_i = 0.0_dp
 
    pgrid => grid
-   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
+   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.true.,&
                              quadr=quadr, grid=pgrid)
 
    do i=1,size(grid%w)
@@ -207,19 +207,19 @@ subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
                                  spline1, spline2, integral)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2, &
+   integer, dimension(2), intent(in) :: l, m, nshell
+   real(kind=dp), dimension(3), intent(in) :: d12
+   real(kind=dp), dimension(:), intent(in) :: r1, y1, r2, y2, &
                                               spline1, spline2
    ! Output
-   REAL(KIND=dp) :: integral
+   real(kind=dp) :: integral
    ! Local variables
-   TYPE(type_grid), TARGET :: grid
-   TYPE(type_grid), POINTER :: pgrid
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: f1, f2
-   REAL(KIND=dp) :: norm, ylm
-   INTEGER, DIMENSION(2) :: ileb
-   INTEGER :: ngrid, i
+   type(type_grid), TARGET :: grid
+   type(type_grid), pointer :: pgrid
+   real(kind=dp), dimension(:), allocatable :: f1, f2
+   real(kind=dp) :: norm, ylm
+   integer, dimension(2) :: ileb
+   integer :: ngrid, i
 
    ileb(1) = get_number_of_lebedev_grid(n=302)
    ileb(2) = get_number_of_lebedev_grid(n=302)
@@ -231,7 +231,7 @@ subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
 
    pgrid => grid
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12,&
-                             addr2=.TRUE., grid=pgrid)
+                             addr2=.true., grid=pgrid)
 
    do i=1,ngrid
       if (grid%w(i) .eq. 0.0_dp) cycle         
@@ -258,20 +258,20 @@ subroutine integration_threecenter(nang, nshell, d12, d13, &
                                    spline1, spline2, spline3, integral)
    implicit none
    ! Input
-   INTEGER, DIMENSION(3), intent(in) :: nang, nshell
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12, d13
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, &
+   integer, dimension(3), intent(in) :: nang, nshell
+   real(kind=dp), dimension(3), intent(in) :: d12, d13
+   real(kind=dp), dimension(:), intent(in) :: r1, y1, &
                    r2, y2, r3, y3, spline1, spline2, spline3
    ! Output
-   REAL(KIND=dp) :: integral
+   real(kind=dp) :: integral
 
    ! Local variables
-   TYPE(type_grid), TARGET :: grid
-   TYPE(type_grid), POINTER :: pgrid
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: f1, f2, f3
-   REAL(KIND=dp) :: norm
-   INTEGER, DIMENSION(3) :: ileb
-   INTEGER :: ngrid, i
+   type(type_grid), TARGET :: grid
+   type(type_grid), pointer :: pgrid
+   real(kind=dp), dimension(:), allocatable :: f1, f2, f3
+   real(kind=dp) :: norm
+   integer, dimension(3) :: ileb
+   integer :: ngrid, i
 
    ileb(1) = get_number_of_lebedev_grid(n=nang(1))
    ileb(2) = get_number_of_lebedev_grid(n=nang(2))
@@ -286,7 +286,7 @@ subroutine integration_threecenter(nang, nshell, d12, d13, &
 
    pgrid => grid
    call build_threecenter_grid(ileb=ileb, nshell=nshell, d12=d12, d13=d13, &
-                               addr2=.TRUE., grid=pgrid)
+                               addr2=.true., grid=pgrid)
 
    do i=1,ngrid
       norm = sqrt(sum( grid%r(i, :)**2 ))
@@ -310,19 +310,19 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
                           spline1, spline2, integral)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, &
+   integer, dimension(2), intent(in) :: l, m, nshell
+   real(kind=dp), dimension(:), intent(in) :: r1, y1, &
                                               r2, y2, spline1, spline2
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
+   real(kind=dp), dimension(3), intent(in) :: d12
    ! Output
-   REAL(KIND=dp) :: integral
+   real(kind=dp) :: integral
    ! Local variables
-   TYPE(type_grid), TARGET :: grid
-   TYPE(type_grid), POINTER :: pgrid
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: rf2, d2rf2, d2rf2_spline, f1, f2
-   REAL(KIND=dp) :: norm, ylm, df2
-   INTEGER, DIMENSION(2) :: ileb
-   INTEGER :: ngrid, i
+   type(type_grid), TARGET :: grid
+   type(type_grid), pointer :: pgrid
+   real(kind=dp), dimension(:), allocatable :: rf2, d2rf2, d2rf2_spline, f1, f2
+   real(kind=dp) :: norm, ylm, df2
+   integer, dimension(2) :: ileb
+   integer :: ngrid, i
 
    ileb = get_number_of_lebedev_grid(n=590)  ! TODO
    if (all(d12 .eq. (/0._dp, 0._dp, 0._dp/))) then
@@ -338,7 +338,7 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
    allocate(d2rf2_spline(size(r2)))
 
    pgrid => grid
-   call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, addr2=.FALSE.,&
+   call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, addr2=.false.,&
                              grid=pgrid)
    ! < f1 | -0.5*🔺 | f2 >
    ! Laplace_r = 1/r * d_r^2(r*f2)
@@ -382,17 +382,17 @@ subroutine coulomb_integral(nshell, coul_n, d12, l, m,&
                             r1, y1, r2, y2, s1, s2, integral)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: nshell, l, m
-   INTEGER, intent(in) :: coul_n
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2, s1, s2
+   integer, dimension(2), intent(in) :: nshell, l, m
+   integer, intent(in) :: coul_n
+   real(kind=dp), dimension(3), intent(in) :: d12
+   real(kind=dp), dimension(:), intent(in) :: r1, y1, r2, y2, s1, s2
    ! Output
-   REAL(KIND=dp) :: integral
+   real(kind=dp) :: integral
    ! Local variables
-   INTEGER :: i, j
+   integer :: i, j
    ! Local variables (potential)
-   REAL(KIND=dp), DIMENSION(coul_n) :: f, gi, hi, G, H, coul_w
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: coul_r, pot, pots
+   real(kind=dp), dimension(coul_n) :: f, gi, hi, G, H, coul_w
+   real(kind=dp), dimension(:), allocatable :: coul_r, pot, pots
 
    ! 1: Evaluate the Coulomb potential on a radial grid around A
    ! ! the integral is purely radial => addr2=False
@@ -401,7 +401,7 @@ subroutine coulomb_integral(nshell, coul_n, d12, l, m,&
    allocate(pots(coul_n))
    call radial_grid(r=coul_r, &
                     wr=coul_w, &
-                    n=coul_n, addr2=.FALSE., quadr=1)
+                    n=coul_n, addr2=.false., quadr=1)
 
    do i=1,coul_n
       call interpolation(r1, y1, s1, coul_r(i), f(i))
@@ -433,22 +433,22 @@ end subroutine coulomb_integral
 subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, integral)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: nang, nshell
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, intent(in) :: r1, y1, r2, y2, s1, s2
+   integer, dimension(2), intent(in) :: nang, nshell
+   real(kind=dp), dimension(3), intent(in) :: d12
+   real(kind=dp), dimension(:), allocatable, intent(in) :: r1, y1, r2, y2, s1, s2
    ! Output
-   REAL(KIND=dp) :: integral
+   real(kind=dp) :: integral
    ! Local variables
-   TYPE(type_grid), TARGET :: grid
-   TYPE(type_grid), POINTER :: pgrid
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: f, gi, hi, G, H
-   REAL(KIND=dp) :: norm
-   INTEGER, DIMENSION(2) :: ileb
-   INTEGER :: i, j, l, ngrid
+   type(type_grid), TARGET :: grid
+   type(type_grid), pointer :: pgrid
+   real(kind=dp), dimension(:), allocatable :: f, gi, hi, G, H
+   real(kind=dp) :: norm
+   integer, dimension(2) :: ileb
+   integer :: i, j, l, ngrid
    ! Local variables (potential)
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: coul_r, coul_w, grid_r2, pot, f1, f2
-   REAL(KIND=dp) :: temp
-   INTEGER :: coul_n 
+   real(kind=dp), dimension(:), allocatable :: coul_r, coul_w, grid_r2, pot, f1, f2
+   real(kind=dp) :: temp
+   integer :: coul_n 
 
    l = 0 ! Quantum number
 
@@ -465,7 +465,7 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    ! regular weights are used for the overlap integral
    pgrid => grid
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.FALSE., grid=pgrid)
+                             addr2=.false., grid=pgrid)
 
    ! First we need all unique distances
    !! together with the weights
@@ -549,13 +549,13 @@ end subroutine coulomb_integral_grid
 subroutine derivative_point(r, y, r0, y1)
    implicit none
    ! Input
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, y
-   REAL(KIND=dp), intent(in) :: r0
+   real(kind=dp), dimension(:), intent(in) :: r, y
+   real(kind=dp), intent(in) :: r0
    ! Output
-   REAL(KIND=dp) :: y1
+   real(kind=dp) :: y1
    ! Local variables
-   REAL(KIND=dp), DIMENSION(3,3,5) :: coeff
-   INTEGER :: low, upper, high
+   real(kind=dp), dimension(3,3,5) :: coeff
+   integer :: low, upper, high
 
    call bisection(r=r, r0=r0, low=low, upper=upper)
    high = low + 5
@@ -571,15 +571,15 @@ end subroutine derivative_point
 ! function value y(r) interpolates the function value `y` using `spline`
 subroutine interpolation(gr, gy, spline, r, y, yprime)
    ! Input
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: gr, gy
-   REAL(KIND=dp), DIMENSION(size(gr)), intent(in) :: spline
-   REAL(KIND=dp), intent(in) :: r
+   real(kind=dp), dimension(:), intent(in) :: gr, gy
+   real(kind=dp), dimension(size(gr)), intent(in) :: spline
+   real(kind=dp), intent(in) :: r
    ! Output
-   REAL(KIND=dp) :: y
-   REAL(KIND=dp), OPTIONAL :: yprime
+   real(kind=dp) :: y
+   real(kind=dp), OPTIONAL :: yprime
    ! Local variables
-   INTEGER :: low, upper
-   REAL(KIND=dp) :: A, B, C, D, h
+   integer :: low, upper
+   real(kind=dp) :: A, B, C, D, h
 
    ! find the closest grid point by bisection
    call bisection(r=gr, r0=r, low=low, upper=upper)
@@ -627,8 +627,8 @@ end subroutine interpolation
 
    subroutine read_nfun(fn, gridax, gridf)
       CHARACTER(len=*) :: fn
-      REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: gridax, gridf
-      INTEGER :: dim, i
+      real(kind=dp), dimension(:), allocatable :: gridax, gridf
+      integer :: dim, i
 
       open(unit=100, file=fn)
       read(100, *) dim
@@ -647,12 +647,12 @@ end subroutine interpolation
 subroutine bisection(r, r0, low, upper)
    implicit none
    ! Input
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r
-   REAL(KIND=dp), intent(in) :: r0
+   real(kind=dp), dimension(:), intent(in) :: r
+   real(kind=dp), intent(in) :: r0
    ! Output
-   INTEGER :: low, upper
+   integer :: low, upper
    ! Local variables
-   INTEGER :: mid
+   integer :: mid
 
    low = 1
    upper = size(r)
@@ -671,12 +671,12 @@ end subroutine bisection
 recursive subroutine qsort(arr)
    implicit none
    ! Input
-   REAL(KIND=dp), DIMENSION(:) :: arr
-   ! REAL(KIND=dp), DIMENSION(:, :) :: brr
+   real(kind=dp), dimension(:) :: arr
+   ! real(kind=dp), dimension(:, :) :: brr
    ! Local variables
-   INTEGER :: first, last, i, j
-   ! REAL(KIND=dp), DIMENSION(3) :: temp_arr
-   REAL(KIND=dp) :: a, temp
+   integer :: first, last, i, j
+   ! real(kind=dp), dimension(3) :: temp_arr
+   real(kind=dp) :: a, temp
 
    first = 1
    last = size(arr, 1)
@@ -705,11 +705,11 @@ end subroutine qsort
 recursive subroutine qsort_sim2(arr, brr)
    implicit none
    ! Input
-   REAL(KIND=dp), DIMENSION(:) :: arr
-   REAL(KIND=dp), DIMENSION(:) :: brr
+   real(kind=dp), dimension(:) :: arr
+   real(kind=dp), dimension(:) :: brr
    ! Local variables
-   INTEGER :: first, last, i, j
-   REAL(KIND=dp) :: a, temp
+   integer :: first, last, i, j
+   real(kind=dp) :: a, temp
 
    first = 1
    last = size(arr, 1)
@@ -737,9 +737,9 @@ end subroutine qsort_sim2
 
 function kah_sum(arr)
    implicit none
-   REAL(KIND=dp), DIMENSION(:) :: arr
-   REAL(KIND=dp) :: sum, c, t, kah_sum
-   INTEGER :: i
+   real(kind=dp), dimension(:) :: arr
+   real(kind=dp) :: sum, c, t, kah_sum
+   integer :: i
    sum = arr(1)
    c = 0._dp
    do i=2, size(arr)

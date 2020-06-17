@@ -1,22 +1,22 @@
 module nao_grad_unit
-USE ni_module, ONLY: spline
-USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
-USE lebedev, ONLY: lebedev_grid, get_number_of_lebedev_grid
-USE ni_grid, ONLY: build_onecenter_grid, radial_grid, type_grid
-USE ni_gradients, ONLY: jacobian, grad_twocenter, grad_twocenter_fd,&
+use ni_module, only: spline
+use ni_types, only: dp, pi, type_grid, type_fun, ni_env
+use lebedev, only: lebedev_grid, get_number_of_lebedev_grid
+use ni_grid, only: build_onecenter_grid, radial_grid, type_grid
+use ni_gradients, only: jacobian, grad_twocenter, grad_twocenter_fd,&
                      grad_kinetic, grad_kinetic_fd,&
                      grad_coulomb, grad_coulomb_fd
 implicit none
 contains
 
 subroutine test_coulomb_grad(loud)
-   LOGICAL, INTENT(IN) :: loud
-   REAL(KIND=dp), DIMENSION(250) :: r, y1, wr, y2, s1, s2
-   REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
-   REAL(KIND=dp), DIMENSION(1000,3) :: error
-   INTEGER :: l1, l2, m1, m2, c, n
+   logical, INTENT(IN) :: loud
+   real(kind=dp), dimension(250) :: r, y1, wr, y2, s1, s2
+   real(kind=dp), dimension(3) :: grad1, grad2, d12
+   real(kind=dp), dimension(1000,3) :: error
+   integer :: l1, l2, m1, m2, c, n
 
-   call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
+   call radial_grid(r=r, wr=wr, n=size(r), addr2=.true., quadr=1)
 
    y1 = exp(-r**2)
    y2 = exp(-0.5_dp * r**2)
@@ -46,7 +46,7 @@ subroutine test_coulomb_grad(loud)
       if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
       if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
       if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-      if (loud .eqv. .TRUE.) then
+      if (loud .eqv. .true.) then
          if ( any( error(c, :)  .gt. 0.1_dp  )) then
             print *, '   ', l1, m1, l2, m2
             print *, 'e  ', grad1
@@ -67,13 +67,13 @@ subroutine test_coulomb_grad(loud)
 end subroutine test_coulomb_grad
 
 subroutine test_kinetic_grad(loud)
-   LOGICAL, INTENT(IN) :: loud
-   REAL(KIND=dp), DIMENSION(15000) :: r, y1, wr, y2, d1y, d2y, d3y
-   REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
-   REAL(KIND=dp), DIMENSION(1000,3) :: error
-   INTEGER :: l1, l2, m1, m2, c, n
+   logical, INTENT(IN) :: loud
+   real(kind=dp), dimension(15000) :: r, y1, wr, y2, d1y, d2y, d3y
+   real(kind=dp), dimension(3) :: grad1, grad2, d12
+   real(kind=dp), dimension(1000,3) :: error
+   integer :: l1, l2, m1, m2, c, n
 
-   call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
+   call radial_grid(r=r, wr=wr, n=size(r), addr2=.true., quadr=1)
 
    y1 = exp(-r**2)
    y2 = exp(-r**2)
@@ -111,7 +111,7 @@ subroutine test_kinetic_grad(loud)
       if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
       if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
       if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-      if (loud .eqv. .TRUE.) then
+      if (loud .eqv. .true.) then
          if ( any( error(c, :)  .gt. 1.e-5_dp  )) then
             print *, '   ', l1, m1, l2, m2
             print *, 'fd ', grad2
@@ -133,14 +133,14 @@ subroutine test_kinetic_grad(loud)
 end subroutine test_kinetic_grad
 
 subroutine test_kinetic_fd()
-   REAL(KIND=dp), DIMENSION(500) :: r, y1, wr, y2
-   REAL(KIND=dp), DIMENSION(24, 3) :: grad
-   REAL(KIND=dp), DIMENSION(3) :: d12
-   REAL(KIND=dp) :: step
+   real(kind=dp), dimension(500) :: r, y1, wr, y2
+   real(kind=dp), dimension(24, 3) :: grad
+   real(kind=dp), dimension(3) :: d12
+   real(kind=dp) :: step
 
-   INTEGER :: i
+   integer :: i
 
-   call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
+   call radial_grid(r=r, wr=wr, n=size(r), addr2=.true., quadr=1)
 
    y1 = exp(-r**2)
    y2 = exp(-0.5_dp * r**2)
@@ -158,13 +158,13 @@ subroutine test_kinetic_fd()
 end subroutine test_kinetic_fd
 
 subroutine test_twocenter_grad(loud)
-   LOGICAL, INTENT(IN) :: loud
-   REAL(KIND=dp), DIMENSION(1000) :: r, y1, wr, y2
-   REAL(KIND=dp), DIMENSION(3) :: grad1, grad2, d12
-   REAL(KIND=dp), DIMENSION(1000,3) :: error
-   INTEGER :: l1, l2, m1, m2, c, n
+   logical, INTENT(IN) :: loud
+   real(kind=dp), dimension(1000) :: r, y1, wr, y2
+   real(kind=dp), dimension(3) :: grad1, grad2, d12
+   real(kind=dp), dimension(1000,3) :: error
+   integer :: l1, l2, m1, m2, c, n
 
-   call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
+   call radial_grid(r=r, wr=wr, n=size(r), addr2=.true., quadr=1)
 
    y1 = exp(-0.2_dp * r**2)
    y2 = exp(-0.5_dp * r**2)
@@ -189,7 +189,7 @@ subroutine test_twocenter_grad(loud)
       if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
       if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
       if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
-      if(loud .eqv. .TRUE.) then
+      if(loud .eqv. .true.) then
          if ( any( error(c, :)  .gt. 0.1_dp  )) then
             print *, '   ', l1, m1, l2, m2
             print *, 'e  ', grad1
@@ -214,14 +214,14 @@ subroutine test_twocenter_grad(loud)
 end subroutine test_twocenter_grad
 
 subroutine test_twocenter_fd()
-   REAL(KIND=dp), DIMENSION(500) :: r, y1, wr, y2
-   REAL(KIND=dp), DIMENSION(24, 3) :: grad
-   REAL(KIND=dp), DIMENSION(3) :: d12
-   REAL(KIND=dp) :: step
+   real(kind=dp), dimension(500) :: r, y1, wr, y2
+   real(kind=dp), dimension(24, 3) :: grad
+   real(kind=dp), dimension(3) :: d12
+   real(kind=dp) :: step
 
-   INTEGER :: i
+   integer :: i
 
-   call radial_grid(r=r, wr=wr, n=size(r), addr2=.TRUE., quadr=1)
+   call radial_grid(r=r, wr=wr, n=size(r), addr2=.true., quadr=1)
 
    y1 = exp(-r**2)
    y2 = exp(-0.5_dp * r**2)
@@ -245,18 +245,18 @@ end subroutine test_twocenter_fd
 !     grad_xyz ( 1/r ) = (-x/r^3, -y/r^3, -z/r^3)
 subroutine test_jacobian()
    implicit none
-   TYPE(type_grid), POINTER :: grid
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: errors
-   REAL(KIND=dp), DIMENSION(3) :: grad_r, grad_xyz, grad_xyz_exact
-   REAL(KIND=dp), DIMENSION(3,3) :: jac
-   REAL(KIND=dp) :: norm, xx, yy, zz, theta, phi
-   INTEGER :: i, ileb, ngrid
+   type(type_grid), pointer :: grid
+   real(kind=dp), dimension(:), allocatable :: errors
+   real(kind=dp), dimension(3) :: grad_r, grad_xyz, grad_xyz_exact
+   real(kind=dp), dimension(3,3) :: jac
+   real(kind=dp) :: norm, xx, yy, zz, theta, phi
+   integer :: i, ileb, ngrid
 
    ileb = get_number_of_lebedev_grid(l=0)
    ngrid = lebedev_grid(ileb)%n * 25
    allocate(errors(ngrid))
 
-   call build_onecenter_grid(ileb=1, nshell=25, addr2=.TRUE.,&
+   call build_onecenter_grid(ileb=1, nshell=25, addr2=.true.,&
                              quadr=1, grid=grid)
    do i=1,size(grid%w)
       grad_r = 0._dp; grad_xyz = 0._dp; grad_xyz_exact = 0._dp

@@ -1,6 +1,6 @@
 module ni_grid
-USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
-USE lebedev, ONLY: lebedev_grid
+use ni_types, only: dp, pi, type_grid, type_fun, ni_env
+use lebedev, only: lebedev_grid
 implicit none
 public :: type_grid, build_onecenter_grid, build_twocenter_grid, &
           build_threecenter_grid, radial_grid
@@ -12,8 +12,8 @@ contains
 ! **********************************************
 subroutine allocate_grid(grid, n)
    implicit none
-   TYPE(type_grid), POINTER :: grid
-   INTEGER :: n
+   type(type_grid), pointer :: grid
+   integer :: n
    if (associated(grid)) then
    allocate(grid%r(n, 3))
    allocate(grid%w(n))
@@ -25,7 +25,7 @@ end subroutine allocate_grid
 
 subroutine deallocate_grid(grid)
    implicit none
-   TYPE(type_grid), POINTER :: grid
+   type(type_grid), pointer :: grid
 
    deallocate(grid%r)
    deallocate(grid%w)
@@ -40,17 +40,17 @@ end subroutine deallocate_grid
 subroutine radial_grid(r, wr, n, addr2, quadr)
    implicit none
    ! Input
-   INTEGER, intent(in) :: n
-   LOGICAL, OPTIONAL, intent(in) :: addr2
+   integer, intent(in) :: n
+   logical, OPTIONAL, intent(in) :: addr2
    !! 1: Gauss-Chebyshev
    !! 2: Gauss-Hermite
-   INTEGER, intent(in) :: quadr
+   integer, intent(in) :: quadr
    ! Output
-   REAL(KIND=dp), DIMENSION(:) :: r, wr
+   real(kind=dp), dimension(:) :: r, wr
    ! Local variables
-   INTEGER :: i
-   REAL(KIND=dp) :: alpha, t, x
-   REAL(KIND=dp), DIMENSION(n) :: her_r, her_wr
+   integer :: i
+   real(kind=dp) :: alpha, t, x
+   real(kind=dp), dimension(n) :: her_r, her_wr
 
    alpha = pi/REAL(n+1, dp)
    if (quadr .eq. 1) then
@@ -82,16 +82,16 @@ end subroutine radial_grid
 subroutine build_onecenter_grid(ileb, nshell, addr2, quadr, grid)
    implicit none
    ! Input
-   INTEGER, intent(in) :: ileb, nshell, quadr
-   LOGICAL, OPTIONAL, intent(in) :: addr2
+   integer, intent(in) :: ileb, nshell, quadr
+   logical, OPTIONAL, intent(in) :: addr2
    ! Output
-   TYPE(type_grid), POINTER :: grid
+   type(type_grid), pointer :: grid
    ! Local variables
-   INTEGER :: i, j, lower, upper, ngrid
-   REAL(KIND=dp), DIMENSION(nshell) :: radii, radii_w
-   LOGICAL :: aa
+   integer :: i, j, lower, upper, ngrid
+   real(kind=dp), dimension(nshell) :: radii, radii_w
+   logical :: aa
 
-   aa = .FALSE.
+   aa = .false.
    if (present(addr2)) aa = addr2
    call radial_grid(r=radii, &
                     wr=radii_w, &
@@ -117,16 +117,16 @@ end subroutine build_onecenter_grid
 subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: ileb, nshell
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
-   LOGICAL, OPTIONAL, intent(in) :: addr2
+   integer, dimension(2), intent(in) :: ileb, nshell
+   real(kind=dp), dimension(3), intent(in) :: d12
+   logical, OPTIONAL, intent(in) :: addr2
    ! Output
-   TYPE(type_grid), POINTER :: grid
+   type(type_grid), pointer :: grid
    ! Local variables
-   REAL(KIND=dp), DIMENSION(nshell(1)) :: radii1, radii_w1
-   REAL(KIND=dp), DIMENSION(nshell(2)) :: radii2, radii_w2
-   INTEGER :: i, j, c, lower, upper, offset, ngrid
-   REAL(KIND=dp) :: R, r1, r2, mu, s1, s2, alpha
+   real(kind=dp), dimension(nshell(1)) :: radii1, radii_w1
+   real(kind=dp), dimension(nshell(2)) :: radii2, radii_w2
+   integer :: i, j, c, lower, upper, offset, ngrid
+   real(kind=dp) :: R, r1, r2, mu, s1, s2, alpha
 
    alpha = pi/(2._dp*REAL(nshell(2)+1, dp))
    R = sqrt( sum( d12**2 ) )
@@ -257,21 +257,21 @@ end subroutine build_twocenter_grid
 subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid)
    implicit none
    ! Input
-   INTEGER, DIMENSION(3), intent(in) :: ileb, nshell
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12, d13
-   LOGICAL, OPTIONAL, intent(in) :: addr2
+   integer, dimension(3), intent(in) :: ileb, nshell
+   real(kind=dp), dimension(3), intent(in) :: d12, d13
+   logical, OPTIONAL, intent(in) :: addr2
    ! Output
-   TYPE(type_grid), POINTER :: grid
+   type(type_grid), pointer :: grid
    ! Local variables
-   REAL(KIND=dp), DIMENSION(nshell(1)) :: radii1, radii_w1
-   REAL(KIND=dp), DIMENSION(nshell(2)) :: radii2, radii_w2
-   REAL(KIND=dp), DIMENSION(nshell(3)) :: radii3, radii_w3
-   INTEGER :: i, j, lower, upper, offset, off1, off2, ngrid
-   REAL(KIND=dp) :: R12, R13, R23, r1, r2, r3,&
+   real(kind=dp), dimension(nshell(1)) :: radii1, radii_w1
+   real(kind=dp), dimension(nshell(2)) :: radii2, radii_w2
+   real(kind=dp), dimension(nshell(3)) :: radii3, radii_w3
+   integer :: i, j, lower, upper, offset, off1, off2, ngrid
+   real(kind=dp) :: R12, R13, R23, r1, r2, r3,&
                     mu12, mu13, mu23, s12, s13, s23, s21, s31, s32
 
-   REAL(KIND=dp) :: tP1, tP2, tP3, sP, p1, p2, p3
-   LOGICAL :: myaddr2 = .TRUE.
+   real(kind=dp) :: tP1, tP2, tP3, sP, p1, p2, p3
+   logical :: myaddr2 = .true.
 
    ngrid = lebedev_grid(ileb(1))%n * nshell(1)&
             +lebedev_grid(ileb(2))%n * nshell(2)&
@@ -428,13 +428,13 @@ end subroutine build_threecenter_grid
 ! Not used anymore (?)
    function h(mu)
       implicit none
-      REAL(KIND=dp) :: mu, h
+      real(kind=dp) :: mu, h
       h = 1.5_dp*mu-0.5_dp*mu**3
    end function h
 
    function z(mu)
       implicit none
-      REAL(KIND=dp) :: mu, mua, mua2, mua4, mua6, z
+      real(kind=dp) :: mu, mua, mua2, mua4, mua6, z
       mua = (mu/0.64_dp)
       mua2 = mua*mua
       mua4 = mua2*mua2
@@ -447,7 +447,7 @@ end subroutine build_threecenter_grid
 ! **********************************************
 function s3(mu)
    implicit none
-   REAL(KIND=dp) :: mu, a, a3, s3, mu3
+   real(kind=dp) :: mu, a, a3, s3, mu3
    ! s3 = 0.5_dp*(1._dp - h(h(h(mu))) )
    mu3 = mu**3
    a = mu3 - 3*mu
@@ -462,7 +462,7 @@ end function s3
 ! **********************************************
 function ds3dmu(mu)
    implicit none
-   REAL(KIND=dp) :: mu, mu2, mu3, a, a2, a3, ds3dmu
+   real(kind=dp) :: mu, mu2, mu3, a, a2, a3, ds3dmu
    mu2 = mu*mu; mu3 = mu2*mu
    a = mu3 - 3._dp*mu
    a2 = a*a; a3 = a2*a
@@ -478,7 +478,7 @@ end function ds3dmu
 ! **********************************************
    subroutine grid_parameters(atom, nleb, nshell)
       implicit none
-      INTEGER :: atom, nleb, nshell
+      integer :: atom, nleb, nshell
 
       SELECT CASE (atom)
       CASE (0)
@@ -507,9 +507,9 @@ end function ds3dmu
 ! **********************************************
 recursive subroutine hermite(n, x, y)
    implicit none
-   INTEGER, intent(in) :: n
-   REAL(KIND=dp), intent(in) :: x
-   REAL(KIND=dp) :: y, a, b
+   integer, intent(in) :: n
+   real(kind=dp), intent(in) :: x
+   real(kind=dp) :: y, a, b
 
    if (n .eq. 0) then
       y = 1.0_dp
@@ -530,12 +530,12 @@ end subroutine hermite
 subroutine gauher(r, wr, n)
    implicit none
    ! Input
-   INTEGER :: n
+   integer :: n
    ! Output
-   REAL(KIND=dp), DIMENSION(n) :: r, wr
+   real(kind=dp), dimension(n) :: r, wr
    ! Local variables
-   INTEGER :: i, j, k, m, maxit
-   REAL(KIND=dp) :: pim4, p1, p2, p3, pp, z, z1
+   integer :: i, j, k, m, maxit
+   real(kind=dp) :: pim4, p1, p2, p3, pp, z, z1
 
    ! Only find n/2 zeros
    m = (n+1)/2

@@ -1,18 +1,18 @@
 module ni_gradients
-USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
-USE lebedev, ONLY: get_number_of_lebedev_grid, lebedev_grid
-USE ni_module, ONLY: spline, interpolation, integration_twocenter,&
+use ni_types, only: dp, pi, type_grid, type_fun, ni_env
+use lebedev, only: get_number_of_lebedev_grid, lebedev_grid
+use ni_module, only: spline, interpolation, integration_twocenter,&
                 kinetic_energy, coulomb_integral,&
                 kah_sum
-USE ni_grid, ONLY: radial_grid, build_onecenter_grid, build_twocenter_grid,&
+use ni_grid, only: radial_grid, build_onecenter_grid, build_twocenter_grid,&
                    type_grid, deallocate_grid
-USE spherical_harmonics, ONLY: rry_lm, dry_lm
-USE ni_fun, ONLY: derivatives
+use spherical_harmonics, only: rry_lm, dry_lm
+use ni_fun, only: derivatives
 
 implicit none
-REAL(KIND=dp), DIMENSION(3), PARAMETER :: ex = (/ 1._dp, 0._dp, 0._dp /)
-REAL(KIND=dp), DIMENSION(3), PARAMETER :: ey = (/ 0._dp, 1._dp, 0._dp /)
-REAL(KIND=dp), DIMENSION(3), PARAMETER :: ez = (/ 0._dp, 0._dp, 1._dp /)
+real(kind=dp), dimension(3), parameter :: ex = (/ 1._dp, 0._dp, 0._dp /)
+real(kind=dp), dimension(3), parameter :: ey = (/ 0._dp, 1._dp, 0._dp /)
+real(kind=dp), dimension(3), parameter :: ez = (/ 0._dp, 0._dp, 1._dp /)
 
 public :: jacobian, grad_twocenter, grad_twocenter_fd,&
           grad_kinetic, grad_kinetic_fd,&
@@ -34,26 +34,26 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
                         r1, y1, r2, y2, s1, s2, grad)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: nshell, l, m
-   INTEGER, intent(in) :: coul_n
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2, s1, s2
+   integer, dimension(2), intent(in) :: nshell, l, m
+   integer, intent(in) :: coul_n
+   real(kind=dp), dimension(3), intent(in) :: d12
+   real(kind=dp), dimension(:), intent(in) :: r1, y1, r2, y2, s1, s2
    ! Output
-   REAL(KIND=dp), DIMENSION(3), intent(out) :: grad
+   real(kind=dp), dimension(3), intent(out) :: grad
    ! Local variables
-   INTEGER :: i, j
+   integer :: i, j
    ! Local variables (integration)
-   TYPE(type_grid), TARGET :: grid
-   TYPE(type_grid), POINTER :: pgrid
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: tmp_grad
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: dy2, dy2s
-   REAL(KIND=dp), DIMENSION(3) :: dylm2, dr, dtheta, dphi
-   REAL(KIND=dp) :: ylm, norm, x, y, z, rho, theta, phi, dylm, df2, f1, f2
-   INTEGER, DIMENSION(2) :: ileb
-   INTEGER :: ngrid
+   type(type_grid), TARGET :: grid
+   type(type_grid), pointer :: pgrid
+   real(kind=dp), dimension(:, :), allocatable :: tmp_grad
+   real(kind=dp), dimension(:), allocatable :: dy2, dy2s
+   real(kind=dp), dimension(3) :: dylm2, dr, dtheta, dphi
+   real(kind=dp) :: ylm, norm, x, y, z, rho, theta, phi, dylm, df2, f1, f2
+   integer, dimension(2) :: ileb
+   integer :: ngrid
    ! Local variables (potential)
-   REAL(KIND=dp), DIMENSION(coul_n) :: f, gi, hi, G, H, coul_w
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: coul_r, pot, pots
+   real(kind=dp), dimension(coul_n) :: f, gi, hi, G, H, coul_w
+   real(kind=dp), dimension(:), allocatable :: coul_r, pot, pots
 
    ! 1: Evaluate the Coulomb potential on a radial grid around A, f1
    ! ! the integral is purely radial and ≠F(R) => addr2=False
@@ -62,7 +62,7 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
    allocate(pots(coul_n))
    call radial_grid(r=coul_r, &
                     wr=coul_w, &
-                    n=coul_n, addr2=.FALSE., quadr=1)
+                    n=coul_n, addr2=.false., quadr=1)
 
    do i=1,coul_n
       call interpolation(r1, y1, s1, coul_r(i), f(i))
@@ -92,7 +92,7 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
 
    pgrid => grid
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.FALSE., grid=pgrid)
+                             addr2=.false., grid=pgrid)
 
    allocate(dy2(size(r2)))
    allocate(dy2s(size(r2)))
@@ -184,19 +184,19 @@ end subroutine grad_coulomb
 subroutine grad_coulomb_fd(r1, y1, r2, y2, l, m, nshell, d12, grad)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
+   integer, dimension(2), intent(in) :: l, m, nshell
+   real(kind=dp), dimension(:), intent(in) :: r1, y1, r2, y2
+   real(kind=dp), dimension(3), intent(in) :: d12
    ! Output
-   REAL(KIND=dp), DIMENSION(3) :: grad
+   real(kind=dp), dimension(3) :: grad
    ! Local variables
-   INTEGER, DIMENSION(2) :: ileb, nleb
-   INTEGER :: ngrid, coul_n
-   REAL(KIND=dp), DIMENSION(size(r1)) :: s1
-   REAL(KIND=dp), DIMENSION(size(r2)) :: s2
-   REAL(KIND=dp), DIMENSION(3, 4) :: findiff
-   REAL(KIND=dp), DIMENSION(3) :: d12t
-   REAL(KIND=dp) :: h
+   integer, dimension(2) :: ileb, nleb
+   integer :: ngrid, coul_n
+   real(kind=dp), dimension(size(r1)) :: s1
+   real(kind=dp), dimension(size(r2)) :: s2
+   real(kind=dp), dimension(3, 4) :: findiff
+   real(kind=dp), dimension(3) :: d12t
+   real(kind=dp) :: h
 
    ileb(1) = get_number_of_lebedev_grid(n=590)
    ileb(2) = get_number_of_lebedev_grid(n=590)
@@ -280,26 +280,26 @@ end subroutine grad_coulomb_fd
 subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2, d1y, d2y, d3y
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
+   integer, dimension(2), intent(in) :: l, m, nshell
+   real(kind=dp), dimension(:), intent(in) :: r1, y1, r2, y2, d1y, d2y, d3y
+   real(kind=dp), dimension(3), intent(in) :: d12
    ! Output
-   REAL(KIND=dp), DIMENSION(3) :: grad
+   real(kind=dp), dimension(3) :: grad
    ! Local variables
-   INTEGER, DIMENSION(2) :: ileb
-   INTEGER :: i, ngrid
-   TYPE(type_grid), TARGET :: grid
-   TYPE(type_grid), POINTER :: pgrid
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: tmp_grad
-   REAL(KIND=dp), DIMENSION(size(r1)) :: s1
-   REAL(KIND=dp), DIMENSION(size(r2)) :: s2, ddf2_spline
-   REAL(KIND=dp), DIMENSION(3) :: dr, dtheta, dphi, dylm2
-   REAL(KIND=dp) :: norm, x, y, z, theta, phi, rho,&
+   integer, dimension(2) :: ileb
+   integer :: i, ngrid
+   type(type_grid), TARGET :: grid
+   type(type_grid), pointer :: pgrid
+   real(kind=dp), dimension(:, :), allocatable :: tmp_grad
+   real(kind=dp), dimension(size(r1)) :: s1
+   real(kind=dp), dimension(size(r2)) :: s2, ddf2_spline
+   real(kind=dp), dimension(3) :: dr, dtheta, dphi, dylm2
+   real(kind=dp) :: norm, x, y, z, theta, phi, rho,&
                     f1, f2, ylm1, ylm2, df2, ddf2, dddf2, ll1
 
    ! Newer, better derivatives
-   REAL(KIND=dp), DIMENSION(size(d1y)) :: sd1y, sd2y, sd3y
-   REAL(KIND=dp) :: dylm, flap, dflap
+   real(kind=dp), dimension(size(d1y)) :: sd1y, sd2y, sd3y
+   real(kind=dp) :: dylm, flap, dflap
    ! call derivatives(r=r2, y=y2, y1=d1y, y2=d2y, y3=d3y)
    call spline(r=r2, y=d1y, n=size(r2), yspline=sd1y)
    call spline(r=r2, y=d2y, n=size(r2), yspline=sd2y)
@@ -314,7 +314,7 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
 
    pgrid => grid
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.FALSE., grid=pgrid)
+                             addr2=.false., grid=pgrid)
    !  N                        ~      ~
    !  Σ  w  * f(r) * Y(r)  Δ f(r) * Y(r) ,
    ! i=1  i    1 i    1 i     2 i    2 i
@@ -398,7 +398,7 @@ subroutine grad_kinetic(r1, y1, r2, y2, d1y, d2y, d3y, l, m, nshell, d12, grad)
                        grid%w(i)     * z*dflap  * ylm2 +&
                        grid%w(i)     * flap     * dylm
 
-      ! if (.FALSE. .and. i .eq. 60306) then
+      ! if (.false. .and. i .eq. 60306) then
       !    print *, i, norm
       !    print *, 'd12', d12
       !    print *, 'norm1', sqrt( sum( grid%r(i, :)**2 ) )
@@ -451,20 +451,20 @@ end subroutine grad_kinetic
 subroutine grad_kinetic_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
-   REAL(KIND=dp), intent(in), optional :: step
+   integer, dimension(2), intent(in) :: l, m, nshell
+   real(kind=dp), dimension(:), intent(in) :: r1, y1, r2, y2
+   real(kind=dp), dimension(3), intent(in) :: d12
+   real(kind=dp), intent(in), optional :: step
    ! Output
-   REAL(KIND=dp), DIMENSION(3) :: grad
+   real(kind=dp), dimension(3) :: grad
    ! Local variables
-   INTEGER, DIMENSION(2) :: ileb, nleb
-   INTEGER :: ngrid
-   REAL(KIND=dp), DIMENSION(size(r1)) :: s1
-   REAL(KIND=dp), DIMENSION(size(r2)) :: s2
-   REAL(KIND=dp), DIMENSION(3, 4) :: findiff
-   REAL(KIND=dp), DIMENSION(3) :: d12t
-   REAL(KIND=dp) :: h
+   integer, dimension(2) :: ileb, nleb
+   integer :: ngrid
+   real(kind=dp), dimension(size(r1)) :: s1
+   real(kind=dp), dimension(size(r2)) :: s2
+   real(kind=dp), dimension(3, 4) :: findiff
+   real(kind=dp), dimension(3) :: d12t
+   real(kind=dp) :: h
 
    ileb(1) = get_number_of_lebedev_grid(n=590)
    ileb(2) = get_number_of_lebedev_grid(n=590)
@@ -553,21 +553,21 @@ end subroutine grad_kinetic_fd
 subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
+   integer, dimension(2), intent(in) :: l, m, nshell
+   real(kind=dp), dimension(:), intent(in) :: r1, y1, r2, y2
+   real(kind=dp), dimension(3), intent(in) :: d12
    ! Output
-   REAL(KIND=dp), DIMENSION(3) :: grad
+   real(kind=dp), dimension(3) :: grad
    ! Local variables
-   INTEGER, DIMENSION(2) :: ileb
-   INTEGER :: ngrid, i
-   TYPE(type_grid), TARGET :: grid
-   TYPE(type_grid), POINTER :: pgrid
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: tmp_grad
-   REAL(KIND=dp), DIMENSION(size(r1)) :: s1
-   REAL(KIND=dp), DIMENSION(size(r2)) :: s2
-   REAL(KIND=dp), DIMENSION(3) :: dr, dtheta, dphi, dylm2
-   REAL(KIND=dp) :: norm, x, y, z, theta, phi, rho,&
+   integer, dimension(2) :: ileb
+   integer :: ngrid, i
+   type(type_grid), TARGET :: grid
+   type(type_grid), pointer :: pgrid
+   real(kind=dp), dimension(:, :), allocatable :: tmp_grad
+   real(kind=dp), dimension(size(r1)) :: s1
+   real(kind=dp), dimension(size(r2)) :: s2
+   real(kind=dp), dimension(3) :: dr, dtheta, dphi, dylm2
+   real(kind=dp) :: norm, x, y, z, theta, phi, rho,&
                      f1, f2, ylm1, ylm2, df2
 
    ileb(1) = get_number_of_lebedev_grid(n=590)
@@ -579,7 +579,7 @@ subroutine grad_twocenter(r1, y1, r2, y2, l, m, nshell, d12, grad)
 
    pgrid => grid
    call build_twocenter_grid(ileb=ileb, nshell=nshell, d12=d12, &
-                             addr2=.TRUE., grid=pgrid)
+                             addr2=.true., grid=pgrid)
    call spline(r=r1, y=y1, n=size(r1), yspline=s1)
    call spline(r=r2, y=y2, n=size(r2), yspline=s2)
 
@@ -664,20 +664,20 @@ end subroutine grad_twocenter
 subroutine grad_twocenter_fd(r1, y1, r2, y2, l, m, nshell, d12, step, grad)
    implicit none
    ! Input
-   INTEGER, DIMENSION(2), intent(in) :: l, m, nshell
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r1, y1, r2, y2
-   REAL(KIND=dp), DIMENSION(3), intent(in) :: d12
-   REAL(KIND=dp), intent(in), optional :: step
+   integer, dimension(2), intent(in) :: l, m, nshell
+   real(kind=dp), dimension(:), intent(in) :: r1, y1, r2, y2
+   real(kind=dp), dimension(3), intent(in) :: d12
+   real(kind=dp), intent(in), optional :: step
    ! Output
-   REAL(KIND=dp), DIMENSION(3) :: grad
+   real(kind=dp), dimension(3) :: grad
    ! Local variables
-   INTEGER, DIMENSION(2) :: ileb, nleb
-   INTEGER :: ngrid
-   REAL(KIND=dp), DIMENSION(size(r1)) :: s1
-   REAL(KIND=dp), DIMENSION(size(r2)) :: s2
-   REAL(KIND=dp), DIMENSION(3, 4) :: findiff
-   REAL(KIND=dp), DIMENSION(3) :: d12t
-   REAL(KIND=dp) :: h
+   integer, dimension(2) :: ileb, nleb
+   integer :: ngrid
+   real(kind=dp), dimension(size(r1)) :: s1
+   real(kind=dp), dimension(size(r2)) :: s2
+   real(kind=dp), dimension(3, 4) :: findiff
+   real(kind=dp), dimension(3) :: d12t
+   real(kind=dp) :: h
 
    ileb(1) = get_number_of_lebedev_grid(n=302)
    ileb(2) = get_number_of_lebedev_grid(n=302)
@@ -761,18 +761,18 @@ end subroutine grad_twocenter_fd
 subroutine grad_onecenter(r, y, l, m, nshell, grad)
    implicit none
    ! Input
-   INTEGER, intent(in) :: l, m, nshell
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, y
+   integer, intent(in) :: l, m, nshell
+   real(kind=dp), dimension(:), intent(in) :: r, y
    ! Output
-   REAL(KIND=dp), DIMENSION(3) :: grad
+   real(kind=dp), dimension(3) :: grad
    ! Local variables
-   TYPE(type_grid), POINTER :: grid
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: dylm, tmp_grad
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: y_loc, dy, ylm
-   REAL(KIND=dp), DIMENSION(size(r)) :: s
-   REAL(KIND=dp), DIMENSION(3,3) :: jac
-   REAL(KIND=dp) :: theta, phi, xx, yy, zz, dwdr, alpha, norm
-   INTEGER :: i, ileb, nleb
+   type(type_grid), pointer :: grid
+   real(kind=dp), dimension(:, :), allocatable :: dylm, tmp_grad
+   real(kind=dp), dimension(:), allocatable :: y_loc, dy, ylm
+   real(kind=dp), dimension(size(r)) :: s
+   real(kind=dp), dimension(3,3) :: jac
+   real(kind=dp) :: theta, phi, xx, yy, zz, dwdr, alpha, norm
+   integer :: i, ileb, nleb
 
 
    ! Get the one-center grid
@@ -788,7 +788,7 @@ subroutine grad_onecenter(r, y, l, m, nshell, grad)
 
    allocate(tmp_grad(size(grid%w),3))
 
-   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
+   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.true.,&
                              quadr=1, grid=grid)
    alpha = pi/(REAL(2*nshell+2, dp))
    ! Evaluate y, dy/dr, Ylm, dYlm/dtheta, dYlm/dphi
@@ -848,17 +848,17 @@ end subroutine grad_onecenter
 subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
    implicit none
    ! Input
-   INTEGER, intent(in) :: l, m, nshell
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, y
+   integer, intent(in) :: l, m, nshell
+   real(kind=dp), dimension(:), intent(in) :: r, y
    ! Output
-   REAL(KIND=dp), DIMENSION(3) :: grad
+   real(kind=dp), dimension(3) :: grad
    ! Local variables
-   TYPE(type_grid), POINTER :: grid
-   REAL(KIND=dp), DIMENSION(:, :), ALLOCATABLE :: dylm, tmp_grad
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: y_loc, dy, ylm
-   REAL(KIND=dp), DIMENSION(size(r)) :: s
-   REAL(KIND=dp) :: theta, phi, xx, yy, zz, dwdr, alpha, norm, rho
-   INTEGER :: i, ileb, nleb
+   type(type_grid), pointer :: grid
+   real(kind=dp), dimension(:, :), allocatable :: dylm, tmp_grad
+   real(kind=dp), dimension(:), allocatable :: y_loc, dy, ylm
+   real(kind=dp), dimension(size(r)) :: s
+   real(kind=dp) :: theta, phi, xx, yy, zz, dwdr, alpha, norm, rho
+   integer :: i, ileb, nleb
 
    ! Get the one-center grid
    ileb = get_number_of_lebedev_grid(l=l+5)
@@ -873,7 +873,7 @@ subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
 
    allocate(tmp_grad(size(grid%w),3))
 
-   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.TRUE.,&
+   call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.true.,&
                              quadr=1, grid=grid)
    alpha = pi/(REAL(2*nshell+2, dp))
    ! Evaluate y, dy/dr, Ylm, dYlm/dtheta, dYlm/dphi
@@ -949,9 +949,9 @@ end subroutine grad_onecenter_cart
 ! **********************************************
 function jacobian(r, theta, phi)
    implicit none
-   REAL(KIND=dp), intent(in) :: r, theta, phi
-   REAL(KIND=dp), DIMENSION(3,3) :: jacobian
-   REAL(KIND=dp) :: st, ct, sp, cp
+   real(kind=dp), intent(in) :: r, theta, phi
+   real(kind=dp), dimension(3,3) :: jacobian
+   real(kind=dp) :: st, ct, sp, cp
 
    st = sin(theta)
    ct = cos(theta)
