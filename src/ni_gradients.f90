@@ -103,7 +103,7 @@ subroutine grad_coulomb(nshell, coul_n, d12, l, m,&
    do i=1,ngrid
       ! d CI = (dw * f2*Y2 + w * df2 * Y2 + w*f2 * dY2) * Vc*Y1 = d2 * Vc*Y1
       !! we start with Vc*Y1
-      norm = sqrt(sum( grid%r(i, :)**2 ))
+      norm = norm2( grid%r(i, :) )
       call interpolation(coul_r, pot, pots, norm, f1)
       call rry_lm(l=l(1), m=m(1), r=grid%r(i, :)/norm, y=ylm)
       f1 = f1 * ylm
@@ -798,7 +798,7 @@ subroutine grad_onecenter(r, y, l, m, nshell, grad)
       ! gradient (r, theta, phi)
 
       ! Define some helpers
-      norm = sqrt(sum( grid%r(i, :)**2 ))
+      norm = norm2( grid%r(i, :) )
       xx = grid%r(i, 1); yy = grid%r(i, 2); zz = grid%r(i, 3)
       theta = acos(zz/norm)
       phi = atan2(yy, xx)
@@ -883,7 +883,7 @@ subroutine grad_onecenter_cart(r, y, l, m, nshell, grad)
       ! gradient (r, theta, phi)
 
       ! Define some helpers
-      norm = sqrt(sum( grid%r(i, :)**2 ))
+      norm = norm2( grid%r(i, :) )
       xx = grid%r(i, 1); yy = grid%r(i, 2); zz = grid%r(i, 3)
       rho = xx**2 + yy**2
       theta = acos(zz/norm)

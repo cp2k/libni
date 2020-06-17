@@ -41,8 +41,11 @@ use nao_grad_unit, only: test_jacobian,&
                          test_twocenter_fd,&
                          test_coulomb_grad
 implicit none
+real(kind=dp) :: timer_start, timer_stop
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 ! Benchmarks
+call cpu_time(timer_start)
+
 call test_onecenter_acc()
 call test_twocenter_acc()
 call test_kinetic_acc()
@@ -71,10 +74,13 @@ call test_threecenter(ntests=3 , loud=.false.)
 call test_kinetic(ntests=3, loud=.false.)
 call test_coulomb(ntests=3, loud=.false.)
 
-call test_twocenter_grad(loud=.false.)
-call test_kinetic_grad(loud=.true.)
-call test_coulomb_grad(loud=.false.)    
-call test_jacobian()
+! call test_twocenter_grad(loud=.false.)
+! call test_kinetic_grad(loud=.true.)
+! call test_coulomb_grad(loud=.false.)    
+! call test_jacobian()
+
+call cpu_time(timer_stop)
+print *, 'Total time: ', timer_stop - timer_start
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 end program test_suite
 

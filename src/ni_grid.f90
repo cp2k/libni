@@ -14,12 +14,13 @@ subroutine allocate_grid(grid, n)
    implicit none
    type(type_grid), pointer :: grid
    integer :: n
+
    if (associated(grid)) then
-   allocate(grid%r(n, 3))
-   allocate(grid%w(n))
-   allocate(grid%dw(n, 3))
+      allocate(grid%r(n, 3))
+      allocate(grid%w(n))
+      allocate(grid%dw(n, 3))
    else
-   stop 'Grid is not associated!'
+      print *, 'Grid is not associated!'
    endif
 end subroutine allocate_grid
 
@@ -178,8 +179,8 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid)
    !! r1 is the distance A -> grid_r = grid_r-0 = grid_r
    !! r2 is the distance B -> grid_r = grid_r-d12
    do i=1,offset
-      r1 = sqrt(sum( grid%r(i, :)**2 ))
-      r2 = sqrt(sum( (grid%r(i, :) - d12)**2 ))
+      r1 = norm2( grid%r(i, :) )
+      r2 = norm2( (grid%r(i, :) - d12) )
       mu = (r1-r2)/R
       s1 = s3(mu)
       s2 = s3(-mu)
@@ -190,8 +191,8 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid)
    enddo
 
    do i=1+offset,size(grid%w)
-      r1 = sqrt(sum( grid%r(i, :)**2 ))
-      r2 = sqrt(sum( (grid%r(i, :) - d12)**2 ))
+      r1 = norm2( grid%r(i, :) )
+      r2 = norm2( (grid%r(i, :) - d12) )
       mu = (r1-r2)/R
       s1 = s3(mu)
       s2 = s3(-mu)
@@ -206,8 +207,8 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid)
    do i=1, lebedev_grid(ileb(1))%n
    do j=1, nshell(1)
       c = c+1
-      r1 = sqrt(sum( grid%r(c, :)**2 ))
-      r2 = sqrt(sum( (grid%r(c, :) - d12)**2 ))
+      r1 = norm2( grid%r(c, :) )
+      r2 = norm2( (grid%r(c, :) - d12) )
       mu = (r1-r2)/R
       s1 = s3(mu); s2 = s3(-mu)
       ! dw/dX = (1)w_rad * ds_3/dmu*dmu/dX + (2) dw_rad/dr * dr/dX * wpart
@@ -228,8 +229,8 @@ subroutine build_twocenter_grid(ileb, nshell, d12, addr2, grid)
    do i=1, lebedev_grid(ileb(2))%n
    do j=1, nshell(2)
       c = c+1
-      r1 = sqrt(sum( grid%r(c, :)**2 ))
-      r2 = sqrt(sum( (grid%r(c, :) - d12)**2 ))
+      r1 = norm2( grid%r(c, :) )
+      r2 = norm2( (grid%r(c, :) - d12) )
       mu = (r1-r2)/R
       s1 = s3(mu); s2 = s3(-mu)
       ! dw/dX = (1)w_rad * ds_3/dmu*dmu/dX + (2) dw_rad/dr * dr/dX * wpart
@@ -292,9 +293,9 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid)
                     wr=radii_w3, &
                     n=nshell(3), addr2=myaddr2, quadr=1)
 
-   R12 = sqrt(sum(d12**2))
-   R13 = sqrt(sum(d13**2))
-   R23 = sqrt(sum((d13-d12)**2))
+   R12 = norm2(d12**2)
+   R13 = norm2(d13**2)
+   R23 = norm2((d13-d12)**2)
 
    ! Center 1
    do i=1, lebedev_grid(ileb(1))%n
@@ -347,9 +348,9 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid)
    off1 = lebedev_grid(ileb(1))%n * nshell(1)
    off2 = off1 + lebedev_grid(ileb(2))%n * nshell(2)
    do i=1,off1
-      r1 = sqrt(sum( grid%r(i, :)**2 ))
-      r2 = sqrt(sum( (grid%r(i, :) - d12)**2 ))
-      r3 = sqrt(sum( (grid%r(i, :) - d13)**2 ))
+      r1 = norm2( grid%r(i, :) )
+      r2 = norm2( (grid%r(i, :) - d12) )
+      r3 = norm2( (grid%r(i, :) - d13) )
 
       mu12 = (r1-r2)/R12; mu13 = (r1-r3)/R13; mu23 = (r2-r3)/R23
 
@@ -366,9 +367,9 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid)
 
       grid%w(i) = grid%w(i) * p1
 
-      if (abs(mu12).gt.1.0_dp .or. abs(mu13).gt.1.0_dp .or. abs(mu23).gt.1.0_dp) then
-         stop 'Nuclear partition - Three-center'
-      endif
+      ! if (abs(mu12).gt.1.0_dp .or. abs(mu13).gt.1.0_dp .or. abs(mu23).gt.1.0_dp) then
+         ! print *, 'Stop! Nuclear partition - Three-center'
+      ! endif
       ! if (abs(sP-1.0_dp) .gt. 0.1_dp) then
       !    print *, i
       !    print *, s3(-1.0_dp), s3(0.0_dp), s3(1.0_dp)
@@ -377,9 +378,9 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid)
    enddo
 
    do i=off1+1,off2
-      r1 = sqrt(sum( grid%r(i, :)**2 ))
-      r2 = sqrt(sum( (grid%r(i, :) - d12)**2 ))
-      r3 = sqrt(sum( (grid%r(i, :) - d13)**2 ))
+      r1 = norm2( grid%r(i, :) )
+      r2 = norm2( (grid%r(i, :) - d12) )
+      r3 = norm2( (grid%r(i, :) - d13) )
 
       mu12 = (r1-r2)/R12; mu13 = (r1-r3)/R13; mu23 = (r2-r3)/R23
 
@@ -395,15 +396,15 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid)
       p1 = tP1/sP; p2 = tP2/sP; p3 = tP3/sP
       
       grid%w(i) = grid%w(i) * p2
-      if (abs(mu12).gt.1.0_dp .or. abs(mu13).gt.1.0_dp .or. abs(mu23).gt.1.0_dp) then
-         stop 'Nuclear partition - Three-center'
-      endif
+      ! if (abs(mu12).gt.1.0_dp .or. abs(mu13).gt.1.0_dp .or. abs(mu23).gt.1.0_dp) then
+      !    print *, 'Stop! Nuclear partition - Three-center'
+      ! endif
    enddo
 
    do i=off2+1,size(grid%w)
-      r1 = sqrt(sum( grid%r(i, :)**2 ))
-      r2 = sqrt(sum( (grid%r(i, :) - d12)**2 ))
-      r3 = sqrt(sum( (grid%r(i, :) - d13)**2 ))
+      r1 = norm2( grid%r(i, :) )
+      r2 = norm2( (grid%r(i, :) - d12) )
+      r3 = norm2( (grid%r(i, :) - d13) )
 
       mu12 = (r1-r2)/R12; mu13 = (r1-r3)/R13; mu23 = (r2-r3)/R23
 
@@ -419,9 +420,9 @@ subroutine build_threecenter_grid(ileb, nshell, d12, d13, addr2, grid)
       p1 = tP1/sP; p2 = tP2/sP; p3 = tP3/sP
       
       grid%w(i) = grid%w(i) * p3
-      if (abs(mu12).gt.1.0_dp .or. abs(mu13).gt.1.0_dp .or. abs(mu23).gt.1.0_dp) then
-         stop 'Nuclear partition - Three-center'
-      endif
+      ! if (abs(mu12).gt.1.0_dp .or. abs(mu13).gt.1.0_dp .or. abs(mu23).gt.1.0_dp) then
+      !    print *, 'Stop! Nuclear partition - Three-center'
+      ! endif
    enddo
 end subroutine build_threecenter_grid
 

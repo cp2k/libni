@@ -535,6 +535,7 @@ subroutine test_radial_weight_pos(ntests)
       print *, '💣 test_radial - all weights positive - failed'
    endif
 
+   call cpu_time(timer_stop)
    print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_radial_weight_pos
 
@@ -575,6 +576,7 @@ subroutine test_radial_weight_asc(ntests)
       print *, '💣 test_radial - radii ascending order - failed'
    endif
 
+   call cpu_time(timer_stop)
    print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_radial_weight_asc
 
@@ -651,6 +653,7 @@ subroutine test_radial_chebyherm(ntests, loud)
    deallocate(y)
    deallocate(spline1)
 
+   call cpu_time(timer_stop)
    print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_radial_chebyherm
 
@@ -704,6 +707,7 @@ subroutine test_spline(ntests)
       print *, 'mean error: ', kah_sum(tot_errors)/ntests
    endif
 
+   call cpu_time(timer_stop)
    print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_spline
 
@@ -760,6 +764,7 @@ subroutine test_interpolation(ntests)
       print *, 'mean error: ', sum(tot_errors)/ntests
    endif
 
+   call cpu_time(timer_stop)
    print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_interpolation
 
@@ -795,6 +800,7 @@ subroutine test_forward_deriv_coeff()
       print *, '👌 test forward derivative coefficients - passed'
    endif
 
+   call cpu_time(timer_stop)
    print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_forward_deriv_coeff
 
@@ -875,6 +881,7 @@ subroutine test_derivatives()
       print *, 'Max error', maxval( errors(1, :) )
    endif
 
+   call cpu_time(timer_stop)
    print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_derivatives
 
@@ -955,6 +962,7 @@ subroutine test_derivative_point_on()
       print *, 'error of sum: ', summer
    endif
 
+   call cpu_time(timer_stop)
    print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_derivative_point_on
 
@@ -1036,6 +1044,7 @@ subroutine test_derivative_point_off()
       print *, 'error of sum: ', summer
    endif
 
+   call cpu_time(timer_stop)
    print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_derivative_point_off
 
@@ -1090,6 +1099,7 @@ subroutine test_derivative_on(ntests)
       print *, 'mean error: ', sum(tot_errors)/ntests
    endif
 
+   call cpu_time(timer_stop)
    print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_derivative_on
 
@@ -1146,6 +1156,7 @@ subroutine test_derivative_off(ntests)
       print *, 'mean error: ', sum(tot_errors)/ntests
    endif
 
+   call cpu_time(timer_stop)
    print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_derivative_off
 end module nao_unit

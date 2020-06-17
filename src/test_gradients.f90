@@ -32,8 +32,6 @@ subroutine test_coulomb_grad(loud)
    do l2=l1,l1
    do m1=-l1,l1
    do m2=-l2,l2
-   ! print *, '   ', l1, m1, l2, m2
-   ! open(unit=111, file='ipynb/llmm0010_nvar')
       c = c+1
       call grad_coulomb(r1=r, y1=y1, r2=r, y2=y2, s1=s1, s2=s2,&
                         l=(/l1,l2/), m=(/m1,m2/),&
@@ -55,8 +53,6 @@ subroutine test_coulomb_grad(loud)
             print *, achar(7)  ! beep, boop
          endif
       endif
-      ! write (*, *) n, grad1, grad2, sum( error(c,:) )/3._dp
-   ! close(111)
    enddo
    enddo
    enddo
@@ -146,15 +142,12 @@ subroutine test_kinetic_fd()
    y2 = exp(-0.5_dp * r**2)
    
    d12 = (/ 1._dp, 0._dp, 0._dp /)
-   open(unit=111, file='ipynb/test_kinetic_fd')
    do i = 1,size(grad,1)
       step = 10._dp**(-i*0.5)
       call grad_kinetic_fd(r1=r, y1=y1, r2=r, y2=y2, l=(/0,0/), m=(/0,0/),&
                            nshell=(/150, 150/), d12=d12, step=step, grad=grad(i, :))
       print *, step, grad(i, :)
-      write (111, *) step, grad(i, :)
    enddo
-   close(111)
 end subroutine test_kinetic_fd
 
 subroutine test_twocenter_grad(loud)
@@ -227,15 +220,12 @@ subroutine test_twocenter_fd()
    y2 = exp(-0.5_dp * r**2)
    
    d12 = (/ 1._dp, 1._dp, 4._dp /)
-   open(unit=111, file='ipynb/test_twocenter_fd')
    do i = 1,size(grad,1)
       step = 10._dp**(-i*0.5)
       call grad_twocenter_fd(r1=r, y1=y1, r2=r, y2=y2, l=(/1,1/), m=(/0,-1/),&
                            nshell=(/150, 150/), d12=d12, step=step, grad=grad(i, :))
       print *, step, grad(i, :)
-      write (111, *) step, grad(i, :)
    enddo
-   close(111)
 end subroutine test_twocenter_fd
 
 
