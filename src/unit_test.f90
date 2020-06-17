@@ -1,8 +1,8 @@
 module nao_unit
 use ni_module, only: integration_onecenter, integration_twocenter, integration_threecenter, &
-                kinetic_energy, coulomb_integral, spline, interpolation,&
-                bisection, derivative_point,&
-                kah_sum
+                      kinetic_energy, coulomb_integral, spline, interpolation, &
+                      bisection, derivative_point,&
+                      kah_sum
 use lebedev, only: dp
 use ni_grid, only: radial_grid
 use ni_fun, only: forward_derivative_weights,&
@@ -19,9 +19,8 @@ contains
 
 subroutine test_onecenter_acc()
    implicit none
-   logical :: loud
-   real(kind=dp), dimension(50) :: errors
-   real(kind=dp) :: integral, ri, err
+   real(kind=dp), dimension(10) :: errors
+   real(kind=dp) :: integral, ri
    real(kind=dp) :: rand
    real(kind=dp), dimension(15000) :: r, y, spline1
    integer :: j, nshell
@@ -38,13 +37,14 @@ subroutine test_onecenter_acc()
    call spline(r, y, size(r), spline1)
 
    j = 0
-   do nshell=10,200,10
-      j = j + 1
+
+   do j = 1, size(errors)
+      nshell = 10 + j * 20
       call integration_onecenter(nang=1, nshell=nshell, r=r, y=y,&
                                  spline=spline1, quadr=1, integral=integral)
-      ri = 4.0_dp*pi**1.5_dp/(4.0_dp*rand**(1.5_dp))
+      ri = 4.0_dp *pi**1.5_dp/(4.0_dp * rand**(1.5_dp))
 
-      errors(j) = abs(1.0_dp-integral/ri)
+      errors(j) = abs(1.0_dp - integral/ri)
       print *, nshell, errors(j)
    enddo
 
@@ -59,7 +59,7 @@ subroutine test_twocenter_acc()
    implicit none
    real(kind=dp), dimension(100) :: errors
    real(kind=dp) :: integral, ri, err
-   real(kind=dp), dimension(2) :: rand2, nshell_rand
+   real(kind=dp), dimension(2) :: rand2
    real(kind=dp), dimension(3) :: rand_pos
    real(kind=dp), dimension(15000) :: r1, r2, y1, y2, spline1, spline2
    integer, dimension(2) :: nshell

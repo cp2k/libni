@@ -82,12 +82,14 @@ subroutine forward_derivative_weights(order, x0, r, coeff)
    integer, intent(in) :: order
    real(kind=dp), intent(in) :: x0
    real(kind=dp), dimension(:), intent(in) :: r
+
    ! Output
    real(kind=dp), dimension(3,3,5) :: coeff
+
    ! Local variables
    integer :: points, n, nu, m
    real(kind=dp) :: c1, c2, c3
-   real(kind=dp), dimension(0:order,0:size(r),0:size(r)) :: d
+   real(kind=dp), dimension(0:order, 0:size(r), 0:size(r)) :: d
 
    points = size(r)-1
 
@@ -129,8 +131,8 @@ subroutine forward_derivative_weights(order, x0, r, coeff)
    coeff(2,2,:) = d(2,3,0:4)
    coeff(2,3,:) = d(2,4,0:4)
    ! Third derivative
-   coeff(3,1,:) = d(3,3,0:4)
-   coeff(3,2,:) = d(3,4,0:4)
+   ! coeff(3,1,:) = d(3,3,0:4)
+   ! coeff(3,2,:) = d(3,4,0:4)
    ! coeff(3,3,:) = d(3,5,0:4) ! this one has 6 coefficients
 end subroutine forward_derivative_weights
 

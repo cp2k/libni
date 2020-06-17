@@ -1,5 +1,5 @@
 program test_suite 
-use ni_types, only: dp, pi, type_grid, type_fun, ni_env
+use ni_types, only: dp, type_grid, type_fun, ni_env
 use ni_module, only: integration_twocenter,&
                 read_nfun,&
                 interpolation,&

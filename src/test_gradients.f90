@@ -41,9 +41,9 @@ subroutine test_coulomb_grad(loud)
                            nshell=(/n, n/), d12=d12, grad=grad2)
 
       error(c, :) = abs(grad1-grad2)
-      if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
-      if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
-      if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
+      if(abs(grad2(1)) > 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
+      if(abs(grad2(2)) > 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
+      if(abs(grad2(3)) > 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
       if (loud .eqv. .true.) then
          if ( any( error(c, :)  .gt. 0.1_dp  )) then
             print *, '   ', l1, m1, l2, m2
@@ -104,9 +104,9 @@ subroutine test_kinetic_grad(loud)
       if(error(c, 1) .lt. 1.e-10) error(c, 1) = 0._dp
       if(error(c, 2) .lt. 1.e-10) error(c, 2) = 0._dp
       if(error(c, 3) .lt. 1.e-10) error(c, 3) = 0._dp
-      if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
-      if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
-      if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
+      if(abs(grad2(1)) > 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
+      if(abs(grad2(2)) > 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
+      if(abs(grad2(3)) > 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
       if (loud .eqv. .true.) then
          if ( any( error(c, :)  .gt. 1.e-5_dp  )) then
             print *, '   ', l1, m1, l2, m2
@@ -179,9 +179,9 @@ subroutine test_twocenter_grad(loud)
       call grad_twocenter_fd(r1=r, y1=y1, r2=r, y2=y2, l=(/l1,l2/), m=(/m1,m2/),&
                              nshell=(/n, n/), d12=d12, grad=grad2)
       error(c, :) = abs(grad1-grad2)
-      if(grad2(1) .ne. 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
-      if(grad2(2) .ne. 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
-      if(grad2(3) .ne. 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
+      if(abs(grad2(1)) > 0._dp) error(c, 1) = error(c, 1)/abs(grad2(1))
+      if(abs(grad2(2)) > 0._dp) error(c, 2) = error(c, 2)/abs(grad2(2))
+      if(abs(grad2(3)) > 0._dp) error(c, 3) = error(c, 3)/abs(grad2(3))
       if(loud .eqv. .true.) then
          if ( any( error(c, :)  .gt. 0.1_dp  )) then
             print *, '   ', l1, m1, l2, m2

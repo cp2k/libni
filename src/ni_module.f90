@@ -192,12 +192,12 @@ subroutine integration_onecenter(nang, nshell, r, y, spline, quadr, integral)
    call build_onecenter_grid(ileb=ileb, nshell=nshell, addr2=.true.,&
                              quadr=quadr, grid=pgrid)
 
-   do i=1,size(grid%w)
-      norm = norm2( grid%r(i, :) )
+   do i = 1, size(grid%w)
+      norm = norm2( grid%r(:, i) )
       call interpolation(r, y, spline, norm, int_i(i))
    enddo
 
-   integral = kah_sum(grid%w*int_i)
+   integral = kah_sum(grid%w * int_i)
 
    deallocate(int_i)
    call deallocate_grid(grid=pgrid)
@@ -235,14 +235,14 @@ subroutine integration_twocenter(l, m, nshell, d12, r1, y1, r2, y2, &
 
    do i=1,ngrid
       if (grid%w(i) .eq. 0.0_dp) cycle         
-      norm = norm2( grid%r(i, :) )
+      norm = norm2( grid%r(:, i) )
       call interpolation(r1, y1, spline1, norm, f1(i))
-      call rry_lm(l=l(1), m=m(1), r=grid%r(i, :)/norm, y=ylm)
+      call rry_lm(l=l(1), m=m(1), r=grid%r(:, i)/norm, y=ylm)
       f1(i) = f1(i) * ylm
 
-      norm = norm2( (grid%r(i, :) - d12 ) )
+      norm = norm2( (grid%r(:, i) - d12 ) )
       call interpolation(r2, y2, spline2, norm, f2(i))
-      call rry_lm(l=l(2), m=m(2), r=(grid%r(i, :)-d12)/norm, y=ylm)
+      call rry_lm(l=l(2), m=m(2), r=(grid%r(:, i)-d12)/norm, y=ylm)
       f2(i) = f2(i) * ylm
    enddo
 
@@ -289,13 +289,13 @@ subroutine integration_threecenter(nang, nshell, d12, d13, &
                                addr2=.true., grid=pgrid)
 
    do i=1,ngrid
-      norm = norm2( grid%r(i, :) )
+      norm = norm2( grid%r(:, i) )
       call interpolation(r1, y1, spline1, norm, f1(i))
 
-      norm = norm2( (grid%r(i, :) - d12 ) )
+      norm = norm2( (grid%r(:, i) - d12 ) )
       call interpolation(r2, y2, spline2, norm, f2(i))
 
-      norm = norm2( (grid%r(i, :) - d13 ) )
+      norm = norm2( (grid%r(:, i) - d13 ) )
       call interpolation(r3, y3, spline3, norm, f3(i))
    enddo
    integral = kah_sum(grid%w * f1*f2*f3 )
@@ -354,15 +354,15 @@ subroutine kinetic_energy(l, m, nshell, r1, y1, r2, y2, d12,&
 
    do i=1,ngrid
       ! T = -0.5 * ∫f1*Ylm * (D_r f2(r) - l'(l'+1)*f2/r^2 ) * Yl'm'
-      norm = norm2( grid%r(i, :) )
+      norm = norm2( grid%r(:, i) )
       call interpolation(r1, y1, spline1, norm, f1(i))
-      call rry_lm(l=l(1), m=m(1), r=grid%r(i, :)/norm, y=ylm)
+      call rry_lm(l=l(1), m=m(1), r=grid%r(:, i)/norm, y=ylm)
       f1(i) = f1(i) * ylm * norm**2
 
-      norm = norm2( (grid%r(i, :) - d12) )
+      norm = norm2( (grid%r(:, i) - d12) )
       call interpolation(r2, d2rf2, d2rf2_spline, norm, df2)  ! D_r f2
       call interpolation(r2, y2, spline2, norm, f2(i))        ! f2
-      call rry_lm(l=l(2), m=m(2), r=(grid%r(i, :) - d12)/norm, y=ylm)
+      call rry_lm(l=l(2), m=m(2), r=(grid%r(:, i) - d12)/norm, y=ylm)
 
       ! (D_r f2(r) - l'(l'+1)*f2/r^2 ) * Yl'm'
       f2(i) = df2 - REAL(l(2)*(l(2)+1), dp)*f2(i)/norm**2
@@ -472,7 +472,7 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    allocate(coul_r(ngrid))
    allocate(coul_w(ngrid))
    do i=1,ngrid
-      grid_r2(i) = sqrt(sum(grid%r(i, :)**2))
+      grid_r2(i) = sqrt(sum(grid%r(:, i)**2))
    enddo
    call qsort_sim2(grid_r2, grid%w)
 
@@ -519,7 +519,7 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
    allocate(f2(ngrid))
    do i=1,ngrid
       ! evaluate the potential
-      norm = norm2( grid%r(i, :) )
+      norm = norm2( grid%r(:, i) )
       ! Look for 
       do j=1,coul_n
          f1(i) = j
@@ -532,7 +532,7 @@ subroutine coulomb_integral_grid(nang, nshell, d12, r1, y1, r2, y2, s1, s2, inte
          print *, 'oh noes', i, j
       endif
       ! evaluate y2 at the same point
-      norm = norm2( (grid%r(i, :) - d12 ) )
+      norm = norm2( (grid%r(:, i) - d12 ) )
       call interpolation(r2, y2, s2, norm, f2(i))
    enddo
 
@@ -740,8 +740,10 @@ function kah_sum(arr)
    real(kind=dp), dimension(:) :: arr
    real(kind=dp) :: sum, c, t, kah_sum
    integer :: i
+
    sum = arr(1)
    c = 0._dp
+
    do i=2, size(arr)
       t = sum + arr(i)
       if (abs(sum) .ge. abs(arr(i))) then

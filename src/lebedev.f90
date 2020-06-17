@@ -114,9 +114,6 @@ CONTAINS
       integer, INTENT(IN), OPTIONAL                      :: l, n
       integer                                            :: number_of_lebedev_grid
 
-      CHARACTER(len=*), parameter :: routineN = 'get_number_of_lebedev_grid', &
-         routineP = moduleN//':'//routineN
-
       integer                                            :: i
       integer, allocatable, dimension(:)                 :: ll, nn
       integer, dimension(1)                              :: lgnum
@@ -163,9 +160,6 @@ CONTAINS
    SUBROUTINE load_sub_grid(subsystem, lgnum, np)
       CHARACTER(*), INTENT(IN)                           :: subsystem
       integer, INTENT(IN)                                :: lgnum, np
-
-      CHARACTER(len=*), parameter :: routineN = 'load_sub_grid', routineP = moduleN//':'//routineN
-
       integer                                            :: i, j
       real(kind=dp)                                      :: x, y, z
 
