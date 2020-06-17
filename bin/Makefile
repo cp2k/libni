@@ -1,6 +1,6 @@
 F90 = gfortran
-CFLAGS = -O1 -fopenmp -Wpedantic
-LDFLAGS = -O1 -fopenmp -Wpedantic
+CFLAGS = -O3 -fopenmp -Wpedantic
+LDFLAGS = -O3 -fopenmp -Wpedantic
 SRCDIR = ../src
 
 OBJ = ni_types.o spherical_harmonics.o lebedev.o ni_fun.o ni_grid.o ni_module.o ni_gradients.o unit_test.o test_gradients.o test_suite.o
