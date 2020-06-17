@@ -1,15 +1,15 @@
 program main_test 
-USE lebedev, ONLY: dp, lebedev_grid, get_number_of_lebedev_grid
-USE ni_fun, ONLY: allocate_fun, prepare_fun, deallocate_fun, type_fun, fun_grid
-USE ni_grid, ONLY: deallocate_grid, build_onecenter_grid, type_grid
+use lebedev, only: dp, lebedev_grid, get_number_of_lebedev_grid
+use ni_fun, only: allocate_fun, prepare_fun, deallocate_fun, type_fun, fun_grid
+use ni_grid, only: deallocate_grid, build_onecenter_grid, type_grid
 implicit none
-REAL(KIND=dp), DIMENSION(50) :: r, f
-TYPE(type_fun), POINTER :: pfun
-TYPE(type_fun), TARGET :: fun
+real(kind=dp), dimension(50) :: r, f
+type(type_fun), pointer :: pfun
+type(type_fun), TARGET :: fun
 
-TYPE(type_grid), POINTER :: pgrid
-TYPE(type_grid), target :: grid
-INTEGER :: i, j
+type(type_grid), pointer :: pgrid
+type(type_grid), target :: grid
+integer :: i, j
 
 i = get_number_of_lebedev_grid(l=3)
 
@@ -26,7 +26,7 @@ enddo
 call deallocate_fun(fun=pfun)
 
 pgrid => grid
-call build_onecenter_grid(ileb=4, nshell=50, addr2=.TRUE.,&
+call build_onecenter_grid(ileb=4, nshell=50, addr2=.true.,&
                           quadr=1, grid=pgrid)
 print *, 'grid'
 print *, size(grid%r)

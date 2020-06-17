@@ -1,15 +1,15 @@
 module nao_unit
-USE ni_module, ONLY: integration_onecenter, integration_twocenter, integration_threecenter, &
-                kinetic_energy, coulomb_integral, spline, interpolation,&
-                bisection, derivative_point,&
-                kah_sum
-USE lebedev, ONLY: dp
-USE ni_grid, ONLY: radial_grid
-USE ni_fun, ONLY: forward_derivative_weights,&
+use ni_module, only: integration_onecenter, integration_twocenter, integration_threecenter, &
+                      kinetic_energy, coulomb_integral, spline, interpolation, &
+                      bisection, derivative_point,&
+                      kah_sum
+use lebedev, only: dp
+use ni_grid, only: radial_grid
+use ni_fun, only: forward_derivative_weights,&
                   derivatives,&
                   fun_grid
 implicit none
-   REAL(KIND=dp), PARAMETER :: pi = 3.14159265358979323846264338_dp ! Pi
+   real(kind=dp), parameter :: pi = 3.14159265358979323846264338_dp ! Pi
 contains
 
 ! --  Tests concerning the integrals -- !
@@ -19,16 +19,17 @@ contains
 
 subroutine test_onecenter_acc()
    implicit none
-   LOGICAL :: loud
-   REAL(KIND=dp), DIMENSION(50) :: errors
-   REAL(KIND=dp) :: integral, ri, err
-   REAL(KIND=dp) :: rand
-   REAL(KIND=dp), DIMENSION(15000) :: r, y, spline1
-   INTEGER :: j, nshell
+   real(kind=dp), dimension(10) :: errors
+   real(kind=dp) :: integral, ri
+   real(kind=dp) :: rand
+   real(kind=dp), dimension(15000) :: r, y, spline1
+   integer :: j, nshell
+   real(kind=dp) :: timer_start, timer_stop
 
-   print *, REPEAT('-', 28) // ' Testing One-Center Acc ' // REPEAT('-', 28)
+   call cpu_time(timer_start)
+   print *, repeat('-', 28) // ' Testing One-Center Acc ' // repeat('-', 28)
 
-   CALL RANDOM_NUMBER(rand)
+   call random_number(rand)
    rand = rand * 3.0_dp + 0.1_dp
    call fun_grid(r=r, max=75._dp/rand)
 
@@ -36,41 +37,47 @@ subroutine test_onecenter_acc()
    call spline(r, y, size(r), spline1)
 
    j = 0
-   do nshell=10,200,10
-      j = j + 1
+
+   do j = 1, size(errors)
+      nshell = 10 + j * 20
       call integration_onecenter(nang=1, nshell=nshell, r=r, y=y,&
                                  spline=spline1, quadr=1, integral=integral)
-      ri = 4.0_dp*pi**1.5_dp/(4.0_dp*rand**(1.5_dp))
+      ri = 4.0_dp *pi**1.5_dp/(4.0_dp * rand**(1.5_dp))
 
-      errors(j) = abs(1.0_dp-integral/ri)
+      errors(j) = abs(1.0_dp - integral/ri)
       print *, nshell, errors(j)
    enddo
 
-   print *, REPEAT('-', 26) // ' End Testing One-Center Acc ' // REPEAT('-', 26)
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
+   print *, repeat('-', 26) // ' End Testing One-Center Acc ' // repeat('-', 26)
    print *, ''
 end subroutine test_onecenter_acc
 
 
 subroutine test_twocenter_acc()
    implicit none
-   REAL(KIND=dp), DIMENSION(100) :: errors
-   REAL(KIND=dp) :: integral, ri, err
-   REAL(KIND=dp), DIMENSION(2) :: rand2, nshell_rand
-   REAL(KIND=dp), DIMENSION(3) :: rand_pos
-   REAL(KIND=dp), DIMENSION(15000) :: r1, r2, y1, y2, spline1, spline2
-   INTEGER, DIMENSION(2) :: nshell
-   INTEGER :: j, ngrid, nnshell
+   real(kind=dp), dimension(100) :: errors
+   real(kind=dp) :: integral, ri, err
+   real(kind=dp), dimension(2) :: rand2
+   real(kind=dp), dimension(3) :: rand_pos
+   real(kind=dp), dimension(15000) :: r1, r2, y1, y2, spline1, spline2
+   integer, dimension(2) :: nshell
+   integer :: j, ngrid, nnshell
+   real(kind=dp) :: timer_start, timer_stop
 
-   print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
+   call cpu_time(timer_start)
+
+   print *, repeat('-', 30) // ' Testing Two-Center ' // repeat('-', 30)
    ngrid = 100
 
    errors = 0._dp
 
    ! Gaussian exponents
-   CALL RANDOM_NUMBER(rand2)
+   call random_number(rand2)
    rand2 = rand2 * 4.5_dp + 0.5_dp
    ! Displacement
-   CALL RANDOM_NUMBER(rand_pos)
+   call random_number(rand_pos)
    rand_pos = rand_pos * sqrt(5.0_dp)
 
    call fun_grid(r=r1, max=75._dp/rand2(1))
@@ -97,24 +104,29 @@ subroutine test_twocenter_acc()
       print *, nshell, errors(j)
 
    enddo
-   print *, REPEAT('-', 28) // ' End Testing Two-Center ' // REPEAT('-', 28)
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
+   print *, repeat('-', 28) // ' End Testing Two-Center ' // repeat('-', 28)
    print *, ''
 end subroutine test_twocenter_acc
 
 subroutine test_onecenter(ntests, loud)
    implicit none
-   LOGICAL :: loud
-   INTEGER :: ntests
-   REAL(KIND=dp), DIMENSION(ntests) :: errors
-   REAL(KIND=dp) :: integral, ri, err
-   REAL(KIND=dp) :: rand
-   REAL(KIND=dp), DIMENSION(15000) :: r, y, spline1
-   INTEGER :: j
+   logical :: loud
+   integer :: ntests
+   real(kind=dp), dimension(ntests) :: errors
+   real(kind=dp) :: integral, ri, err
+   real(kind=dp) :: rand
+   real(kind=dp), dimension(15000) :: r, y, spline1
+   integer :: j
+   real(kind=dp) :: timer_start, timer_stop
 
-   print *, REPEAT('-', 30) // ' Testing One-Center ' // REPEAT('-', 30)
+   call cpu_time(timer_start)
+
+   print *, repeat('-', 30) // ' Testing One-Center ' // repeat('-', 30)
 
    do j=1,ntests
-      CALL RANDOM_NUMBER(rand)
+      call random_number(rand)
       rand = rand * 3.0_dp + 0.1_dp
       call fun_grid(r=r, max=75._dp/rand)
 
@@ -127,49 +139,54 @@ subroutine test_onecenter(ntests, loud)
       ri = 4.0_dp*pi**1.5_dp/(4.0_dp*rand**(1.5_dp))
 
       errors(j) = abs(1.0_dp-integral/ri)
-      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.00001_dp)) then
+      if ((loud .eqv. .true.) .or. (errors(j) .gt. 0.00001_dp)) then
          print *, 'Exponents: ', rand
          print *, 'Is: ', integral
          print *, 'Should:', ri
          print *, ''
          print *, 'Absolute Difference: ', abs(integral-ri)
          print *, 'Relative Error: ', errors(j)
-         print *, REPEAT('-', 80)
+         print *, repeat('-', 80)
       endif
    enddo
 
    err = sum(errors)/REAL(ntests, dp)
    print *, 'Mean error: ', err
-   print *, REPEAT('-', 28) // ' End Testing One-Center ' // REPEAT('-', 28)
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
+   print *, repeat('-', 28) // ' End Testing One-Center ' // repeat('-', 28)
    print *, ''
 end subroutine test_onecenter
 
 
 subroutine test_twocenter(ntests, loud)
    implicit none
-   LOGICAL :: loud
-   INTEGER :: ntests
-   REAL(KIND=dp), DIMENSION(ntests) :: errors
-   REAL(KIND=dp) :: integral, ri, err
-   REAL(KIND=dp), DIMENSION(2) :: rand2, nshell_rand
-   REAL(KIND=dp), DIMENSION(3) :: rand_pos
-   REAL(KIND=dp), DIMENSION(15000) :: r1, r2, y1, y2, spline1, spline2
-   INTEGER, DIMENSION(2) :: nshell
-   INTEGER :: j, ngrid
+   logical :: loud
+   integer :: ntests
+   real(kind=dp), dimension(ntests) :: errors
+   real(kind=dp) :: integral, ri, err
+   real(kind=dp), dimension(2) :: rand2, nshell_rand
+   real(kind=dp), dimension(3) :: rand_pos
+   real(kind=dp), dimension(15000) :: r1, r2, y1, y2, spline1, spline2
+   integer, dimension(2) :: nshell
+   integer :: j, ngrid
+   real(kind=dp) :: timer_start, timer_stop
 
-   print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
+   call cpu_time(timer_start)
+
+   print *, repeat('-', 30) // ' Testing Two-Center ' // repeat('-', 30)
    ngrid = 100
 
    errors = 0._dp
    do j=1,ntests
       ! Gaussian exponents
-      CALL RANDOM_NUMBER(rand2)
+      call random_number(rand2)
       rand2 = rand2 * 4.5_dp + 0.5_dp
       ! Displacement
-      CALL RANDOM_NUMBER(rand_pos)
+      call random_number(rand_pos)
       rand_pos = rand_pos * sqrt(5.0_dp)
       ! nshell
-      CALL RANDOM_NUMBER(nshell_rand)
+      call random_number(nshell_rand)
       nshell = (/ 75, 75 /) + INT(50 * nshell_rand)
 
       call fun_grid(r=r1, max=75._dp/rand2(1))
@@ -190,7 +207,7 @@ subroutine test_twocenter(ntests, loud)
       if (abs(integral-ri) .gt. 1.e-13_dp) then
          errors(j) = abs(1.0_dp-integral/ri)
       endif
-      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.00001_dp)) then
+      if ((loud .eqv. .true.) .or. (errors(j) .gt. 0.00001_dp)) then
          print *, 'Exponents: ', rand2
          print *, 'Distance: ', sqrt(sum(rand_pos**2))
          print *, 'Is: ', integral
@@ -199,40 +216,45 @@ subroutine test_twocenter(ntests, loud)
          print *, 'Absolute Difference: ', abs(integral-ri)
          print *, 'Relative Error: ', errors(j)
          print *, ''
-         print *, REPEAT('-', 80)
+         print *, repeat('-', 80)
       endif
    enddo
    err = sum(errors)/REAL(ntests, dp)
    print *, 'Mean error: ', err
-   print *, REPEAT('-', 28) // ' End Testing Two-Center ' // REPEAT('-', 28)
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
+   print *, repeat('-', 28) // ' End Testing Two-Center ' // repeat('-', 28)
    print *, ''
 end subroutine test_twocenter
 
 subroutine test_threecenter(ntests, loud)
    implicit none
-   LOGICAL :: loud
-   INTEGER :: ntests
-   REAL(KIND=dp), DIMENSION(ntests) :: errors
-   REAL(KIND=dp) :: abc, integral, ri, err
-   REAL(KIND=dp), DIMENSION(3) :: rand3, rand_pos1, rand_pos2, exparg, nshell_rand
-   REAL(KIND=dp), DIMENSION(10000) :: r, y1, y2, y3, s1, s2, s3
-   INTEGER, DIMENSION(3) :: nshell, nang
-   INTEGER :: j, ngrid
+   logical :: loud
+   integer :: ntests
+   real(kind=dp), dimension(ntests) :: errors
+   real(kind=dp) :: abc, integral, ri, err
+   real(kind=dp), dimension(3) :: rand3, rand_pos1, rand_pos2, exparg, nshell_rand
+   real(kind=dp), dimension(10000) :: r, y1, y2, y3, s1, s2, s3
+   integer, dimension(3) :: nshell, nang
+   integer :: j, ngrid
+   real(kind=dp) :: timer_start, timer_stop
 
-   print *, REPEAT('-', 30) // ' Testing Three-Center ' // REPEAT('-', 30)
+   call cpu_time(timer_start)
+
+   print *, repeat('-', 30) // ' Testing Three-Center ' // repeat('-', 30)
    ngrid = 5000
 
    do j=1,ntests
       ! Gaussian exponents
-      CALL RANDOM_NUMBER(rand3)
+      call random_number(rand3)
       rand3 = rand3 * 3.0_dp + 0.5_dp
       ! Displacement
-      CALL RANDOM_NUMBER(rand_pos1)
+      call random_number(rand_pos1)
       rand_pos1 = rand_pos1 * sqrt(5.0_dp)
-      CALL RANDOM_NUMBER(rand_pos2)
+      call random_number(rand_pos2)
       rand_pos2 = rand_pos2 * sqrt(5.0_dp)
       ! nshell
-      CALL RANDOM_NUMBER(nshell_rand)
+      call random_number(nshell_rand)
       nshell = (/ 50, 50, 50 /) + INT(50 * nshell_rand)
       nang = (/590, 590, 590/)
 
@@ -263,7 +285,7 @@ subroutine test_threecenter(ntests, loud)
       ri = (pi/abc)**(1.5_dp) * exp(sum(exparg))
 
       errors(j) = abs(1.0_dp-integral/ri)
-      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.00001_dp)) then
+      if ((loud .eqv. .true.) .or. (errors(j) .gt. 0.00001_dp)) then
          print *, 'Exponents: ', rand3
          print *, 'Distances: ', sqrt(sum(rand_pos1**2)), sqrt(sum(rand_pos2**2))
          print *, 'Is: ', integral
@@ -272,33 +294,38 @@ subroutine test_threecenter(ntests, loud)
          print *, 'Absolute Difference: ', abs(integral-ri)
          print *, 'Relative Error: ', errors(j)
          print *, ''
-         print *, REPEAT('-', 80)
+         print *, repeat('-', 80)
       endif
    enddo
 
    err = sum(errors)/REAL(ntests, dp)
    print *, 'Mean error: ', err
 
-   print *, REPEAT('-', 28) // ' End Testing Three-Center ' // REPEAT('-', 28)
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
+   print *, repeat('-', 28) // ' End Testing Three-Center ' // repeat('-', 28)
    print *, ''
 end subroutine test_threecenter
 
 subroutine test_kinetic(ntests, loud)
    implicit none
-   LOGICAL :: loud
-   INTEGER :: ntests
-   REAL(KIND=dp), DIMENSION(ntests) :: errors
-   REAL(KIND=dp) :: integral, ri, err
-   REAL(KIND=dp), DIMENSION(2) :: rand2
-   REAL(KIND=dp), DIMENSION(10000) :: r, wr, y1, y2, spline1, spline2, d2f2
-   INTEGER :: j, ngrid
+   logical :: loud
+   integer :: ntests
+   real(kind=dp), dimension(ntests) :: errors
+   real(kind=dp) :: integral, ri, err
+   real(kind=dp), dimension(2) :: rand2
+   real(kind=dp), dimension(10000) :: r, wr, y1, y2, spline1, spline2, d2f2
+   integer :: j, ngrid
+   real(kind=dp) :: timer_start, timer_stop
 
-   print *, REPEAT('-', 30) // ' Testing Kinetic energy ' // REPEAT('-', 30)
+   call cpu_time(timer_start)
+
+   print *, repeat('-', 30) // ' Testing Kinetic energy ' // repeat('-', 30)
    ngrid = 2500
 
    do j=1,ntests
       ! Gaussian exponents
-      CALL RANDOM_NUMBER(rand2)
+      call random_number(rand2)
       rand2 = rand2 * 3.0_dp + 0.5_dp
       call fun_grid(r=r, max=75._dp/maxval(rand2))
 
@@ -325,7 +352,7 @@ subroutine test_kinetic(ntests, loud)
       ! ! 2.9644830114845719
 
       errors(j) = abs(1.0_dp-integral/ri)
-      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 1.e-5_dp)) then
+      if ((loud .eqv. .true.) .or. (errors(j) .gt. 1.e-5_dp)) then
          print *, j
          print *, 'Exponents: ', rand2
          print *, 'Is: ', integral
@@ -334,31 +361,36 @@ subroutine test_kinetic(ntests, loud)
          print *, 'Absolute Difference: ', abs(integral-ri)
          print *, 'Relative Error: ', errors(j)
          print *, ''
-         print *, REPEAT('-', 80)
+         print *, repeat('-', 80)
       endif
    enddo
 
    err = kah_sum(errors)/REAL(ntests, dp)
    print *, 'Mean error: ', err
 
-   print *, REPEAT('-', 28) // ' End Testing Kinetic energy ' // REPEAT('-', 28)
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
+   print *, repeat('-', 28) // ' End Testing Kinetic energy ' // repeat('-', 28)
 
 end subroutine test_kinetic
 
 
 subroutine test_kinetic_acc()
    implicit none
-   REAL(KIND=dp), DIMENSION(100) :: errors
-   REAL(KIND=dp) :: integral, ri, err
-   REAL(KIND=dp), DIMENSION(2) :: rand2
-   REAL(KIND=dp), DIMENSION(10000) :: r, wr, y1, y2, spline1, spline2, d2f2
-   INTEGER :: j, ngrid, nshell
+   real(kind=dp), dimension(100) :: errors
+   real(kind=dp) :: integral, ri, err
+   real(kind=dp), dimension(2) :: rand2
+   real(kind=dp), dimension(10000) :: r, wr, y1, y2, spline1, spline2, d2f2
+   integer :: j, ngrid, nshell
+   real(kind=dp) :: timer_start, timer_stop
 
-   print *, REPEAT('-', 30) // ' Testing Kinetic energy ' // REPEAT('-', 30)
+   call cpu_time(timer_start)
+
+   print *, repeat('-', 30) // ' Testing Kinetic energy ' // repeat('-', 30)
    ngrid = 2500
 
    ! Gaussian exponents
-   CALL RANDOM_NUMBER(rand2)
+   call random_number(rand2)
    rand2 = rand2 * 3.0_dp + 0.5_dp
    call fun_grid(r=r, max=75._dp/maxval(rand2))
 
@@ -386,39 +418,44 @@ subroutine test_kinetic_acc()
       print *, nshell, errors(j)
    enddo
 
-   print *, REPEAT('-', 28) // ' End Testing Kinetic energy ' // REPEAT('-', 28)
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
+   print *, repeat('-', 28) // ' End Testing Kinetic energy ' // repeat('-', 28)
 
 end subroutine test_kinetic_acc
 
 subroutine test_coulomb(ntests, loud)
    implicit none
-   LOGICAL :: loud
-   INTEGER :: ntests
-   REAL(KIND=dp), DIMENSION(ntests) :: errors
-   REAL(KIND=dp) :: integral, ri, err, alpha, norm
-   REAL(KIND=dp), DIMENSION(2) :: rand2, nshell_rand
-   REAL(KIND=dp), DIMENSION(3) :: rand_pos
-   REAL(KIND=dp), DIMENSION(10000) :: r, y1, y2, spline1, spline2
-   INTEGER, DIMENSION(2) :: nshell
-   INTEGER :: j, ngrid, coul_n
+   logical :: loud
+   integer :: ntests
+   real(kind=dp), dimension(ntests) :: errors
+   real(kind=dp) :: integral, ri, err, alpha, norm
+   real(kind=dp), dimension(2) :: rand2, nshell_rand
+   real(kind=dp), dimension(3) :: rand_pos
+   real(kind=dp), dimension(10000) :: r, y1, y2, spline1, spline2
+   integer, dimension(2) :: nshell
+   integer :: j, ngrid, coul_n
+   real(kind=dp) :: timer_start, timer_stop
 
-   print *, REPEAT('-', 30) // ' Testing Coulomb ' // REPEAT('-', 30)
+   call cpu_time(timer_start)
+
+   print *, repeat('-', 30) // ' Testing Coulomb ' // repeat('-', 30)
    ngrid = 5000
 
    ! Discard wr
 
    do j=1,ntests
       ! Gaussian exponents
-      CALL RANDOM_NUMBER(rand2)
+      call random_number(rand2)
       rand2 = rand2 * 3.0_dp + 0.5_dp
       ! Displacement
-      CALL RANDOM_NUMBER(rand_pos)
+      call random_number(rand_pos)
       rand_pos = rand_pos * sqrt(10.0_dp) - 5._dp
       ! nshell
-      CALL RANDOM_NUMBER(nshell_rand)
+      call random_number(nshell_rand)
       nshell = (/ 75, 75 /) + INT(50 * nshell_rand) + 1000
       ! coul_n 
-      CALL RANDOM_NUMBER(nshell_rand)
+      call random_number(nshell_rand)
       coul_n = 1000 + INT(50*nshell_rand(1))
 
       call fun_grid(r=r, max=75._dp/maxval(rand2))
@@ -442,7 +479,7 @@ subroutine test_coulomb(ntests, loud)
       endif
 
       errors(j) = abs(1.0_dp-integral/ri)
-      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.00001_dp)) then
+      if ((loud .eqv. .true.) .or. (errors(j) .gt. 0.00001_dp)) then
          print *, 'Exponents: ', rand2
          print *, 'Distance: ', sqrt(sum(rand_pos**2))
          print *, 'Is: ', integral
@@ -451,13 +488,15 @@ subroutine test_coulomb(ntests, loud)
          print *, 'Absolute Difference: ', abs(integral-ri)
          print *, 'Relative Error: ', errors(j)
          print *, ''
-         print *, REPEAT('-', 80)
+         print *, repeat('-', 80)
       endif
    enddo
 
    err = sum(errors)/REAL(ntests, dp)
    print *, 'Mean error: ', err
-   print *, REPEAT('-', 28) // ' End Testing Coulomb ' // REPEAT('-', 28)
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
+   print *, repeat('-', 28) // ' End Testing Coulomb ' // repeat('-', 28)
    print *, ''
 end subroutine test_coulomb
 
@@ -467,21 +506,24 @@ end subroutine test_coulomb
 ! We check this for radial grids of n=1,..,ntests**2
 subroutine test_radial_weight_pos(ntests)
    implicit none
-   INTEGER :: ntests
+   integer :: ntests
 
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, wr
-   INTEGER :: ngrid, i
-   LOGICAL :: failed
+   real(kind=dp), dimension(:), allocatable :: r, wr
+   integer :: ngrid, i
+   logical :: failed
+   real(kind=dp) :: timer_start, timer_stop
 
-   failed = .FALSE.
+   call cpu_time(timer_start)
+
+   failed = .false.
    do i=1,ntests
       ngrid = i**2
       allocate(r(ngrid))
       allocate(wr(ngrid))
 
-      call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE., quadr=1)
+      call radial_grid(r=r, wr=wr, n=ngrid, addr2=.false., quadr=1)
       failed = failed .or. any(wr .lt. 0)
-      call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE., quadr=2)
+      call radial_grid(r=r, wr=wr, n=ngrid, addr2=.false., quadr=2)
       failed = failed .or. any(wr .lt. 0)
 
       deallocate(r)
@@ -492,28 +534,34 @@ subroutine test_radial_weight_pos(ntests)
    else
       print *, '💣 test_radial - all weights positive - failed'
    endif
+
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_radial_weight_pos
 
 ! The code assumes that all radial points are given in ASCending order.
 subroutine test_radial_weight_asc(ntests)
    implicit none
-   INTEGER :: ntests
+   integer :: ntests
 
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, wr
-   INTEGER :: ngrid, i, j
-   LOGICAL :: failed
+   real(kind=dp), dimension(:), allocatable :: r, wr
+   integer :: ngrid, i, j
+   logical :: failed
+   real(kind=dp) :: timer_start, timer_stop
 
-   failed = .FALSE.
+   call cpu_time(timer_start)
+
+   failed = .false.
    do i=1,ntests
       ngrid = i**2
       allocate(r(ngrid))
       allocate(wr(ngrid))
 
-      call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE., quadr=1)
+      call radial_grid(r=r, wr=wr, n=ngrid, addr2=.false., quadr=1)
       do j=1,ngrid-1
          failed = r(j) .ge. r(j+1)
       enddo
-      call radial_grid(r=r, wr=wr, n=ngrid, addr2=.FALSE., quadr=2)
+      call radial_grid(r=r, wr=wr, n=ngrid, addr2=.false., quadr=2)
       do j=1,ngrid-1
          failed = r(j) .ge. r(j+1)
       enddo
@@ -527,19 +575,25 @@ subroutine test_radial_weight_asc(ntests)
    else
       print *, '💣 test_radial - radii ascending order - failed'
    endif
+
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_radial_weight_asc
 
 ! When integrating a function, the result should be the same for
 ! Gauss-Tschebyshev and Gauss-Hermite integration.
 subroutine test_radial_chebyherm(ntests, loud)
    implicit none
-   LOGICAL :: loud
-   INTEGER :: ntests
-   REAL(KIND=dp), DIMENSION(ntests) :: errors
-   REAL(KIND=dp) :: integral_c, integral_h, ri, err
-   REAL(KIND=dp) :: rand
-   REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r_c, r_h, y, spline1, wr
-   INTEGER :: j, ngrid
+   logical :: loud
+   integer :: ntests
+   real(kind=dp), dimension(ntests) :: errors
+   real(kind=dp) :: integral_c, integral_h, ri, err
+   real(kind=dp) :: rand
+   real(kind=dp), dimension(:), allocatable :: r_c, r_h, y, spline1, wr
+   integer :: j, ngrid
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    ngrid = 100
 
@@ -550,13 +604,13 @@ subroutine test_radial_chebyherm(ntests, loud)
    allocate(y(ngrid))
    allocate(spline1(ngrid))
 
-   call radial_grid(r=r_c, wr=wr, n=ngrid, addr2=.TRUE., quadr=1)
-   call radial_grid(r=r_h, wr=wr, n=ngrid, addr2=.TRUE., quadr=2)
+   call radial_grid(r=r_c, wr=wr, n=ngrid, addr2=.true., quadr=1)
+   call radial_grid(r=r_h, wr=wr, n=ngrid, addr2=.true., quadr=2)
 
    ! Perform the tests
    do j=1,ntests
       ! Gaussian exponents
-      CALL RANDOM_NUMBER(rand)
+      call random_number(rand)
       rand = rand * 3.0_dp + 0.1_dp
 
       ! Prepare grids
@@ -573,7 +627,7 @@ subroutine test_radial_chebyherm(ntests, loud)
       ri = 4.0_dp*pi**1.5_dp/(4.0_dp*rand**(1.5_dp))
 
       errors(j) = abs(1.0_dp-integral_h/integral_c)
-      if ((loud .eqv. .TRUE.) .or. (errors(j) .gt. 0.01_dp)) then
+      if ((loud .eqv. .true.) .or. (errors(j) .gt. 0.01_dp)) then
          print *, 'Exponents: ', rand
          print *, 'Hermite: ', integral_h
          print *, 'Chebyshev: ', integral_c
@@ -581,7 +635,7 @@ subroutine test_radial_chebyherm(ntests, loud)
          print *, ''
          print *, 'Absolute Difference: ', abs(integral_h-integral_c)
          print *, 'Relative difference: ', errors(j)
-         print *, REPEAT('-', 80)
+         print *, repeat('-', 80)
       endif
    enddo
 
@@ -598,20 +652,26 @@ subroutine test_radial_chebyherm(ntests, loud)
    deallocate(wr)
    deallocate(y)
    deallocate(spline1)
+
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_radial_chebyherm
 
 ! The spline should in principle be exactly the second derivative of the function
 subroutine test_spline(ntests)
    implicit none
-   INTEGER, intent(in) :: ntests
+   integer, intent(in) :: ntests
    ! Local variables
-   REAL(KIND=dp), DIMENSION(15000) :: r, y, y2_exact, y2_spline, errors
-   REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
-   REAL(KIND=dp) :: alpha, error_cutoff, abs_error
-   INTEGER :: i, t
+   real(kind=dp), dimension(15000) :: r, y, y2_exact, y2_spline, errors
+   real(kind=dp), dimension(ntests) :: tot_errors
+   real(kind=dp) :: alpha, error_cutoff, abs_error
+   integer :: i, t
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    do t=1,ntests
-      call RANDOM_NUMBER(alpha)
+      call random_number(alpha)
       alpha = alpha * 5._dp + 0.1_dp
       ! Get the exact Gaussian and its 2nd derivative wrt. r
       call fun_grid(r=r, max=sqrt(75._dp/alpha))
@@ -646,22 +706,28 @@ subroutine test_spline(ntests)
       print *, 'max. error: ', maxval(tot_errors)
       print *, 'mean error: ', kah_sum(tot_errors)/ntests
    endif
+
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_spline
 
 ! 
 subroutine test_interpolation(ntests)
    implicit none
-   INTEGER :: ntests
-   REAL(KIND=dp), DIMENSION(20000) :: r_orig, y_orig, s_orig
-   REAL(KIND=dp), DIMENSION(500) :: r_interp, wr2, errors
-   REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
-   REAL(KIND=dp) :: alpha, y_interp, y_exact, abs_error
-   INTEGER :: i, t
+   integer :: ntests
+   real(kind=dp), dimension(20000) :: r_orig, y_orig, s_orig
+   real(kind=dp), dimension(500) :: r_interp, wr2, errors
+   real(kind=dp), dimension(ntests) :: tot_errors
+   real(kind=dp) :: alpha, y_interp, y_exact, abs_error
+   integer :: i, t
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    ! We want to now the function on r_interp...
-   call radial_grid(r=r_interp, wr=wr2, n=size(r_interp), addr2=.FALSE., quadr=1)
+   call radial_grid(r=r_interp, wr=wr2, n=size(r_interp), addr2=.false., quadr=1)
    do t=1,ntests
-      call RANDOM_NUMBER(alpha); alpha = alpha * 5._dp + 0.2_dp
+      call random_number(alpha); alpha = alpha * 5._dp + 0.2_dp
       alpha = 1.1_dp
       ! ... while knowing it on r_orig.
       call fun_grid(r=r_orig, max=(75._dp/alpha))
@@ -697,6 +763,9 @@ subroutine test_interpolation(ntests)
       print *, 'max. error: ', maxval(tot_errors)
       print *, 'mean error: ', sum(tot_errors)/ntests
    endif
+
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_interpolation
 
 ! --  Tests concerning derivatives -- !
@@ -705,20 +774,23 @@ end subroutine test_interpolation
 ! on an unequally spaced grid the coefficients will be non-obvious:
 subroutine test_forward_deriv_coeff()
    implicit none
-   REAL(KIND=dp), DIMENSION(3,3,5) :: c
-   REAL(KIND=dp), DIMENSION(7) :: tr
-   INTEGER :: i
-   LOGICAL :: failed = .FALSE.
+   real(kind=dp), dimension(3,3,5) :: c
+   real(kind=dp), dimension(7) :: tr
+   integer :: i
+   logical :: failed = .false.
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    tr = (/(REAL(i, dp), i=0,6)/)
-   ! call radial_grid(r=tr, wr=twr, n=10, addr2=.TRUE., quadr=1)
+   ! call radial_grid(r=tr, wr=twr, n=10, addr2=.true., quadr=1)
 
    call forward_derivative_weights(order=2, x0=0.0_dp, r=tr, coeff=c)
    failed = failed .or. all(c(1,1,1:4) .ne. (/-1._dp, 1._dp, 0._dp, 0._dp/))
    failed = failed .or. all(c(1,2,1:4) .ne. (/-1.5_dp, 2._dp, -0.5_dp, 0._dp/))
    failed = failed .or. all(c(2,1,1:4) .ne. (/1._dp, -2._dp, 1._dp, 0._dp/))
    failed = failed .or. all(c(2,2,1:4) .ne. (/2._dp, -5._dp, 4._dp, -1._dp/))
-   if (failed .eqv. .TRUE.) then
+   if (failed .eqv. .true.) then
       print *, '💣 test forward derivative coefficients - failed'
       print *, c(1,1,:)
       print *, c(1,2,:)
@@ -727,22 +799,28 @@ subroutine test_forward_deriv_coeff()
    else
       print *, '👌 test forward derivative coefficients - passed'
    endif
+
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_forward_deriv_coeff
 
 ! We need the derivatives of y for further calculations
 subroutine test_derivatives()
    implicit none
-   REAL(KIND=dp), DIMENSION(15000) :: r, wr, y, yy1, y1, yy2, y2, yy3, y3
-   REAL(KIND=dp), DIMENSION(3,size(r)) :: errors
-   REAL(KIND=dp) :: error_cutoff, len
-   INTEGER :: i
+   real(kind=dp), dimension(15000) :: r, wr, y, yy1, y1, yy2, y2, yy3, y3
+   real(kind=dp), dimension(3,size(r)) :: errors
+   real(kind=dp) :: error_cutoff, len
+   integer :: i
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
    
    ! The exact function and derivatives
    call fun_grid(r=r, max=sqrt(75._dp/0.5_dp))
 
    ! Derivatives are more accurate on equally spaced grids
    wr = 0._dp
-   ! call radial_grid(r=r, wr=wr, n=size(r), addr2=.FALSE., quadr=1)
+   ! call radial_grid(r=r, wr=wr, n=size(r), addr2=.false., quadr=1)
    y = exp(-0.5_dp * r**2)
    yy1 = -r * y
    yy2 = y * ( r**2 - 1._dp )
@@ -802,21 +880,27 @@ subroutine test_derivatives()
       print *, 'Average error', sum(errors(1, :))/len
       print *, 'Max error', maxval( errors(1, :) )
    endif
+
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_derivatives
 
 ! Sometimes we want to know the derivative at some point which is on the
 ! radial grid, the function is tabulated at
 subroutine test_derivative_point_on()
    implicit none
-   REAL(KIND=dp), DIMENSION(15000) :: r, wr, y, y1_exact, y1_approx
-   REAL(KIND=dp), DIMENSION(size(r)-3) :: errors
-   REAL(KIND=dp) :: alpha, abs_error, error_cutoff, summer
-   INTEGER :: i
+   real(kind=dp), dimension(15000) :: r, wr, y, y1_exact, y1_approx
+   real(kind=dp), dimension(size(r)-3) :: errors
+   real(kind=dp) :: alpha, abs_error, error_cutoff, summer
+   integer :: i
+   real(kind=dp) :: timer_start, timer_stop
 
-   call RANDOM_NUMBER(alpha); alpha = alpha * 5
+   call cpu_time(timer_start)
+
+   call random_number(alpha); alpha = alpha * 5
 
    ! Set up the function to test
-   ! call radial_grid(r=r, wr=wr, n=size(r), addr2=.FALSE., quadr=1)
+   ! call radial_grid(r=r, wr=wr, n=size(r), addr2=.false., quadr=1)
    wr = 0._dp
    call fun_grid(r=r, max=sqrt(75._dp/alpha))
    y = exp(-alpha * r**2)
@@ -877,21 +961,27 @@ subroutine test_derivative_point_on()
       print *, 'mean error: ', sum(errors)/size(errors)
       print *, 'error of sum: ', summer
    endif
+
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_derivative_point_on
 
 ! ... and sometimes this point is not on the grid.
 subroutine test_derivative_point_off()
    implicit none
-   REAL(KIND=dp), DIMENSION(15000) :: r_exact, wr, y_exact
-   REAL(KIND=dp), DIMENSION(100) :: r_appr, y1_appr
-   REAL(KIND=dp), DIMENSION(size(r_appr)-3) :: errors
-   REAL(KIND=dp) :: alpha, y1_exact, error_cutoff, abs_error, y1_exact_sum, summer
-   INTEGER :: i
+   real(kind=dp), dimension(15000) :: r_exact, wr, y_exact
+   real(kind=dp), dimension(100) :: r_appr, y1_appr
+   real(kind=dp), dimension(size(r_appr)-3) :: errors
+   real(kind=dp) :: alpha, y1_exact, error_cutoff, abs_error, y1_exact_sum, summer
+   integer :: i
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    ! Set up the function to test
-   call radial_grid(r=r_exact, wr=wr, n=size(r_exact), addr2=.FALSE., quadr=1)
-   call radial_grid(r=r_appr, wr=wr, n=size(r_appr), addr2=.FALSE., quadr=1)
-   call RANDOM_NUMBER(alpha); alpha = alpha * 5
+   call radial_grid(r=r_exact, wr=wr, n=size(r_exact), addr2=.false., quadr=1)
+   call radial_grid(r=r_appr, wr=wr, n=size(r_appr), addr2=.false., quadr=1)
+   call random_number(alpha); alpha = alpha * 5
    y_exact = exp(-alpha * r_exact**2)
 
    error_cutoff = maxval(abs(-2.0_dp * alpha * r_appr * exp(-alpha * r_appr**2)))*1.e-16_dp
@@ -953,6 +1043,9 @@ subroutine test_derivative_point_off()
       print *, 'mean error: ', sum(errors)/size(errors)
       print *, 'error of sum: ', summer
    endif
+
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_derivative_point_off
 
 ! We can retrieve the first derivative of a function when doing the interpolation,
@@ -960,17 +1053,20 @@ end subroutine test_derivative_point_off
 subroutine test_derivative_on(ntests)
    implicit none
    ! Input
-   INTEGER, intent(in) :: ntests
+   integer, intent(in) :: ntests
    ! Local variables
-   REAL(KIND=dp), DIMENSION(15000) :: r, y, ys, y1_s, y2_s, y1_ex, errors
-   REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
-   REAL(KIND=dp) :: alpha, abs_error, error_cutoff
-   INTEGER :: i, t
+   real(kind=dp), dimension(15000) :: r, y, ys, y1_s, y2_s, y1_ex, errors
+   real(kind=dp), dimension(ntests) :: tot_errors
+   real(kind=dp) :: alpha, abs_error, error_cutoff
+   integer :: i, t
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    tot_errors = 0.0_dp
    do t=1,ntests
       ! Set up the gaussian function and its derivatives analytically
-      call RANDOM_NUMBER(alpha); alpha = alpha * 3.0_dp + 0.1_dp
+      call random_number(alpha); alpha = alpha * 3.0_dp + 0.1_dp
 
       call fun_grid(r=r, max=sqrt(75._dp/alpha))
       y = exp(-alpha * r**2)
@@ -1002,26 +1098,32 @@ subroutine test_derivative_on(ntests)
       print *, 'max. error: ', maxval(tot_errors)
       print *, 'mean error: ', sum(tot_errors)/ntests
    endif
+
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_derivative_on
 
 ! ...and when it's not.
 subroutine test_derivative_off(ntests)
    implicit none
    ! Input
-   INTEGER, intent(in) :: ntests
+   integer, intent(in) :: ntests
    ! Local variables
-   REAL(KIND=dp), DIMENSION(15000) :: r, y, ys, y2_s
-   REAL(KIND=dp), DIMENSION(1000) :: r_interp, wr_interp, y1_s, y1_ex, errors
-   REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
-   REAL(KIND=dp) :: alpha, abs_error, error_cutoff
-   INTEGER :: i, t
+   real(kind=dp), dimension(15000) :: r, y, ys, y2_s
+   real(kind=dp), dimension(1000) :: r_interp, wr_interp, y1_s, y1_ex, errors
+   real(kind=dp), dimension(ntests) :: tot_errors
+   real(kind=dp) :: alpha, abs_error, error_cutoff
+   integer :: i, t
+   real(kind=dp) :: timer_start, timer_stop
 
-   call radial_grid(r=r_interp, wr=wr_interp, n=size(r_interp), addr2=.TRUE., quadr=1)
+   call cpu_time(timer_start)
+
+   call radial_grid(r=r_interp, wr=wr_interp, n=size(r_interp), addr2=.true., quadr=1)
 
    tot_errors = 0.0_dp
    do t=1,ntests
       ! Set up the gaussian function and its derivatives analytically
-      call RANDOM_NUMBER(alpha); alpha = alpha * 3.0_dp + 0.1_dp
+      call random_number(alpha); alpha = alpha * 3.0_dp + 0.1_dp
       call fun_grid(r=r, max=75._dp/alpha)
 
       y = exp(-alpha * r**2)
@@ -1053,5 +1155,8 @@ subroutine test_derivative_off(ntests)
       print *, 'max. error: ', maxval(tot_errors)
       print *, 'mean error: ', sum(tot_errors)/ntests
    endif
+
+   call cpu_time(timer_stop)
+   print *, repeat('-', 26), ' Took ', timer_stop - timer_start, repeat('-', 21)
 end subroutine test_derivative_off
 end module nao_unit

@@ -1,6 +1,6 @@
 program test_suite 
-USE ni_types, ONLY: dp, pi, type_grid, type_fun, ni_env
-USE ni_module, ONLY: integration_twocenter,&
+use ni_types, only: dp, type_grid, type_fun, ni_env
+use ni_module, only: integration_twocenter,&
                 read_nfun,&
                 interpolation,&
                 spline,&
@@ -13,9 +13,9 @@ USE ni_module, ONLY: integration_twocenter,&
                 pp_projector,&
                 pp_nonloc,&
                 forward_derivative_weights
-USE ni_grid, ONLY: grid_parameters, radial_grid, gauher
-USE ni_fun, ONLY: prepare_fun
-USE nao_unit, ONLY: test_onecenter,&
+use ni_grid, only: grid_parameters, radial_grid, gauher
+use ni_fun, only: prepare_fun
+use nao_unit, only: test_onecenter,&
                     test_twocenter,&
                     test_threecenter,&
                     test_kinetic,&
@@ -34,15 +34,18 @@ USE nao_unit, ONLY: test_onecenter,&
                     test_onecenter_acc,&
                     test_twocenter_acc,&
                     test_kinetic_acc
-USE nao_grad_unit, ONLY: test_jacobian,&
+use nao_grad_unit, only: test_jacobian,&
                          test_twocenter_grad,&
                          test_kinetic_grad,&
                          test_kinetic_fd,&
                          test_twocenter_fd,&
                          test_coulomb_grad
 implicit none
+real(kind=dp) :: timer_start, timer_stop
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 ! Benchmarks
+call cpu_time(timer_start)
+
 call test_onecenter_acc()
 call test_twocenter_acc()
 call test_kinetic_acc()
@@ -52,7 +55,7 @@ call test_twocenter_fd()
 ! --  Tests concerning radial grids and functions on those grids -- !
 call test_radial_weight_pos(ntests=9)
 call test_radial_weight_asc(ntests=9)
-call test_radial_chebyherm(ntests=9, loud=.FALSE.)
+call test_radial_chebyherm(ntests=9, loud=.false.)
 call test_spline(ntests=10)
 call test_interpolation(ntests=1)
 
@@ -65,16 +68,19 @@ call test_derivative_on(ntests=1)
 call test_derivative_off(ntests=1)
 
 ! ! --  Tests concerning the integrals -- !
-call test_onecenter(ntests=10, loud=.FALSE.)
-call test_twocenter(ntests=3, loud=.FALSE.)
-call test_threecenter(ntests=3 , loud=.FALSE.)
-call test_kinetic(ntests=3, loud=.FALSE.)
-call test_coulomb(ntests=3, loud=.FALSE.)
+call test_onecenter(ntests=10, loud=.false.)
+call test_twocenter(ntests=3, loud=.false.)
+call test_threecenter(ntests=3 , loud=.false.)
+call test_kinetic(ntests=3, loud=.false.)
+call test_coulomb(ntests=3, loud=.false.)
 
-call test_twocenter_grad(loud=.FALSE.)
-call test_kinetic_grad(loud=.TRUE.)
-call test_coulomb_grad(loud=.FALSE.)    
-call test_jacobian()
+! call test_twocenter_grad(loud=.false.)
+! call test_kinetic_grad(loud=.true.)
+! call test_coulomb_grad(loud=.false.)    
+! call test_jacobian()
+
+call cpu_time(timer_stop)
+print *, 'Total time: ', timer_stop - timer_start
 ! ––––––––––––––––––––––––––––––––– Test suite –––––––––––––––––––––––––––––––––
 end program test_suite
 

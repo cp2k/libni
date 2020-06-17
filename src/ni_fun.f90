@@ -1,5 +1,5 @@
 module ni_fun
-USE ni_types, ONLY: dp, pi, ni_env, type_grid, type_fun
+use ni_types, only: dp, pi, ni_env, type_grid, type_fun
 implicit none
 
 public :: type_fun, fun_grid, prepare_fun, prepare_gauss
@@ -13,8 +13,8 @@ contains
 ! **********************************************
 subroutine prepare_fun(r, f, fun)
    implicit none
-   REAL(KIND=dp), DIMENSION(:) :: r, f
-   TYPE(type_fun), POINTER :: fun
+   real(kind=dp), dimension(:) :: r, f
+   type(type_fun), pointer :: fun
 
    fun%r = r
    fun%y = f
@@ -38,9 +38,9 @@ end subroutine prepare_fun
 ! **********************************************
 subroutine prepare_gauss(r, alpha, fun)
    implicit none
-   REAL(KIND=dp), DIMENSION(:) :: r
-   REAL(KIND=dp) :: alpha
-   TYPE(type_fun), POINTER :: fun
+   real(kind=dp), dimension(:) :: r
+   real(kind=dp) :: alpha
+   type(type_fun), pointer :: fun
 
    fun%y = exp(-alpha * r**2)
    fun%y1 = -2._dp*alpha*r* fun%y
@@ -55,11 +55,11 @@ end subroutine prepare_gauss
 ! **********************************************
 subroutine derivatives(r, y, y1, y2, y3)
    implicit none
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r, y
-   REAL(KIND=dp), DIMENSION(size(r)), OPTIONAL, intent(out) :: y1, y2, y3
+   real(kind=dp), dimension(:), intent(in) :: r, y
+   real(kind=dp), dimension(size(r)), OPTIONAL, intent(out) :: y1, y2, y3
    ! Local variables
-   REAL(KIND=dp), DIMENSION(3,3,5) :: c
-   INTEGER :: ir
+   real(kind=dp), dimension(3,3,5) :: c
+   integer :: ir
    if(present(y1)) y1 = 0._dp
    if(present(y2)) y2 = 0._dp
    if(present(y3)) y3 = 0._dp
@@ -79,15 +79,17 @@ end subroutine derivatives
 subroutine forward_derivative_weights(order, x0, r, coeff)
    implicit none
    ! Input
-   INTEGER, intent(in) :: order
-   REAL(KIND=dp), intent(in) :: x0
-   REAL(KIND=dp), DIMENSION(:), intent(in) :: r
+   integer, intent(in) :: order
+   real(kind=dp), intent(in) :: x0
+   real(kind=dp), dimension(:), intent(in) :: r
+
    ! Output
-   REAL(KIND=dp), DIMENSION(3,3,5) :: coeff
+   real(kind=dp), dimension(3,3,5) :: coeff
+
    ! Local variables
-   INTEGER :: points, n, nu, m
-   REAL(KIND=dp) :: c1, c2, c3
-   REAL(KIND=dp), DIMENSION(0:order,0:size(r),0:size(r)) :: d
+   integer :: points, n, nu, m
+   real(kind=dp) :: c1, c2, c3
+   real(kind=dp), dimension(0:order, 0:size(r), 0:size(r)) :: d
 
    points = size(r)-1
 
@@ -129,8 +131,8 @@ subroutine forward_derivative_weights(order, x0, r, coeff)
    coeff(2,2,:) = d(2,3,0:4)
    coeff(2,3,:) = d(2,4,0:4)
    ! Third derivative
-   coeff(3,1,:) = d(3,3,0:4)
-   coeff(3,2,:) = d(3,4,0:4)
+   ! coeff(3,1,:) = d(3,3,0:4)
+   ! coeff(3,2,:) = d(3,4,0:4)
    ! coeff(3,3,:) = d(3,5,0:4) ! this one has 6 coefficients
 end subroutine forward_derivative_weights
 
@@ -140,15 +142,15 @@ end subroutine forward_derivative_weights
 subroutine spline(r, y, n, yspline)
    implicit none
    ! Input
-   INTEGER, INTENT(in) :: n
-   REAL(KIND=dp), DIMENSION(:), INTENT(in) :: r, y
+   integer, INTENT(in) :: n
+   real(kind=dp), dimension(:), INTENT(in) :: r, y
    ! Output
-   REAL(KIND=dp), DIMENSION(n) :: yspline
+   real(kind=dp), dimension(n) :: yspline
    ! Local variables
-   REAL(KIND=dp), DIMENSION(n) :: u
-   REAL(KIND=dp), DIMENSION(3,3,5) :: coeff
-   INTEGER :: i
-   REAL(KIND=dp) :: sig, p, un, qn, der1, dern
+   real(kind=dp), dimension(n) :: u
+   real(kind=dp), dimension(3,3,5) :: coeff
+   integer :: i
+   real(kind=dp) :: sig, p, un, qn, der1, dern
 
    ! der1 is the first derivative at r(1)
    yspline(1) = -0.5_dp
@@ -183,9 +185,9 @@ end subroutine spline
 ! **********************************************
 subroutine fun_grid(r, max)
    implicit none
-   REAL(KIND=dp), DIMENSION(:), intent(out) :: r
-   REAL(KIND=dp), intent(in) :: max
-   INTEGER :: i
+   real(kind=dp), dimension(:), intent(out) :: r
+   real(kind=dp), intent(in) :: max
+   integer :: i
    do i=1,size(r)
       r(i) = REAL(i-1, dp)*max/size(r)
    enddo
@@ -196,8 +198,8 @@ end subroutine fun_grid
 ! **********************************************
 subroutine allocate_fun(fun, n)
    implicit none
-   INTEGER :: n
-   TYPE(type_fun), POINTER :: fun
+   integer :: n
+   type(type_fun), pointer :: fun
    
    if (.not. allocated(fun%r)) allocate(fun%r(n))
    if (.not. allocated(fun%y)) allocate(fun%y(n))
@@ -210,8 +212,8 @@ end subroutine allocate_fun
 
 subroutine deallocate_fun(fun)
    implicit none
-   INTEGER :: n
-   TYPE(type_fun), POINTER :: fun
+   integer :: n
+   type(type_fun), pointer :: fun
    
    deallocate(fun%r)
    deallocate(fun%y)
