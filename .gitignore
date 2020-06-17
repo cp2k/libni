@@ -2,6 +2,8 @@ log.txt
 *mod
 *.grid
 out*
+*.out
 ipynb/
 *.o
 *.tmp*
+*.exe

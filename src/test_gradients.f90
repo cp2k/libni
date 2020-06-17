@@ -195,7 +195,7 @@ subroutine test_twocenter_grad(loud)
             print *, 'e  ', grad1
             print *, 'fd ', grad2
             print *, 'ra ', error(c, :), '/3 = ', sum(error(c, :))/3._dp
-            print *,
+            print *, ''
          else
             print *, '👌  ', l1, m1, l2, m2
          endif
