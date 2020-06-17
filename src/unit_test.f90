@@ -25,7 +25,9 @@ subroutine test_onecenter_acc()
    REAL(KIND=dp) :: rand
    REAL(KIND=dp), DIMENSION(15000) :: r, y, spline1
    INTEGER :: j, nshell
+   real(kind=dp) :: timer_start, timer_stop
 
+   call cpu_time(timer_start)
    print *, REPEAT('-', 28) // ' Testing One-Center Acc ' // REPEAT('-', 28)
 
    CALL RANDOM_NUMBER(rand)
@@ -46,6 +48,8 @@ subroutine test_onecenter_acc()
       print *, nshell, errors(j)
    enddo
 
+   call cpu_time(timer_stop)
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
    print *, REPEAT('-', 26) // ' End Testing One-Center Acc ' // REPEAT('-', 26)
    print *, ''
 end subroutine test_onecenter_acc
@@ -60,6 +64,9 @@ subroutine test_twocenter_acc()
    REAL(KIND=dp), DIMENSION(15000) :: r1, r2, y1, y2, spline1, spline2
    INTEGER, DIMENSION(2) :: nshell
    INTEGER :: j, ngrid, nnshell
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
    ngrid = 100
@@ -97,6 +104,8 @@ subroutine test_twocenter_acc()
       print *, nshell, errors(j)
 
    enddo
+   call cpu_time(timer_stop)
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
    print *, REPEAT('-', 28) // ' End Testing Two-Center ' // REPEAT('-', 28)
    print *, ''
 end subroutine test_twocenter_acc
@@ -110,6 +119,9 @@ subroutine test_onecenter(ntests, loud)
    REAL(KIND=dp) :: rand
    REAL(KIND=dp), DIMENSION(15000) :: r, y, spline1
    INTEGER :: j
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    print *, REPEAT('-', 30) // ' Testing One-Center ' // REPEAT('-', 30)
 
@@ -140,6 +152,8 @@ subroutine test_onecenter(ntests, loud)
 
    err = sum(errors)/REAL(ntests, dp)
    print *, 'Mean error: ', err
+   call cpu_time(timer_stop)
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
    print *, REPEAT('-', 28) // ' End Testing One-Center ' // REPEAT('-', 28)
    print *, ''
 end subroutine test_onecenter
@@ -156,6 +170,9 @@ subroutine test_twocenter(ntests, loud)
    REAL(KIND=dp), DIMENSION(15000) :: r1, r2, y1, y2, spline1, spline2
    INTEGER, DIMENSION(2) :: nshell
    INTEGER :: j, ngrid
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    print *, REPEAT('-', 30) // ' Testing Two-Center ' // REPEAT('-', 30)
    ngrid = 100
@@ -204,6 +221,8 @@ subroutine test_twocenter(ntests, loud)
    enddo
    err = sum(errors)/REAL(ntests, dp)
    print *, 'Mean error: ', err
+   call cpu_time(timer_stop)
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
    print *, REPEAT('-', 28) // ' End Testing Two-Center ' // REPEAT('-', 28)
    print *, ''
 end subroutine test_twocenter
@@ -218,6 +237,9 @@ subroutine test_threecenter(ntests, loud)
    REAL(KIND=dp), DIMENSION(10000) :: r, y1, y2, y3, s1, s2, s3
    INTEGER, DIMENSION(3) :: nshell, nang
    INTEGER :: j, ngrid
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    print *, REPEAT('-', 30) // ' Testing Three-Center ' // REPEAT('-', 30)
    ngrid = 5000
@@ -279,6 +301,8 @@ subroutine test_threecenter(ntests, loud)
    err = sum(errors)/REAL(ntests, dp)
    print *, 'Mean error: ', err
 
+   call cpu_time(timer_stop)
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
    print *, REPEAT('-', 28) // ' End Testing Three-Center ' // REPEAT('-', 28)
    print *, ''
 end subroutine test_threecenter
@@ -292,6 +316,9 @@ subroutine test_kinetic(ntests, loud)
    REAL(KIND=dp), DIMENSION(2) :: rand2
    REAL(KIND=dp), DIMENSION(10000) :: r, wr, y1, y2, spline1, spline2, d2f2
    INTEGER :: j, ngrid
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    print *, REPEAT('-', 30) // ' Testing Kinetic energy ' // REPEAT('-', 30)
    ngrid = 2500
@@ -341,6 +368,8 @@ subroutine test_kinetic(ntests, loud)
    err = kah_sum(errors)/REAL(ntests, dp)
    print *, 'Mean error: ', err
 
+   call cpu_time(timer_stop)
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
    print *, REPEAT('-', 28) // ' End Testing Kinetic energy ' // REPEAT('-', 28)
 
 end subroutine test_kinetic
@@ -353,6 +382,9 @@ subroutine test_kinetic_acc()
    REAL(KIND=dp), DIMENSION(2) :: rand2
    REAL(KIND=dp), DIMENSION(10000) :: r, wr, y1, y2, spline1, spline2, d2f2
    INTEGER :: j, ngrid, nshell
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    print *, REPEAT('-', 30) // ' Testing Kinetic energy ' // REPEAT('-', 30)
    ngrid = 2500
@@ -386,6 +418,8 @@ subroutine test_kinetic_acc()
       print *, nshell, errors(j)
    enddo
 
+   call cpu_time(timer_stop)
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
    print *, REPEAT('-', 28) // ' End Testing Kinetic energy ' // REPEAT('-', 28)
 
 end subroutine test_kinetic_acc
@@ -401,6 +435,9 @@ subroutine test_coulomb(ntests, loud)
    REAL(KIND=dp), DIMENSION(10000) :: r, y1, y2, spline1, spline2
    INTEGER, DIMENSION(2) :: nshell
    INTEGER :: j, ngrid, coul_n
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    print *, REPEAT('-', 30) // ' Testing Coulomb ' // REPEAT('-', 30)
    ngrid = 5000
@@ -457,6 +494,8 @@ subroutine test_coulomb(ntests, loud)
 
    err = sum(errors)/REAL(ntests, dp)
    print *, 'Mean error: ', err
+   call cpu_time(timer_stop)
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
    print *, REPEAT('-', 28) // ' End Testing Coulomb ' // REPEAT('-', 28)
    print *, ''
 end subroutine test_coulomb
@@ -472,6 +511,9 @@ subroutine test_radial_weight_pos(ntests)
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, wr
    INTEGER :: ngrid, i
    LOGICAL :: failed
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    failed = .FALSE.
    do i=1,ntests
@@ -492,6 +534,8 @@ subroutine test_radial_weight_pos(ntests)
    else
       print *, '💣 test_radial - all weights positive - failed'
    endif
+
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
 end subroutine test_radial_weight_pos
 
 ! The code assumes that all radial points are given in ASCending order.
@@ -502,6 +546,9 @@ subroutine test_radial_weight_asc(ntests)
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r, wr
    INTEGER :: ngrid, i, j
    LOGICAL :: failed
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    failed = .FALSE.
    do i=1,ntests
@@ -527,6 +574,8 @@ subroutine test_radial_weight_asc(ntests)
    else
       print *, '💣 test_radial - radii ascending order - failed'
    endif
+
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
 end subroutine test_radial_weight_asc
 
 ! When integrating a function, the result should be the same for
@@ -540,6 +589,9 @@ subroutine test_radial_chebyherm(ntests, loud)
    REAL(KIND=dp) :: rand
    REAL(KIND=dp), DIMENSION(:), ALLOCATABLE :: r_c, r_h, y, spline1, wr
    INTEGER :: j, ngrid
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    ngrid = 100
 
@@ -598,6 +650,8 @@ subroutine test_radial_chebyherm(ntests, loud)
    deallocate(wr)
    deallocate(y)
    deallocate(spline1)
+
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
 end subroutine test_radial_chebyherm
 
 ! The spline should in principle be exactly the second derivative of the function
@@ -609,6 +663,9 @@ subroutine test_spline(ntests)
    REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
    REAL(KIND=dp) :: alpha, error_cutoff, abs_error
    INTEGER :: i, t
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    do t=1,ntests
       call RANDOM_NUMBER(alpha)
@@ -646,6 +703,8 @@ subroutine test_spline(ntests)
       print *, 'max. error: ', maxval(tot_errors)
       print *, 'mean error: ', kah_sum(tot_errors)/ntests
    endif
+
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
 end subroutine test_spline
 
 ! 
@@ -657,6 +716,9 @@ subroutine test_interpolation(ntests)
    REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
    REAL(KIND=dp) :: alpha, y_interp, y_exact, abs_error
    INTEGER :: i, t
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    ! We want to now the function on r_interp...
    call radial_grid(r=r_interp, wr=wr2, n=size(r_interp), addr2=.FALSE., quadr=1)
@@ -697,6 +759,8 @@ subroutine test_interpolation(ntests)
       print *, 'max. error: ', maxval(tot_errors)
       print *, 'mean error: ', sum(tot_errors)/ntests
    endif
+
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
 end subroutine test_interpolation
 
 ! --  Tests concerning derivatives -- !
@@ -709,6 +773,9 @@ subroutine test_forward_deriv_coeff()
    REAL(KIND=dp), DIMENSION(7) :: tr
    INTEGER :: i
    LOGICAL :: failed = .FALSE.
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    tr = (/(REAL(i, dp), i=0,6)/)
    ! call radial_grid(r=tr, wr=twr, n=10, addr2=.TRUE., quadr=1)
@@ -727,6 +794,8 @@ subroutine test_forward_deriv_coeff()
    else
       print *, '👌 test forward derivative coefficients - passed'
    endif
+
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
 end subroutine test_forward_deriv_coeff
 
 ! We need the derivatives of y for further calculations
@@ -736,6 +805,9 @@ subroutine test_derivatives()
    REAL(KIND=dp), DIMENSION(3,size(r)) :: errors
    REAL(KIND=dp) :: error_cutoff, len
    INTEGER :: i
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
    
    ! The exact function and derivatives
    call fun_grid(r=r, max=sqrt(75._dp/0.5_dp))
@@ -802,6 +874,8 @@ subroutine test_derivatives()
       print *, 'Average error', sum(errors(1, :))/len
       print *, 'Max error', maxval( errors(1, :) )
    endif
+
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
 end subroutine test_derivatives
 
 ! Sometimes we want to know the derivative at some point which is on the
@@ -812,6 +886,9 @@ subroutine test_derivative_point_on()
    REAL(KIND=dp), DIMENSION(size(r)-3) :: errors
    REAL(KIND=dp) :: alpha, abs_error, error_cutoff, summer
    INTEGER :: i
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    call RANDOM_NUMBER(alpha); alpha = alpha * 5
 
@@ -877,6 +954,8 @@ subroutine test_derivative_point_on()
       print *, 'mean error: ', sum(errors)/size(errors)
       print *, 'error of sum: ', summer
    endif
+
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
 end subroutine test_derivative_point_on
 
 ! ... and sometimes this point is not on the grid.
@@ -887,6 +966,9 @@ subroutine test_derivative_point_off()
    REAL(KIND=dp), DIMENSION(size(r_appr)-3) :: errors
    REAL(KIND=dp) :: alpha, y1_exact, error_cutoff, abs_error, y1_exact_sum, summer
    INTEGER :: i
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    ! Set up the function to test
    call radial_grid(r=r_exact, wr=wr, n=size(r_exact), addr2=.FALSE., quadr=1)
@@ -953,6 +1035,8 @@ subroutine test_derivative_point_off()
       print *, 'mean error: ', sum(errors)/size(errors)
       print *, 'error of sum: ', summer
    endif
+
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
 end subroutine test_derivative_point_off
 
 ! We can retrieve the first derivative of a function when doing the interpolation,
@@ -966,6 +1050,9 @@ subroutine test_derivative_on(ntests)
    REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
    REAL(KIND=dp) :: alpha, abs_error, error_cutoff
    INTEGER :: i, t
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    tot_errors = 0.0_dp
    do t=1,ntests
@@ -1002,6 +1089,8 @@ subroutine test_derivative_on(ntests)
       print *, 'max. error: ', maxval(tot_errors)
       print *, 'mean error: ', sum(tot_errors)/ntests
    endif
+
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
 end subroutine test_derivative_on
 
 ! ...and when it's not.
@@ -1015,6 +1104,9 @@ subroutine test_derivative_off(ntests)
    REAL(KIND=dp), DIMENSION(ntests) :: tot_errors
    REAL(KIND=dp) :: alpha, abs_error, error_cutoff
    INTEGER :: i, t
+   real(kind=dp) :: timer_start, timer_stop
+
+   call cpu_time(timer_start)
 
    call radial_grid(r=r_interp, wr=wr_interp, n=size(r_interp), addr2=.TRUE., quadr=1)
 
@@ -1053,5 +1145,7 @@ subroutine test_derivative_off(ntests)
       print *, 'max. error: ', maxval(tot_errors)
       print *, 'mean error: ', sum(tot_errors)/ntests
    endif
+
+   print *, REPEAT('-', 26), ' Took ', timer_stop - timer_start, REPEAT('-', 21)
 end subroutine test_derivative_off
 end module nao_unit
